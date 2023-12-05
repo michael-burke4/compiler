@@ -3,6 +3,15 @@
 #include "strvec.h"
 #include "token.h"
 
+/**
+ *	Like tok_init, but with no provided links to next/prev tokens.
+ *	(links can still be set later)
+ */
+token_s *tok_init_nl(token_t type, size_t line, size_t col, strvec *text)
+{
+	return tok_init(type, line, col, 0, 0, text);
+}
+
 token_s *tok_init(token_t type, size_t line, size_t col, token_s *prev,
 	token_s *next, strvec *text)
 {
@@ -45,20 +54,23 @@ void tok_print(token_s *t)
 	case T_ERROR:
 		printf("Error");
 		break;
-	case T_WORD:
-		printf("Word");
-		break;
-	case T_SQUOTE:
-		printf("Squote");
-		break;
-	case T_DQUOTE:
-		printf("Dquote");
-		break;
 	case T_EOF:
 		printf("EOF");
 		break;
 	case T_STAR:
-		printf("Star");
+		printf("*");
+		break;
+	case T_PLUS:
+		printf("+");
+		break;
+	case T_DPLUS:
+		printf("++");
+		break;
+	case T_MINUS:
+		printf("-");
+		break;
+	case T_DMINUS:
+		printf("--");
 		break;
 	default:
 		printf("UNSUPPORTED TOKEN");
@@ -70,6 +82,7 @@ void tok_print(token_s *t)
 token_s *get_next_token(FILE *f, size_t *line, size_t *col)
 {
 	int c = fgetc(f);
+	size_t temp_col = *col;
 	if (c == '\n') {
 		ungetc(c, f);
 		while ((c = fgetc(f)) == '\n') {
@@ -78,11 +91,27 @@ token_s *get_next_token(FILE *f, size_t *line, size_t *col)
 		}
 	}
 	if (c == EOF)
-		return tok_init(T_EOF, *line, *col, 0, 0, 0);
-	else if (c == '\'')
-		return tok_init(T_SQUOTE, *line, (*col)++, 0, 0, 0);
+		return tok_init_nl(T_EOF, *line, *col, 0);
+	else if (c == '+') {
+		c = fgetc(f);
+		if (c == '+') {
+			*col += 2;
+			return tok_init_nl(T_DPLUS, *line, temp_col, 0);
+		}
+		ungetc(c, f);
+		return tok_init_nl(T_PLUS, *line, (*col)++, 0);
+	}
+	else if (c == '-') {
+		c = fgetc(f);
+		if (c == '-') {
+			*col += 2;
+			return tok_init_nl(T_DMINUS, *line, temp_col, 0);
+		}
+		ungetc(c, f);
+		return tok_init_nl(T_MINUS, *line, (*col)++, 0);
+	}
 	else if (c == '*')
-		return tok_init(T_STAR, *line, (*col)++, 0, 0, 0);
+		return tok_init_nl(T_STAR, *line, (*col)++, 0);
 	return tok_init(T_ERROR, *line, *col, 0, 0, 0);
 }
 

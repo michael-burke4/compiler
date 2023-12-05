@@ -3,12 +3,54 @@
 #include "strvec.h"
 typedef enum {
 	T_ERROR = 0,
-	T_WORD,
-	T_CHAR,
-	T_SQUOTE,
-	T_DQUOTE,
+	T_EOF,
+
+	T_DPLUS,
+	T_DMINUS,
+
+	T_PLUS,
+	T_MINUS,
 	T_STAR,
-	T_EOF
+	T_FSLASH,
+	T_PERCENT,
+
+	T_LT,
+	T_LTE,
+	T_GT,
+	T_GTE,
+	T_EQ,
+	T_NEQ,
+
+	T_AND,
+	T_OR,
+	T_NOT,
+
+	T_BW_AND,
+	T_BW_OR,
+	T_LSHIFT,
+	T_RSHIFT,
+	T_BW_NOT,
+	T_XOR,
+
+	T_ASSIGN,
+	T_ADD_ASSIGN,
+	T_SUB_ASSIGN,
+	T_MUL_ASSIGN,
+	T_DIV_ASSIGN,
+	T_MOD_ASSIGN,
+
+	T_QMARK,
+	T_COLON,
+
+	T_ARROW,
+	T_SEMICO,
+	T_COMMA,
+	T_LPAREN,
+	T_RPAREN,
+	T_LCURLY,
+	T_RCURLY,
+	T_LBRACKET,
+	T_RBRACKET,
 } token_t;
 
 typedef struct token_s {
@@ -22,6 +64,7 @@ typedef struct token_s {
 
 token_s *tok_init(token_t type, size_t line, size_t col, token_s *prev,
 	token_s *next, strvec *text);
+token_s *tok_init_nl(token_t type, size_t line, size_t col, strvec *text);
 void tok_list_destroy(token_s *head);
 void tok_destroy(token_s *tok);
 void tok_setnext(token_s *cur, token_s *next);
