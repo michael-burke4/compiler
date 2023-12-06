@@ -25,7 +25,7 @@ typedef enum {
 	T_OR,
 	T_NOT,
 
-	T_BW_AND,
+	T_AMPERSAND,
 	T_BW_OR,
 	T_LSHIFT,
 	T_RSHIFT,
@@ -38,6 +38,8 @@ typedef enum {
 	T_MUL_ASSIGN,
 	T_DIV_ASSIGN,
 	T_MOD_ASSIGN,
+	T_BW_AND_ASSIGN,
+	T_BW_OR_ASSIGN,
 
 	T_QMARK,
 	T_COLON,
