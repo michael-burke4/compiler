@@ -175,11 +175,33 @@ void tok_print(token_s *t)
 	case T_RBRACKET:
 		printf("]");
 		break;
+	case T_IDENTIFIER:
+		strvec_print(t->text);
+		break;
 	default:
 		printf("%d", t->type);
 		break;
 	}
 	printf(" Line %lu Col %lu\n", t->line, t->col);
+}
+
+static token_s *scan_word(FILE *f, size_t *line, size_t *col)
+{
+	int c;
+	strvec *word = strvec_init(5);
+	size_t old_col = *col;
+	while (1) {
+		c = fgetc(f);
+		if (!(isalpha(c) || c == '_' || isdigit(c)))
+			break;
+		++(*col);
+		strvec_append(word, c);
+
+	}
+	ungetc(c, f);
+	//strvec_print(word);
+	return tok_init_nl(T_IDENTIFIER, *line, old_col, word);
+	return 0;
 }
 
 token_s *get_next_token(FILE *f, size_t *line, size_t *col)
@@ -196,7 +218,10 @@ token_s *get_next_token(FILE *f, size_t *line, size_t *col)
 	temp_col = *col;
 	if (c == EOF)
 		return tok_init_nl(T_EOF, *line, *col, 0);
-	else if (c == '+') {
+	else if (isalpha(c) || c == '_') {
+		ungetc(c, f);
+		return scan_word(f, line, col);
+	} else if (c == '+') {
 		c = fgetc(f);
 		if (c == '+') {
 			*col += 2;

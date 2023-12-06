@@ -3,6 +3,8 @@
 #include "strvec.h"
 typedef enum {
 	T_ERROR = 0,
+	T_IDENTIFIER,
+
 	T_EOF,
 
 	T_DPLUS,
