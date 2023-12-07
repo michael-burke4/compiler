@@ -57,6 +57,54 @@ void tok_print(token_s *t)
 	case T_EOF:
 		printf("EOF");
 		break;
+	case T_IDENTIFIER:
+		strvec_print(t->text);
+		break;
+	case T_I32:
+		printf("i32");
+		break;
+	case T_I64:
+		printf("i64");
+		break;
+	case T_U32:
+		printf("u32");
+		break;
+	case T_U64:
+		printf("u64");
+		break;
+	case T_STRING:
+		printf("string");
+		break;
+	case T_CONST:
+		printf("const");
+		break;
+	case T_BREAK:
+		printf("break");
+		break;
+	case T_CONTINUE:
+		printf("continue");
+		break;
+	case T_ELSE:
+		printf("else");
+		break;
+	case T_FOR:
+		printf("for");
+		break;
+	case T_VOID:
+		printf("void");
+		break;
+	case T_CHAR:
+		printf("char");
+		break;
+	case T_IF:
+		printf("if");
+		break;
+	case T_RETURN:
+		printf("return");
+		break;
+	case T_WHILE:
+		printf("while");
+		break;
 	case T_DPLUS:
 		printf("++");
 		break;
@@ -173,9 +221,6 @@ void tok_print(token_s *t)
 		break;
 	case T_RBRACKET:
 		printf("]");
-		break;
-	case T_IDENTIFIER:
-		strvec_print(t->text);
 		break;
 	default:
 		printf("%d", t->type);

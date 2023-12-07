@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "strvec.h"
 
 strvec *strvec_init(size_t capacity)
@@ -36,4 +37,12 @@ void strvec_destroy(strvec *vec)
 	vec->capacity = 0;
 	vec->size = 0;
 	free(vec);
+}
+
+int strvec_equals_str(strvec *vec, const char *string)
+{
+	if (vec->size != strlen(string))
+		return 0;
+	// not not to make it one or zero.
+	return !!memcmp(vec->text, string, vec->size);
 }

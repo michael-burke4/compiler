@@ -2,6 +2,20 @@
 #include "scan.h"
 #include <stdio.h>
 
+static token_s *check_if_keyword(strvec *word, size_t line, size_t col)
+{
+	if (strvec_equals_str(word, "i32"))
+		return tok_init_nl(T_I32, line, col, 0);
+	else if (strvec_equals_str(word, "i64"))
+		return tok_init_nl(T_I64, line, col, 0);
+	else if (strvec_equals_str(word, "u32"))
+		return tok_init_nl(T_U64, line, col, 0);
+	else if (strvec_equals_str(word, "u64"))
+		return tok_init_nl(T_U64, line, col, 0);
+	else if (strvec_equals_str(word, "string"))
+		return tok_init_nl(T_STRING, line, col, 0);
+	return tok_init_nl(T_IDENTIFIER, line, col, word);
+}
 static token_s *scan_word(FILE *f, size_t *line, size_t *col)
 {
 	int c;
@@ -16,8 +30,7 @@ static token_s *scan_word(FILE *f, size_t *line, size_t *col)
 
 	}
 	ungetc(c, f);
-	return tok_init_nl(T_IDENTIFIER, *line, old_col, word);
-	return 0;
+	return check_if_keyword(word, *line, old_col);
 }
 
 static token_s *scan_number(FILE *f, size_t *line, size_t *col)

@@ -7,6 +7,22 @@ typedef enum {
 	T_EOF,
 
 	T_IDENTIFIER,
+	T_I32,
+	T_I64,
+	T_U32,
+	T_U64,
+	T_STRING,
+
+	T_CONST,
+	T_BREAK,
+	T_CONTINUE,
+	T_ELSE,
+	T_FOR,
+	T_VOID,
+	T_CHAR,
+	T_IF,
+	T_RETURN,
+	T_WHILE,
 
 
 	T_DPLUS,
