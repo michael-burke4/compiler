@@ -1,5 +1,6 @@
 #ifndef STRVEC_H
 #define STRVEC_H
+#include <stddef.h>
 
 typedef struct {
 	size_t size;
