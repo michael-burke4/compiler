@@ -43,6 +43,6 @@ int strvec_equals_str(strvec *vec, const char *string)
 {
 	if (vec->size != strlen(string))
 		return 0;
-	// not not to make it one or zero.
-	return !!memcmp(vec->text, string, vec->size);
+	// not to make it one or zero.
+	return !memcmp(vec->text, string, vec->size);
 }
