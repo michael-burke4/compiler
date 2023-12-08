@@ -82,16 +82,17 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 {
 	int c;
 	size_t temp_col;
-	while (isspace(c = fgetc(f))) {
-		if (c == '\n') {
-			++(*line);
-			(*col) = 1;
-		} else
-			++(*col);
+	while (isspace(c = fgetc(f)) && c != '\n') {
+		++(*col);
 	}
 	temp_col = *col;
+
 	if (c == EOF)
 		return tok_init_nl(T_EOF, *line, *col, 0);
+	else if (c == '\n') {
+		*col = 1;
+		return tok_init_nl(T_NEWLINE, ++(*line), temp_col, 0);
+	}
 	else if (isalpha(c) || c == '_') {
 		ungetc(c, f);
 		return scan_word(f, line, col);

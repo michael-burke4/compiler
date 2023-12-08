@@ -1,16 +1,16 @@
-i32 test = 123;
-i64 test2 = 12321421421;
+i32 test = 123
+i64 test2 = 12321421421
 while (test > 100) {
-	test--;
-	test2 *= 3;
-	test2 /= 3;
+	test--
+	test2 *= 3
+	test2 /= 3
 }
 
 i64 test_fn(i64 arg) {
-	return arg;
+	return arg
 	@
 }
 
 void test_fn2(void) {
-	u32 a = 0 ? 100 : 5;
+	u32 a = 0 ? 100 : 5
 }
