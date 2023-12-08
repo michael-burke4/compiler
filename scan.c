@@ -4,18 +4,45 @@
 
 static token_s *check_if_keyword(strvec *word, size_t line, size_t col)
 {
+	// this approach feels slow but oh well.
+	token_s *ret = 0;
 	if (strvec_equals_str(word, "i32"))
-		return tok_init_nl(T_I32, line, col, 0);
+		ret = tok_init_nl(T_I32, line, col, 0);
 	else if (strvec_equals_str(word, "i64"))
-		return tok_init_nl(T_I64, line, col, 0);
+		ret = tok_init_nl(T_I64, line, col, 0);
 	else if (strvec_equals_str(word, "u32"))
-		return tok_init_nl(T_U64, line, col, 0);
+		ret = tok_init_nl(T_U64, line, col, 0);
 	else if (strvec_equals_str(word, "u64"))
-		return tok_init_nl(T_U64, line, col, 0);
+		ret = tok_init_nl(T_U64, line, col, 0);
 	else if (strvec_equals_str(word, "string"))
-		return tok_init_nl(T_STRING, line, col, 0);
-	return tok_init_nl(T_IDENTIFIER, line, col, word);
+		ret = tok_init_nl(T_STRING, line, col, 0);
+	else if (strvec_equals_str(word, "const"))
+		ret = tok_init_nl(T_CONST, line, col, 0);
+	else if (strvec_equals_str(word, "break"))
+		ret = tok_init_nl(T_BREAK, line, col, 0);
+	else if (strvec_equals_str(word, "continue"))
+		ret = tok_init_nl(T_CONTINUE, line, col, 0);
+	else if (strvec_equals_str(word, "else"))
+		ret = tok_init_nl(T_ELSE, line, col, 0);
+	else if (strvec_equals_str(word, "for"))
+		ret = tok_init_nl(T_FOR, line, col, 0);
+	else if (strvec_equals_str(word, "void"))
+		ret = tok_init_nl(T_VOID, line, col, 0);
+	else if (strvec_equals_str(word, "char"))
+		ret = tok_init_nl(T_CHAR, line, col, 0);
+	else if (strvec_equals_str(word, "if"))
+		ret = tok_init_nl(T_IF, line, col, 0);
+	else if (strvec_equals_str(word, "return"))
+		ret = tok_init_nl(T_RETURN, line, col, 0);
+	else if (strvec_equals_str(word, "while"))
+		ret = tok_init_nl(T_WHILE, line, col, 0);
+	if (ret != 0)
+		strvec_destroy(word);
+	else
+		ret = tok_init_nl(T_IDENTIFIER, line, col, word);
+	return ret;
 }
+
 static token_s *scan_word(FILE *f, size_t *line, size_t *col)
 {
 	int c;
@@ -45,10 +72,9 @@ static token_s *scan_number(FILE *f, size_t *line, size_t *col)
 			break;
 		++(*col);
 		strvec_append(num, c);
-
 	}
 	ungetc(c, f);
-	return tok_init_nl(T_IDENTIFIER, *line, old_col, num);
+	return tok_init_nl(T_INT_LIT, *line, old_col, num);
 	return 0;
 }
 
