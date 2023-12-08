@@ -11,6 +11,16 @@ strvec *strvec_init(size_t capacity)
 	ret->text = calloc(capacity, sizeof(*(ret->text)));
 	return ret;
 }
+strvec *strvec_init_str(const char *str)
+{
+	size_t len = strlen(str);
+	strvec *ret = malloc(sizeof(*ret));
+	ret->capacity = len;
+	ret->size = len;
+	ret->text = malloc(len);
+	memcpy(ret->text, str, len);
+	return ret;
+}
 
 void strvec_append(strvec *vec, char c)
 {

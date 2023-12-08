@@ -51,8 +51,13 @@ void tok_print(token_s *t)
 		return;
 	switch (t->type) {
 	case T_ERROR:
-		printf("Error");
-		break;
+		printf("Error at line %lu col %lu", t->line, t->col);
+		if (t->text != 0) {
+			printf(": ");
+			strvec_print(t->text);
+		}
+		printf("\n");
+		return;
 	case T_EOF:
 		printf("EOF");
 		break;
@@ -226,6 +231,16 @@ void tok_print(token_s *t)
 		break;
 	case T_INT_LIT:
 		strvec_print(t->text);
+		break;
+	case T_CHAR_LIT:
+		printf("'");
+		strvec_print(t->text);
+		printf("'");
+		break;
+	case T_STR_LIT:
+		printf("\"");
+		strvec_print(t->text);
+		printf("\"");
 		break;
 	default:
 		printf("%d", t->type);

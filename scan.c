@@ -58,7 +58,6 @@ static token_s *scan_word(FILE *f, size_t *line, size_t *col)
 	ungetc(c, f);
 	return check_if_keyword(word, *line, old_col);
 }
-
 static token_s *scan_number(FILE *f, size_t *line, size_t *col)
 {
 	int c;
@@ -74,7 +73,54 @@ static token_s *scan_number(FILE *f, size_t *line, size_t *col)
 	}
 	ungetc(c, f);
 	return tok_init_nl(T_INT_LIT, *line, old_col, num);
-	return 0;
+}
+
+static token_s *scan_char_literal(FILE *f, size_t *line, size_t *col)
+{
+	int c;
+	int c2;
+	strvec *character = 0;
+	size_t old_col = *col;
+	(*col)++;
+	c = fgetc(f);
+	if (c == '\n') {
+		ungetc(c, f);
+		return tok_init_nl(T_ERROR, *line, old_col,
+			strvec_init_str("bad char literal"));
+	}
+	(*col)++;
+	c2 = fgetc(f);
+	if (c2 != '\'') {
+		ungetc(c2, f);
+		return tok_init_nl(T_ERROR, *line, old_col,
+			strvec_init_str("bad char literal"));
+	}
+	character = strvec_init(1);
+	strvec_append(character, c);
+	(*col)++;
+	return tok_init_nl(T_CHAR_LIT, *line, old_col, character);
+}
+
+static token_s *scan_string_literal(FILE *f, size_t *line, size_t *col)
+{
+
+	int c;
+	strvec *str = strvec_init(5);
+	size_t old_col = *col;
+	(*col)++;
+	while ((c = fgetc(f)) != '"') {
+		(*col)++;
+		if (c == '\n') {
+			ungetc(c, f);
+			(*col)--;
+			strvec_destroy(str);
+			return tok_init_nl(T_ERROR, *line, old_col,
+				strvec_init_str("Unterminated string literal"));
+		}
+		strvec_append(str, c);
+	}
+	(*col)++;
+	return tok_init_nl(T_STR_LIT, *line, old_col, str);
 }
 
 token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
@@ -99,6 +145,10 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 	case '\n':
 		*col = 1;
 		return tok_init_nl(T_NEWLINE, ++(*line), temp_col, 0);
+	case '\'':
+		return scan_char_literal(f, line, col);
+	case '"':
+		return scan_string_literal(f, line, col);
 	case '+':
 		c = fgetc(f);
 		if (c == '+') {
@@ -231,7 +281,8 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 	case ']':
 		return tok_init_nl(T_RBRACKET, *line, (*col)++, 0);
 	default:
-		return tok_init(T_ERROR, *line, (*col)++, 0, 0, 0);
+		return tok_init_nl(T_ERROR, *line, (*col)++,
+			strvec_init_str("Unrecognized token"));
 	}
 }
 
