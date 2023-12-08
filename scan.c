@@ -87,20 +87,20 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 	}
 	temp_col = *col;
 
-	if (c == EOF)
-		return tok_init_nl(T_EOF, *line, *col, 0);
-	else if (c == '\n') {
-		*col = 1;
-		return tok_init_nl(T_NEWLINE, ++(*line), temp_col, 0);
-	}
-	else if (isalpha(c) || c == '_') {
+	if (isalpha(c) || c == '_') {
 		ungetc(c, f);
 		return scan_word(f, line, col);
-	} 
-	else if (isdigit(c)) {
+	}  else if (isdigit(c)) {
 		ungetc(c, f);
 		return scan_number(f, line, col);
-	} else if (c == '+') {
+	}
+	switch (c) {
+	case EOF:
+		return tok_init_nl(T_EOF, *line, *col, 0);
+	case '\n':
+		*col = 1;
+		return tok_init_nl(T_NEWLINE, ++(*line), temp_col, 0);
+	case '+':
 		c = fgetc(f);
 		if (c == '+') {
 			*col += 2;
@@ -111,7 +111,7 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		}
 		ungetc(c, f);
 		return tok_init_nl(T_PLUS, *line, (*col)++, 0);
-	} else if (c == '-') {
+	case '-':
 		c = fgetc(f);
 		if (c == '-') {
 			*col += 2;
@@ -125,7 +125,7 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		}
 		ungetc(c, f);
 		return tok_init_nl(T_MINUS, *line, (*col)++, 0);
-	} else if (c == '*') {
+	case '*':
 		c = fgetc(f);
 		if (c == '=') {
 			*col += 2;
@@ -133,7 +133,7 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		}
 		ungetc(c, f);
 		return tok_init_nl(T_STAR, *line, (*col)++, 0);
-	} else if (c == '/') {
+	case '/':
 		c = fgetc(f);
 		if (c == '=') {
 			*col += 2;
@@ -141,7 +141,7 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		}
 		ungetc(c, f);
 		return tok_init_nl(T_FSLASH, *line, (*col)++, 0);
-	} else if (c == '%') {
+	case '%':
 		c = fgetc(f);
 		if (c == '=') {
 			*col += 2;
@@ -149,7 +149,7 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		}
 		ungetc(c, f);
 		return tok_init_nl(T_PERCENT, *line, (*col)++, 0);
-	} else if (c == '<') {
+	case '<':
 		c = fgetc(f);
 		if (c == '=') {
 			*col += 2;
@@ -160,7 +160,7 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		}
 		ungetc(c, f);
 		return tok_init_nl(T_LT, *line, (*col)++, 0);
-	} else if (c == '>') {
+	case '>':
 		c = fgetc(f);
 		if (c == '=') {
 			*col += 2;
@@ -171,7 +171,7 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		}
 		ungetc(c, f);
 		return tok_init_nl(T_GT, *line, (*col)++, 0);
-	} else if (c == '=') {
+	case '=':
 		c = fgetc(f);
 		if (c == '=') {
 			*col += 2;
@@ -179,7 +179,7 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		}
 		ungetc(c, f);
 		return tok_init_nl(T_ASSIGN, *line, (*col)++, 0);
-	} else if (c == '!') {
+	case '!':
 		c = fgetc(f);
 		if (c == '=') {
 			*col += 2;
@@ -187,7 +187,7 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		}
 		ungetc(c, f);
 		return tok_init_nl(T_NOT, *line, (*col)++, 0);
-	} else if (c == '&') {
+	case '&':
 		c = fgetc(f);
 		if (c == '&') {
 			*col += 2;
@@ -198,7 +198,7 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		}
 		ungetc(c, f);
 		return tok_init_nl(T_AMPERSAND, *line, (*col)++, 0);
-	} else if (c == '|') {
+	case '|':
 		c = fgetc(f);
 		if (c == '|') {
 			*col += 2;
@@ -209,30 +209,31 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		}
 		ungetc(c, f);
 		return tok_init_nl(T_BW_OR, *line, (*col)++, 0);
-	} else if (c == '.') // TODO: support floating pt literals like .5
+	case '.': // TODO: support floating pt literals like .5
 		return tok_init_nl(T_PERIOD, *line, (*col)++, 0);
-	else if (c == '?')
+	case '?':
 		return tok_init_nl(T_QMARK, *line, (*col)++, 0);
-	else if (c == ':')
+	case ':':
 		return tok_init_nl(T_COLON, *line, (*col)++, 0);
-	else if (c == ';')
+	case ';':
 		return tok_init_nl(T_SEMICO, *line, (*col)++, 0);
-	else if (c == ',')
+	case ',':
 		return tok_init_nl(T_COMMA, *line, (*col)++, 0);
-	else if (c == '(')
+	case '(':
 		return tok_init_nl(T_LPAREN, *line, (*col)++, 0);
-	else if (c == ')')
+	case ')':
 		return tok_init_nl(T_RPAREN, *line, (*col)++, 0);
-	else if (c == '{')
+	case '{':
 		return tok_init_nl(T_LCURLY, *line, (*col)++, 0);
-	else if (c == '}')
+	case '}':
 		return tok_init_nl(T_RCURLY, *line, (*col)++, 0);
-	else if (c == '[')
+	case '[':
 		return tok_init_nl(T_LBRACKET, *line, (*col)++, 0);
-	else if (c == ']')
+	case ']':
 		return tok_init_nl(T_RBRACKET, *line, (*col)++, 0);
-	
-	return tok_init(T_ERROR, *line, (*col)++, 0, 0, 0);
+	default: 
+		return tok_init(T_ERROR, *line, (*col)++, 0, 0, 0);
+	}
 }
 
 token_s *scan(FILE *f)
