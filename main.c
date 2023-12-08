@@ -11,7 +11,7 @@ int main(void)
 		err(1, "Could not open specified file");
 
 	token_s *t = scan(f);
-	
+
 	token_s *print = t;
 	while (print != 0) {
 		tok_print(print);

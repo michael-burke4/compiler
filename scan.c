@@ -54,7 +54,6 @@ static token_s *scan_word(FILE *f, size_t *line, size_t *col)
 			break;
 		++(*col);
 		strvec_append(word, c);
-
 	}
 	ungetc(c, f);
 	return check_if_keyword(word, *line, old_col);
@@ -90,7 +89,7 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 	if (isalpha(c) || c == '_') {
 		ungetc(c, f);
 		return scan_word(f, line, col);
-	}  else if (isdigit(c)) {
+	} else if (isdigit(c)) {
 		ungetc(c, f);
 		return scan_number(f, line, col);
 	}
@@ -231,7 +230,7 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		return tok_init_nl(T_LBRACKET, *line, (*col)++, 0);
 	case ']':
 		return tok_init_nl(T_RBRACKET, *line, (*col)++, 0);
-	default: 
+	default:
 		return tok_init(T_ERROR, *line, (*col)++, 0, 0, 0);
 	}
 }

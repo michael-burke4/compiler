@@ -24,7 +24,6 @@ typedef enum {
 	T_RETURN,
 	T_WHILE,
 
-
 	T_DPLUS,
 	T_DMINUS,
 
@@ -91,7 +90,7 @@ typedef struct token_s {
 } token_s;
 
 token_s *tok_init(token_t type, size_t line, size_t col, token_s *prev,
-	token_s *next, strvec *text);
+		  token_s *next, strvec *text);
 token_s *tok_init_nl(token_t type, size_t line, size_t col, strvec *text);
 void tok_list_destroy(token_s *head);
 void tok_destroy(token_s *tok);
