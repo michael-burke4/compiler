@@ -226,9 +226,6 @@ void tok_print(token_s *t)
 	case T_RBRACKET:
 		printf("]");
 		break;
-	case T_NEWLINE:
-		printf("\\n");
-		break;
 	case T_INT_LIT:
 		strvec_print(t->text);
 		break;

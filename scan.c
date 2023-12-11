@@ -127,7 +127,11 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 {
 	int c;
 	size_t temp_col;
-	while (isspace(c = fgetc(f)) && c != '\n') {
+	while (isspace(c = fgetc(f))) {
+		if (c == '\n') {
+			*col = 0;
+			++(*line);
+		}
 		++(*col);
 	}
 	temp_col = *col;
@@ -142,9 +146,6 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 	switch (c) {
 	case EOF:
 		return tok_init_nl(T_EOF, *line, *col, 0);
-	case '\n':
-		*col = 1;
-		return tok_init_nl(T_NEWLINE, ++(*line), temp_col, 0);
 	case '\'':
 		return scan_char_literal(f, line, col);
 	case '"':

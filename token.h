@@ -63,7 +63,6 @@ typedef enum {
 	T_QMARK,
 	T_COLON,
 
-	T_NEWLINE,
 	T_ARROW,
 	T_SEMICO,
 	T_COMMA,
