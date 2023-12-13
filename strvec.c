@@ -56,3 +56,17 @@ int strvec_equals_str(strvec *vec, const char *string)
 	// not to make it one or zero.
 	return !memcmp(vec->text, string, vec->size);
 }
+
+// atoi returns 0 on fail, so you can detect under/overflows in parse.c by
+// only accepting 0 parse results if the srvec's len is 1.
+int strvec_toi(strvec *vec)
+{
+	int ret;
+	char *tmp = malloc(vec->size + 1);
+	memcpy(tmp, vec->text, vec->size);
+	tmp[vec->size] = '\0';
+
+	ret = atoi(tmp);
+	free(tmp);
+	return ret;
+}
