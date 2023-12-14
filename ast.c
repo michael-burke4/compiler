@@ -1,5 +1,10 @@
 #include "ast.h"
 #include <stdlib.h>
+#include <stdio.h>
+
+static void expr_print(ast_expr *expr);
+static void type_print(ast_type *type);
+static void decl_print(ast_decl *decl);
 
 ast_decl *decl_init(ast_type *type, strvec *name, ast_expr *expr,
 		    ast_decl *next)
@@ -19,11 +24,74 @@ ast_type *type_init(token_t type)
 	return ret;
 }
 
+
+
+ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, strvec *name, int int_lit, strvec *str_lit) {
+	ast_expr *ret = malloc(sizeof(*ret));
+	ret->kind = kind;
+	ret->left = left;
+	ret->right = right;
+	ret->op = op;
+	ret->name = name;
+	ret->literal_value = int_lit;
+	ret->string_literal = str_lit;
+	return ret;
+}
+
+
+static void type_destroy(ast_type *typ)
+{
+	free(typ);
+}
+
+static void expr_destroy(ast_expr *expr)
+{
+	if (!expr)
+		return;
+	expr_destroy(expr->left);
+	expr_destroy(expr->right);
+	strvec_destroy(expr->name);
+	strvec_destroy(expr->string_literal);
+	free(expr);
+}
+
+static void decl_destroy(ast_decl *decl)
+{
+	if (!decl)
+		return;
+	type_destroy(decl->type);
+	strvec_destroy(decl->name);
+	expr_destroy(decl->expr);
+	free(decl);
+}
+
+
+void ast_free(ast_decl *program)
+{
+	if (!program)
+		return;
+	ast_decl *next = program->next;
+	decl_destroy(program);
+	ast_free(next);
+}
+
+
 static void expr_print(ast_expr *expr)
 {
-	if (expr == 0)
-		return; // dumb stub
-	return;
+	if (!expr)
+		return;
+	switch (expr->kind) {
+		case E_PAREN:
+			printf("(");
+			expr_print(expr->left);
+			printf(")");
+			break;
+		case E_INT_LIT:
+			printf("%d", expr->literal_value);
+			break;
+		default:
+			printf("(unsupported expr)");
+	}
 }
 
 static void type_print(ast_type *type)

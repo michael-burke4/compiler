@@ -28,7 +28,9 @@ int main(int argc, const char *argv[])
 	program = parse_program(&t);
 	program_print(program);
 
+	ast_free(program);
 	tok_list_destroy(head);
+
 	fclose(f);
 	return 0;
 }
