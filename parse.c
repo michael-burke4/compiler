@@ -38,7 +38,6 @@ ast_decl *parse_decl(token_s **cur_token)
 	name = (*cur_token)->text; // Steal the strvec from the token >:)
 	(*cur_token)->text = 0;
 	next(cur_token);
-	
 
 	if (get_type(cur_token) == T_SEMICO) {
 		next(cur_token);
@@ -60,39 +59,77 @@ ast_decl *parse_decl(token_s **cur_token)
 	return decl_init(type, name, expr, 0);
 }
 
-
+// Shoutouts to https://www.engr.mun.ca/~theo/Misc/exp_parsing.htm#classic
+// for info on parsing binary expressions with recursive descent parsers :)
 ast_expr *parse_expr(token_s **cur_token)
 {
-	ast_expr *ret = 0;
-	switch (get_type(cur_token)) {
-	case T_LPAREN:
+	return parse_expr_addsub(cur_token);
+}
+
+ast_expr *parse_expr_addsub(token_s **cur_token)
+{
+	ast_expr *this = parse_expr_muldiv(cur_token);
+	ast_expr *that;
+	token_t typ = get_type(cur_token);
+	token_t op;
+	while (typ == T_MINUS || typ == T_PLUS) {
+		op = typ;
 		next(cur_token);
-		ret = parse_expr_paren(cur_token);
-		break;
+		that = parse_expr_muldiv(cur_token);
+		this = expr_init(E_ADDSUB, this, that, op, 0, 0, 0);
+		typ = get_type(cur_token);
+	}
+	return this;
+}
+
+ast_expr *parse_expr_muldiv(token_s **cur_token)
+{
+	ast_expr *this = parse_expr_unit(cur_token);
+	ast_expr *that;
+	token_t typ = get_type(cur_token);
+	token_t op;
+	while (typ == T_STAR || typ == T_FSLASH) {
+		op = typ;
+		next(cur_token);
+		that = parse_expr_unit(cur_token);
+		this = expr_init(E_MULDIV, this, that, op, 0, 0, 0);
+		typ = get_type(cur_token);
+	}
+	return this;
+}
+
+ast_expr *parse_expr_unit(token_s **cur_token)
+{
+	token_t typ = get_type(cur_token);
+	token_s *cur = *cur_token;
+	strvec *txt;
+	switch (typ) {
 	case T_INT_LIT:
-		// This could feasibly crash and break everything.
-		ret = expr_init(E_INT_LIT, 0, 0, 0, 0, strvec_toi((*cur_token)->text), 0);
 		next(cur_token);
-		break;
+		return expr_init(E_INT_LIT, 0, 0, 0, 0, strvec_toi(cur->text), 0);
+	case T_IDENTIFIER:
+		next(cur_token);
+		txt = cur->text;
+		cur->text = 0;
+		return expr_init(E_IDENTIFIER, 0, 0, 0, txt, 0, 0);
 	default:
-		printf("Currently unsupported token when trying to parse an expr : ");
+		printf("could not parse expr unit: ");
 		tok_print(*cur_token);
 		printf("\n");
 		exit(1);
 	}
-	return ret;
 }
 
-ast_expr *parse_expr_paren(token_s **cur_token)
-{
-	ast_expr *left = parse_expr(cur_token);
-	if (get_type(cur_token) != T_RPAREN) {
-		printf("Missing closing paren?\n");
-		exit(1);
-	}
-	next(cur_token);
-	return expr_init(E_PAREN, left, 0, 0, 0, 0, 0);
-}
+//ast_expr *parse_expr_paren(token_s **cur_token)
+//{
+//	ast_expr *left = parse_expr(cur_token);
+//	if (get_type(cur_token) != T_RPAREN) {
+//		printf("Missing closing paren?\n");
+//		exit(1);
+//	}
+//	next(cur_token);
+//	return expr_init(E_PAREN, left, 0, 0, 0, 0, 0);
+//}
 
 
 ast_type *parse_type(token_s **cur_token)

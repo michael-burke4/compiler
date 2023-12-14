@@ -75,12 +75,36 @@ void ast_free(ast_decl *program)
 	ast_free(next);
 }
 
-
+static void print_op(ast_expr *expr)
+{
+	switch (expr->op) {
+	case T_PLUS:
+		printf(" + ");
+		break;
+	case T_MINUS:
+		printf(" - ");
+		break;
+	case T_FSLASH:
+		printf(" / ");
+		break;
+	case T_STAR:
+		printf(" * ");
+		break;
+	default:
+		printf(" ??? ");
+	}
+}
 static void expr_print(ast_expr *expr)
 {
 	if (!expr)
 		return;
 	switch (expr->kind) {
+		case E_MULDIV:
+		case E_ADDSUB:
+			expr_print(expr->left);
+			print_op(expr);
+			expr_print(expr->right);
+			break;
 		case E_PAREN:
 			printf("(");
 			expr_print(expr->left);
@@ -88,6 +112,9 @@ static void expr_print(ast_expr *expr)
 			break;
 		case E_INT_LIT:
 			printf("%d", expr->literal_value);
+			break;
+		case E_IDENTIFIER:
+			strvec_print(expr->name);
 			break;
 		default:
 			printf("(unsupported expr)");

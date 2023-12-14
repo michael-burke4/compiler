@@ -16,8 +16,11 @@ typedef struct ast_type {
 } ast_type;
 
 typedef enum {
+	E_ADDSUB,
+	E_MULDIV,
 	E_PAREN,
-	E_INT_LIT
+	E_INT_LIT,
+	E_IDENTIFIER,
 } expr_t;
 
 typedef struct ast_expr {
