@@ -1,17 +1,45 @@
 #include "ast.h"
+#include "error.h"
 #include "parse.h"
 #include "token.h"
 #include <stdlib.h>
 #include <stdio.h>
 
-static void next(token_s **cur_token)
+static inline void next(token_s **cur_token)
 {
 	*cur_token = (*cur_token)->next;
 }
 
-static token_t get_type(token_s **cur_token)
+static inline token_t get_type(token_s **cur_token)
 {
 	return (*cur_token)->type;
+}
+
+static inline size_t get_line(token_s **cur_token)
+{
+	return (*cur_token)->line;
+}
+
+static inline size_t get_col(token_s **cur_token)
+{
+	return (*cur_token)->line;
+}
+// Can search for a specific token to sync to. the or_newline enabled means the
+// parser will consider itself synced upon reaching the specified target token
+// type, OR a newline. If you just want to sync to a newline, put T_EOF as the
+// target token.
+//
+// Parser is also considered synced at EOF, no matter the target.
+static void sync_to(token_s **cur_token, token_t target, int or_newline)
+{
+	size_t prevline = get_line(cur_token);
+	while (get_type(cur_token) != target) {
+		if (or_newline && prevline != get_line(cur_token))
+			break;
+		if (get_type(cur_token) == T_EOF)
+			exit(1); // Maybe there's a more elegant way to resolve?
+		next(cur_token);
+	}
 }
 
 ast_decl *parse_program(token_s **cur_token)
@@ -25,38 +53,85 @@ ast_decl *parse_program(token_s **cur_token)
 
 ast_decl *parse_decl(token_s **cur_token)
 {
-	ast_type *type;
-	strvec *name;
-	ast_expr *expr;
+	ast_type *type = 0;
+	strvec *name = 0;
+	ast_expr *expr = 0;
 
 	type = parse_type(cur_token);
 
-	if (get_type(cur_token) != T_IDENTIFIER) {
-		printf("didn't get identifier");
-		exit(1); // TODO: smart error recovering stuff.
-	}
-	name = (*cur_token)->text; // Steal the strvec from the token >:)
-	(*cur_token)->text = 0;
-	next(cur_token);
+	if (!type)
+		goto decl_parse_err;
 
-	if (get_type(cur_token) == T_SEMICO) {
+	if (get_type(cur_token) != T_IDENTIFIER) {
+		report_error_tok("Missing identifier or valid type specifier",
+				 *cur_token);
+		sync_to(cur_token, T_EOF, 1);
+		goto decl_parse_err;
+	} else {
+		name = (*cur_token)->text; // Steal the strvec from the token >:)
+		(*cur_token)->text = 0;
 		next(cur_token);
-		expr = 0;
-	} else if (get_type(cur_token) == T_ASSIGN) {
+	}
+
+	if (get_type(cur_token) == T_SEMICO)
+		next(cur_token);
+	else if (get_type(cur_token) == T_ASSIGN) {
 		next(cur_token);
 		expr = parse_expr(cur_token);
 		if (get_type(cur_token) != T_SEMICO) {
-			printf("Missing semicolon after declaration");
-			exit(1);
+			report_error_tok(
+				"Missing semicolon (possibly missing on previous line)",
+				*cur_token);
+			sync_to(cur_token, T_ERROR, 1);
+			goto decl_parse_err;
+		} else {
+			next(cur_token);
 		}
-		next(cur_token);
 	} else {
-		printf("Got an unrecognized token while trying to parse a decl: ");
-		tok_print(*cur_token);
-		printf("\n");
-
+		report_error_tok(
+			"Missing semicolon (possibly missing on previous line)",
+			*cur_token);
+		goto decl_parse_err;
 	}
 	return decl_init(type, name, expr, 0);
+
+decl_parse_err:
+	type_destroy(type);
+	strvec_destroy(name);
+	expr_destroy(expr);
+	return decl_init(0, 0, 0, 0);
+}
+
+ast_type *parse_type(token_s **cur_token)
+{
+	ast_type *ret = 0;
+	strvec *text = 0;
+
+	switch (get_type(cur_token)) {
+	case T_I64:
+	case T_I32:
+	case T_U64:
+	case T_U32:
+	case T_STRING:
+	case T_CHAR:
+	case T_VOID:
+		ret = type_init(get_type(cur_token), 0);
+		next(cur_token);
+		break;
+	case T_IDENTIFIER:
+		text = (*cur_token)->text;
+		(*cur_token)->text = 0;
+		ret = type_init(T_IDENTIFIER, text);
+		next(cur_token);
+		break;
+	default:
+		report_error_tok("Could not use the following token as a type:",
+				 *cur_token);
+		printf("\t");
+		tok_print(*cur_token);
+		sync_to(cur_token, T_ERROR, 1);
+	}
+	return ret;
 }
 
 // Shoutouts to https://www.engr.mun.ca/~theo/Misc/exp_parsing.htm#classic
@@ -106,45 +181,20 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 	switch (typ) {
 	case T_INT_LIT:
 		next(cur_token);
-		return expr_init(E_INT_LIT, 0, 0, 0, 0, strvec_toi(cur->text), 0);
+		return expr_init(E_INT_LIT, 0, 0, 0, 0, strvec_toi(cur->text),
+				 0);
 	case T_IDENTIFIER:
 		next(cur_token);
 		txt = cur->text;
 		cur->text = 0;
 		return expr_init(E_IDENTIFIER, 0, 0, 0, txt, 0, 0);
 	default:
-		printf("could not parse expr unit: ");
+		report_error_tok(
+			"Could not parse expr unit. The offending token in question:",
+			*cur_token);
+		printf("\t");
 		tok_print(*cur_token);
-		printf("\n");
-		exit(1);
+		sync_to(cur_token, T_SEMICO, 1);
+		return 0;
 	}
-}
-
-//ast_expr *parse_expr_paren(token_s **cur_token)
-//{
-//	ast_expr *left = parse_expr(cur_token);
-//	if (get_type(cur_token) != T_RPAREN) {
-//		printf("Missing closing paren?\n");
-//		exit(1);
-//	}
-//	next(cur_token);
-//	return expr_init(E_PAREN, left, 0, 0, 0, 0, 0);
-//}
-
-
-ast_type *parse_type(token_s **cur_token)
-{
-	ast_type *ret;
-	switch (get_type(cur_token)) {
-	case T_I32:
-		ret = type_init(get_type(cur_token));
-		next(cur_token);
-		break;
-	default:
-		printf("could not parse unrecognized type");
-		tok_print(*cur_token);
-		printf("\n");
-		exit(1);
-	}
-	return ret;
 }

@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include "error.h"
 #include "scan.h"
 #include <stdio.h>
 
@@ -85,15 +86,17 @@ static token_s *scan_char_literal(FILE *f, size_t *line, size_t *col)
 	c = fgetc(f);
 	if (c == '\n') {
 		ungetc(c, f);
-		return tok_init_nl(T_ERROR, *line, old_col,
-				   strvec_init_str("bad char literal"));
+		report_error("Bad char literal. Missing close quote?", *line,
+			     old_col);
+		return tok_init_nl(T_ERROR, *line, old_col, 0);
 	}
 	(*col)++;
 	c2 = fgetc(f);
 	if (c2 != '\'') {
 		ungetc(c2, f);
-		return tok_init_nl(T_ERROR, *line, old_col,
-				   strvec_init_str("bad char literal"));
+		report_error("Bad char literal. Missing close quote?", *line,
+			     old_col);
+		return tok_init_nl(T_ERROR, *line, old_col, 0);
 	}
 	character = strvec_init(1);
 	strvec_append(character, c);
@@ -113,9 +116,9 @@ static token_s *scan_string_literal(FILE *f, size_t *line, size_t *col)
 			ungetc(c, f);
 			(*col)--;
 			strvec_destroy(str);
-			return tok_init_nl(
-				T_ERROR, *line, old_col,
-				strvec_init_str("Unterminated string literal"));
+			report_error("Unterminated string literal.", *line,
+				     old_col);
+			return tok_init_nl(T_ERROR, *line, old_col, 0);
 		}
 		strvec_append(str, c);
 	}
@@ -282,8 +285,8 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 	case ']':
 		return tok_init_nl(T_RBRACKET, *line, (*col)++, 0);
 	default:
-		return tok_init_nl(T_ERROR, *line, (*col)++,
-				   strvec_init_str("Unrecognized token"));
+		report_error("Unrecognized token.", *line, *col);
+		return tok_init_nl(T_ERROR, *line, (*col)++, 0);
 	}
 }
 

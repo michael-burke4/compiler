@@ -13,6 +13,7 @@ typedef struct ast_decl {
 
 typedef struct ast_type {
 	token_t type;
+	strvec *name;
 } ast_type;
 
 typedef enum {
@@ -28,12 +29,10 @@ typedef struct ast_expr {
 	struct ast_expr *left;
 	struct ast_expr *right;
 	token_t op;
-
 	strvec *name;
 	int literal_value;
 	strvec *string_literal;
 } ast_expr;
-
 
 /*
  * typedef struct ast_stmt...
@@ -42,9 +41,13 @@ typedef struct ast_expr {
 
 ast_decl *decl_init(ast_type *type, strvec *name, ast_expr *expr,
 		    ast_decl *next);
-ast_type *type_init(token_t type);
-ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, strvec *name, int int_lit, strvec *str_lit);
+ast_type *type_init(token_t type, strvec *name);
+ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op,
+		    strvec *name, int int_lit, strvec *str_lit);
 void program_print(ast_decl *program);
 void ast_free(ast_decl *program);
+void type_destroy(ast_type *type);
+void expr_destroy(ast_expr *expr);
+void decl_destroy(ast_decl *decl);
 
 #endif

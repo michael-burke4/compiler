@@ -1,0 +1,4 @@
+char c = '';
+char c = '
+i32 $ = @;
+string x = "this string is unterminated !!!!;

@@ -17,16 +17,17 @@ ast_decl *decl_init(ast_type *type, strvec *name, ast_expr *expr,
 	return ret;
 }
 
-ast_type *type_init(token_t type)
+ast_type *type_init(token_t type, strvec *name)
 {
 	ast_type *ret = malloc(sizeof(*ret));
 	ret->type = type;
+	ret->name = name;
 	return ret;
 }
 
-
-
-ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, strvec *name, int int_lit, strvec *str_lit) {
+ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op,
+		    strvec *name, int int_lit, strvec *str_lit)
+{
 	ast_expr *ret = malloc(sizeof(*ret));
 	ret->kind = kind;
 	ret->left = left;
@@ -38,24 +39,26 @@ ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, st
 	return ret;
 }
 
-
-static void type_destroy(ast_type *typ)
+void type_destroy(ast_type *type)
 {
-	free(typ);
+	if (!type)
+		return;
+	strvec_destroy(type->name);
+	free(type);
 }
 
-static void expr_destroy(ast_expr *expr)
+void expr_destroy(ast_expr *expr)
 {
 	if (!expr)
 		return;
-	expr_destroy(expr->left);
 	expr_destroy(expr->right);
+	expr_destroy(expr->left);
 	strvec_destroy(expr->name);
 	strvec_destroy(expr->string_literal);
 	free(expr);
 }
 
-static void decl_destroy(ast_decl *decl)
+void decl_destroy(ast_decl *decl)
 {
 	if (!decl)
 		return;
@@ -64,7 +67,6 @@ static void decl_destroy(ast_decl *decl)
 	expr_destroy(decl->expr);
 	free(decl);
 }
-
 
 void ast_free(ast_decl *program)
 {
@@ -99,25 +101,25 @@ static void expr_print(ast_expr *expr)
 	if (!expr)
 		return;
 	switch (expr->kind) {
-		case E_MULDIV:
-		case E_ADDSUB:
-			expr_print(expr->left);
-			print_op(expr);
-			expr_print(expr->right);
-			break;
-		case E_PAREN:
-			printf("(");
-			expr_print(expr->left);
-			printf(")");
-			break;
-		case E_INT_LIT:
-			printf("%d", expr->literal_value);
-			break;
-		case E_IDENTIFIER:
-			strvec_print(expr->name);
-			break;
-		default:
-			printf("(unsupported expr)");
+	case E_MULDIV:
+	case E_ADDSUB:
+		expr_print(expr->left);
+		print_op(expr);
+		expr_print(expr->right);
+		break;
+	case E_PAREN:
+		printf("(");
+		expr_print(expr->left);
+		printf(")");
+		break;
+	case E_INT_LIT:
+		printf("%d", expr->literal_value);
+		break;
+	case E_IDENTIFIER:
+		strvec_print(expr->name);
+		break;
+	default:
+		printf("(unsupported expr)");
 	}
 }
 
