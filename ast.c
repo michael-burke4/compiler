@@ -34,7 +34,7 @@ ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op,
 	ret->right = right;
 	ret->op = op;
 	ret->name = name;
-	ret->literal_value = int_lit;
+	ret->int_lit = int_lit;
 	ret->string_literal = str_lit;
 	return ret;
 }
@@ -84,7 +84,7 @@ static void print_op(ast_expr *expr)
 		printf(" + ");
 		break;
 	case T_MINUS:
-		printf(" - ");
+		printf(" - "); // todo fix printing with space even in unary minus.
 		break;
 	case T_FSLASH:
 		printf(" / ");
@@ -92,6 +92,31 @@ static void print_op(ast_expr *expr)
 	case T_STAR:
 		printf(" * ");
 		break;
+	case T_DPLUS:
+		printf("++");
+		break;
+	case T_DMINUS:
+		printf("--");
+		break;
+	case T_NOT:
+		printf("!");
+		break;
+	case T_BW_NOT:
+		printf("~");
+		break;
+	case T_LT:
+		printf(" < ");
+		break;
+	case T_LTE:
+		printf(" <= ");
+		break;
+	case T_GT:
+		printf(" > ");
+		break;
+	case T_GTE:
+		printf(" >= ");
+		break;
+
 	default:
 		printf(" ??? ");
 	}
@@ -101,6 +126,11 @@ static void expr_print(ast_expr *expr)
 	if (!expr)
 		return;
 	switch (expr->kind) {
+	case E_PRE_UNARY:
+		print_op(expr);
+		expr_print(expr->left);
+		break;
+	case E_COMPARISON:
 	case E_MULDIV:
 	case E_ADDSUB:
 		expr_print(expr->left);
@@ -113,10 +143,16 @@ static void expr_print(ast_expr *expr)
 		printf(")");
 		break;
 	case E_INT_LIT:
-		printf("%d", expr->literal_value);
+		printf("%d", expr->int_lit);
 		break;
 	case E_IDENTIFIER:
 		strvec_print(expr->name);
+		break;
+	case E_FALSE_LIT:
+		printf("false");
+		break;
+	case E_TRUE_LIT:
+		printf("true");
 		break;
 	default:
 		printf("(unsupported expr)");
@@ -128,6 +164,21 @@ static void type_print(ast_type *type)
 	switch (type->type) {
 	case T_I32:
 		printf("i32");
+		break;
+	case T_U32:
+		printf("u32");
+		break;
+	case T_I64:
+		printf("i64");
+		break;
+	case T_U64:
+		printf("u64");
+		break;
+	case T_VOID:
+		printf("void");
+		break;
+	case T_BOOL:
+		printf("bool");
 		break;
 	default:
 		printf("UNSUPPORTED TYPE!");

@@ -37,7 +37,7 @@ static void sync_to(token_s **cur_token, token_t target, int or_newline)
 		if (or_newline && prevline != get_line(cur_token))
 			break;
 		if (get_type(cur_token) == T_EOF)
-			exit(1); // Maybe there's a more elegant way to resolve?
+			break;
 		next(cur_token);
 	}
 }
@@ -80,7 +80,7 @@ ast_decl *parse_decl(token_s **cur_token)
 		expr = parse_expr(cur_token);
 		if (get_type(cur_token) != T_SEMICO) {
 			report_error_tok(
-				"Missing semicolon (possibly missing on previous line)",
+				"Missing semicolon (possibly missing from previous line)",
 				*cur_token);
 			sync_to(cur_token, T_ERROR, 1);
 			goto decl_parse_err;
@@ -115,6 +115,7 @@ ast_type *parse_type(token_s **cur_token)
 	case T_STRING:
 	case T_CHAR:
 	case T_VOID:
+	case T_BOOL:
 		ret = type_init(get_type(cur_token), 0);
 		next(cur_token);
 		break;
@@ -138,7 +139,47 @@ ast_type *parse_type(token_s **cur_token)
 // for info on parsing binary expressions with recursive descent parsers :)
 ast_expr *parse_expr(token_s **cur_token)
 {
-	return parse_expr_addsub(cur_token);
+	return parse_expr_comparison(cur_token);
+}
+
+//ast_expr *parse_expr_assign(token_s **cur_token)
+//{
+//	ast_expr *this = parse_expr_muldiv(cur_token);
+//	ast_expr *that;
+//	token_t typ = get_type(cur_token);
+//	token_t op;
+//	T_ADD_ASSIGN,
+//	T_SUB_ASSIGN,
+//	T_MUL_ASSIGN,
+//	T_DIV_ASSIGN,
+//	T_MOD_ASSIGN,
+//	T_BW_AND_ASSIGN,
+//	T_BW_OR_ASSIGN,
+//	while (typ == T_ASSIGN || typ == ADD_ASSIGN || typ == SUB_ASSIGN || typ == MUL_ASSIGN ||
+//		typ == T_DIV_ASSIGN || typ == T_MOD_ASSIGN) {
+//		op = typ;
+//		next(cur_token);
+//		that = parse_expr_muldiv(cur_token);
+//		this = expr_init(E_ADDSUB, this, that, op, 0, 0, 0);
+//		typ = get_type(cur_token);
+//	}
+//	return this;
+//}
+
+ast_expr *parse_expr_comparison(token_s **cur_token)
+{
+	ast_expr *this = parse_expr_addsub(cur_token);
+	ast_expr *that;
+	token_t typ = get_type(cur_token);
+	token_t op;
+	while (typ == T_LT || typ == T_LTE || typ == T_GT || typ == T_GTE) {
+		op = typ;
+		next(cur_token);
+		that = parse_expr_addsub(cur_token);
+		this = expr_init(E_COMPARISON, this, that, op, 0, 0, 0);
+		typ = get_type(cur_token);
+	}
+	return this;
 }
 
 ast_expr *parse_expr_addsub(token_s **cur_token)
@@ -163,7 +204,7 @@ ast_expr *parse_expr_muldiv(token_s **cur_token)
 	ast_expr *that;
 	token_t typ = get_type(cur_token);
 	token_t op;
-	while (typ == T_STAR || typ == T_FSLASH) {
+	while (typ == T_STAR || typ == T_FSLASH || typ == T_PERCENT) {
 		op = typ;
 		next(cur_token);
 		that = parse_expr_unit(cur_token);
@@ -178,23 +219,53 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 	token_t typ = get_type(cur_token);
 	token_s *cur = *cur_token;
 	strvec *txt;
+	ast_expr *inner = 0;
 	switch (typ) {
+	case T_DPLUS:
+	case T_DMINUS:
+	case T_MINUS:
+	case T_NOT:
+	case T_BW_NOT:
+		next(cur_token);
+		inner = parse_expr(cur_token);
+		return expr_init(E_PRE_UNARY, inner, 0, typ, 0, 0, 0);
+	case T_LPAREN:
+		next(cur_token);
+		inner = parse_expr(cur_token);
+		if (get_type(cur_token) != T_RPAREN) {
+			report_error_tok("Expression is missing a closing paren", *cur_token);
+			sync_to(cur_token, T_EOF, 1);
+			expr_destroy(inner);
+			return 0;
+		}
+		next(cur_token);
+		return expr_init(E_PAREN, inner, 0, 0, 0, 0, 0);
 	case T_INT_LIT:
 		next(cur_token);
-		return expr_init(E_INT_LIT, 0, 0, 0, 0, strvec_toi(cur->text),
-				 0);
-	case T_IDENTIFIER:
-		next(cur_token);
+		return expr_init(E_INT_LIT, 0, 0, 0, 0, strvec_toi(cur->text), 0);
+	case T_STR_LIT:
 		txt = cur->text;
 		cur->text = 0;
+		next(cur_token);
+		return expr_init(E_STR_LIT, 0, 0, 0, 0, 0, txt);
+	case T_IDENTIFIER:
+		txt = cur->text;
+		cur->text = 0;
+		next(cur_token);
 		return expr_init(E_IDENTIFIER, 0, 0, 0, txt, 0, 0);
+	case T_TRUE:
+		next(cur_token);
+		return expr_init(E_TRUE_LIT, 0, 0, 0, 0, 0, 0);
+	case T_FALSE:
+		next(cur_token);
+		return expr_init(E_FALSE_LIT, 0, 0, 0, 0, 0, 0);
 	default:
 		report_error_tok(
 			"Could not parse expr unit. The offending token in question:",
 			*cur_token);
 		printf("\t");
 		tok_print(*cur_token);
-		sync_to(cur_token, T_SEMICO, 1);
+		sync_to(cur_token, T_EOF, 1);
 		return 0;
 	}
 }

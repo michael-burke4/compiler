@@ -19,6 +19,7 @@ typedef enum {
 	T_ELSE,
 	T_FOR,
 	T_VOID,
+	T_BOOL,
 	T_CHAR,
 	T_IF,
 	T_RETURN,
@@ -74,6 +75,8 @@ typedef enum {
 	T_LBRACKET,
 	T_RBRACKET,
 
+	T_TRUE,
+	T_FALSE,
 	T_INT_LIT,
 	T_STR_LIT,
 	T_CHAR_LIT,

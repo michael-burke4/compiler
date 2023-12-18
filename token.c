@@ -109,6 +109,15 @@ void tok_print(token_s *t)
 	case T_WHILE:
 		printf("while");
 		break;
+	case T_BOOL:
+		printf("bool");
+		break;
+	case T_FALSE:
+		printf("false");
+		break;
+	case T_TRUE:
+		printf("true");
+		break;
 	case T_DPLUS:
 		printf("++");
 		break;

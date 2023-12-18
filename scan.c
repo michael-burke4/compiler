@@ -37,6 +37,12 @@ static token_s *check_if_keyword(strvec *word, size_t line, size_t col)
 		ret = tok_init_nl(T_RETURN, line, col, 0);
 	else if (strvec_equals_str(word, "while"))
 		ret = tok_init_nl(T_WHILE, line, col, 0);
+	else if (strvec_equals_str(word, "bool"))
+		ret = tok_init_nl(T_BOOL, line, col, 0);
+	else if (strvec_equals_str(word, "true"))
+		ret = tok_init_nl(T_TRUE, line, col, 0);
+	else if (strvec_equals_str(word, "false"))
+		ret = tok_init_nl(T_FALSE, line, col, 0);
 	if (ret != 0)
 		strvec_destroy(word);
 	else
@@ -264,6 +270,8 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		return tok_init_nl(T_BW_OR, *line, (*col)++, 0);
 	case '.': // TODO: support floating pt literals like .5
 		return tok_init_nl(T_PERIOD, *line, (*col)++, 0);
+	case '~':
+		return tok_init_nl(T_BW_NOT, *line, (*col)++, 0);
 	case '?':
 		return tok_init_nl(T_QMARK, *line, (*col)++, 0);
 	case ':':

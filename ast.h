@@ -21,7 +21,13 @@ typedef enum {
 	E_MULDIV,
 	E_PAREN,
 	E_INT_LIT,
+	E_STR_LIT,
+	E_CHAR_LIT,
+	E_FALSE_LIT,
+	E_TRUE_LIT,
 	E_IDENTIFIER,
+	E_PRE_UNARY,
+	E_COMPARISON,
 } expr_t;
 
 typedef struct ast_expr {
@@ -30,7 +36,7 @@ typedef struct ast_expr {
 	struct ast_expr *right;
 	token_t op;
 	strvec *name;
-	int literal_value;
+	int int_lit;
 	strvec *string_literal;
 } ast_expr;
 

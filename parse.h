@@ -10,5 +10,6 @@ ast_expr *parse_expr(token_s **cur_token);
 ast_expr *parse_expr_addsub(token_s **cur_token);
 ast_expr *parse_expr_muldiv(token_s **cur_token);
 ast_expr *parse_expr_unit(token_s **cur_token);
+ast_expr *parse_expr_comparison(token_s **cur_token);
 
 #endif
