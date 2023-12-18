@@ -9,6 +9,7 @@ ast_type *parse_type(token_s **cur_token);
 ast_expr *parse_expr(token_s **cur_token);
 ast_expr *parse_expr_addsub(token_s **cur_token);
 ast_expr *parse_expr_muldiv(token_s **cur_token);
+ast_expr *parse_expr_pre_unary(token_s **cur_token);
 ast_expr *parse_expr_unit(token_s **cur_token);
 ast_expr *parse_expr_comparison(token_s **cur_token);
 ast_expr *parse_expr_assign(token_s **cur_token);

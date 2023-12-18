@@ -194,7 +194,7 @@ ast_expr *parse_expr_addsub(token_s **cur_token)
 
 ast_expr *parse_expr_muldiv(token_s **cur_token)
 {
-	ast_expr *this = parse_expr_unit(cur_token);
+	ast_expr *this = parse_expr_pre_unary(cur_token);
 	ast_expr *that;
 	token_t typ = get_type(cur_token);
 	token_t op;
@@ -208,12 +208,11 @@ ast_expr *parse_expr_muldiv(token_s **cur_token)
 	return this;
 }
 
-ast_expr *parse_expr_unit(token_s **cur_token)
+ast_expr *parse_expr_pre_unary(token_s **cur_token)
 {
-	token_t typ = get_type(cur_token);
-	token_s *cur = *cur_token;
-	strvec *txt;
 	ast_expr *inner = 0;
+	token_t typ = get_type(cur_token);
+
 	switch (typ) {
 	case T_DPLUS:
 	case T_DMINUS:
@@ -224,6 +223,18 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 		next(cur_token);
 		inner = parse_expr(cur_token);
 		return expr_init(E_PRE_UNARY, inner, 0, typ, 0, 0, 0);
+	default:
+		return parse_expr_unit(cur_token);
+	}
+}
+
+ast_expr *parse_expr_unit(token_s **cur_token)
+{
+	token_t typ = get_type(cur_token);
+	token_s *cur = *cur_token;
+	strvec *txt;
+	ast_expr *inner = 0;
+	switch (typ) {
 	case T_LPAREN:
 		next(cur_token);
 		inner = parse_expr(cur_token);
