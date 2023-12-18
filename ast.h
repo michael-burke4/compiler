@@ -28,6 +28,7 @@ typedef enum {
 	E_IDENTIFIER,
 	E_PRE_UNARY,
 	E_COMPARISON,
+	E_ASSIGN,
 } expr_t;
 
 typedef struct ast_expr {

@@ -84,13 +84,19 @@ static void print_op(ast_expr *expr)
 		printf(" + ");
 		break;
 	case T_MINUS:
-		printf(" - "); // todo fix printing with space even in unary minus.
+		if (expr->kind == E_ADDSUB)
+			printf(" - "); 
+		else
+			printf("-");
 		break;
 	case T_FSLASH:
 		printf(" / ");
 		break;
 	case T_STAR:
-		printf(" * ");
+		if (expr->kind == E_MULDIV)
+			printf(" * ");
+		else
+			printf("*");
 		break;
 	case T_DPLUS:
 		printf("++");
@@ -116,7 +122,30 @@ static void print_op(ast_expr *expr)
 	case T_GTE:
 		printf(" >= ");
 		break;
-
+	case T_ASSIGN:
+		printf(" = ");
+		break;
+	case T_ADD_ASSIGN:
+		printf(" += ");
+		break;
+	case T_MOD_ASSIGN:
+		printf(" %%= ");
+		break;
+	case T_SUB_ASSIGN:
+		printf(" -= ");
+		break;
+	case T_MUL_ASSIGN:
+		printf(" *= ");
+		break;
+	case T_DIV_ASSIGN:
+		printf(" /= ");
+		break;
+	case T_BW_AND_ASSIGN:
+		printf(" &= ");
+		break;
+	case T_BW_OR_ASSIGN:
+		printf(" |= ");
+		break;
 	default:
 		printf(" ??? ");
 	}
@@ -130,6 +159,7 @@ static void expr_print(ast_expr *expr)
 		print_op(expr);
 		expr_print(expr->left);
 		break;
+	case E_ASSIGN:
 	case E_COMPARISON:
 	case E_MULDIV:
 	case E_ADDSUB:

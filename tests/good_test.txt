@@ -1,4 +1,5 @@
 bool a = 1 - (true + 3) / 5;
 i32 x = ++(--a);
 i32 a = -a;
-bool s = x < y;
+bool s = !(f) + (x < ~y);
+bool x = (*z - 5) < (a %= 10);

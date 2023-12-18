@@ -139,32 +139,26 @@ ast_type *parse_type(token_s **cur_token)
 // for info on parsing binary expressions with recursive descent parsers :)
 ast_expr *parse_expr(token_s **cur_token)
 {
-	return parse_expr_comparison(cur_token);
+	return parse_expr_assign(cur_token);
 }
 
-//ast_expr *parse_expr_assign(token_s **cur_token)
-//{
-//	ast_expr *this = parse_expr_muldiv(cur_token);
-//	ast_expr *that;
-//	token_t typ = get_type(cur_token);
-//	token_t op;
-//	T_ADD_ASSIGN,
-//	T_SUB_ASSIGN,
-//	T_MUL_ASSIGN,
-//	T_DIV_ASSIGN,
-//	T_MOD_ASSIGN,
-//	T_BW_AND_ASSIGN,
-//	T_BW_OR_ASSIGN,
-//	while (typ == T_ASSIGN || typ == ADD_ASSIGN || typ == SUB_ASSIGN || typ == MUL_ASSIGN ||
-//		typ == T_DIV_ASSIGN || typ == T_MOD_ASSIGN) {
-//		op = typ;
-//		next(cur_token);
-//		that = parse_expr_muldiv(cur_token);
-//		this = expr_init(E_ADDSUB, this, that, op, 0, 0, 0);
-//		typ = get_type(cur_token);
-//	}
-//	return this;
-//}
+ast_expr *parse_expr_assign(token_s **cur_token)
+{
+	ast_expr *this = parse_expr_comparison(cur_token);
+	ast_expr *that;
+	token_t typ = get_type(cur_token);
+	token_t op;
+	while (typ == T_ASSIGN || typ == T_ADD_ASSIGN || typ == T_SUB_ASSIGN || typ == T_MUL_ASSIGN
+		|| typ == T_DIV_ASSIGN || typ == T_MOD_ASSIGN || typ == T_BW_AND_ASSIGN ||
+		typ == T_BW_OR_ASSIGN) { // This is dumb
+		op = typ;
+		next(cur_token);
+		that = parse_expr_comparison(cur_token);
+		this = expr_init(E_ASSIGN, this, that, op, 0, 0, 0);
+		typ = get_type(cur_token);
+	}
+	return this;
+}
 
 ast_expr *parse_expr_comparison(token_s **cur_token)
 {
@@ -226,6 +220,7 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 	case T_MINUS:
 	case T_NOT:
 	case T_BW_NOT:
+	case T_STAR:
 		next(cur_token);
 		inner = parse_expr(cur_token);
 		return expr_init(E_PRE_UNARY, inner, 0, typ, 0, 0, 0);
