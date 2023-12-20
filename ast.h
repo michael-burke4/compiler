@@ -19,6 +19,8 @@ typedef struct ast_type {
 typedef enum {
 	E_ADDSUB,
 	E_MULDIV,
+	E_INEQUALITY,
+	E_ASSIGN,
 	E_PAREN,
 	E_INT_LIT,
 	E_STR_LIT,
@@ -27,8 +29,7 @@ typedef enum {
 	E_TRUE_LIT,
 	E_IDENTIFIER,
 	E_PRE_UNARY,
-	E_COMPARISON,
-	E_ASSIGN,
+	E_POST_UNARY,
 } expr_t;
 
 typedef struct ast_expr {

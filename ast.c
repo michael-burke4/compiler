@@ -79,88 +79,38 @@ void ast_free(ast_decl *program)
 
 static void print_op(ast_expr *expr)
 {
-	switch (expr->op) {
-	case T_PLUS:
-		printf(" + ");
-		break;
-	case T_MINUS:
-		if (expr->kind == E_ADDSUB)
-			printf(" - "); 
-		else
-			printf("-");
-		break;
-	case T_FSLASH:
-		printf(" / ");
-		break;
-	case T_STAR:
-		if (expr->kind == E_MULDIV)
-			printf(" * ");
-		else
-			printf("*");
-		break;
-	case T_DPLUS:
-		printf("++");
-		break;
-	case T_DMINUS:
-		printf("--");
-		break;
-	case T_NOT:
-		printf("!");
-		break;
-	case T_BW_NOT:
-		printf("~");
-		break;
-	case T_LT:
-		printf(" < ");
-		break;
-	case T_LTE:
-		printf(" <= ");
-		break;
-	case T_GT:
-		printf(" > ");
-		break;
-	case T_GTE:
-		printf(" >= ");
-		break;
-	case T_ASSIGN:
-		printf(" = ");
-		break;
-	case T_ADD_ASSIGN:
-		printf(" += ");
-		break;
-	case T_MOD_ASSIGN:
-		printf(" %%= ");
-		break;
-	case T_SUB_ASSIGN:
-		printf(" -= ");
-		break;
-	case T_MUL_ASSIGN:
-		printf(" *= ");
-		break;
-	case T_DIV_ASSIGN:
-		printf(" /= ");
-		break;
-	case T_BW_AND_ASSIGN:
-		printf(" &= ");
-		break;
-	case T_BW_OR_ASSIGN:
-		printf(" |= ");
+	if (!expr)
+		return;
+	
+	switch(expr->kind) {
+	case E_ADDSUB:
+	case E_MULDIV:
+	case E_INEQUALITY:
+	case E_ASSIGN:
+		printf(" ");
+		tok_t_print(expr->op);
+		printf(" ");
 		break;
 	default:
-		printf(" ??? ");
+		tok_t_print(expr->op);
 	}
+
 }
 static void expr_print(ast_expr *expr)
 {
 	if (!expr)
 		return;
 	switch (expr->kind) {
+	case E_POST_UNARY:
+		expr_print(expr->left);
+		print_op(expr);
+		break;
 	case E_PRE_UNARY:
 		print_op(expr);
 		expr_print(expr->left);
 		break;
 	case E_ASSIGN:
-	case E_COMPARISON:
+	case E_INEQUALITY:
 	case E_MULDIV:
 	case E_ADDSUB:
 		expr_print(expr->left);

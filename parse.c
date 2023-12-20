@@ -144,7 +144,7 @@ ast_expr *parse_expr(token_s **cur_token)
 
 ast_expr *parse_expr_assign(token_s **cur_token)
 {
-	ast_expr *this = parse_expr_comparison(cur_token);
+	ast_expr *this = parse_expr_inequality(cur_token);
 	ast_expr *that;
 	token_t typ = get_type(cur_token);
 	token_t op;
@@ -153,14 +153,14 @@ ast_expr *parse_expr_assign(token_s **cur_token)
 		typ == T_BW_OR_ASSIGN) { // This is dumb
 		op = typ;
 		next(cur_token);
-		that = parse_expr_comparison(cur_token);
+		that = parse_expr_inequality(cur_token);
 		this = expr_init(E_ASSIGN, this, that, op, 0, 0, 0);
 		typ = get_type(cur_token);
 	}
 	return this;
 }
 
-ast_expr *parse_expr_comparison(token_s **cur_token)
+ast_expr *parse_expr_inequality(token_s **cur_token)
 {
 	ast_expr *this = parse_expr_addsub(cur_token);
 	ast_expr *that;
@@ -170,7 +170,7 @@ ast_expr *parse_expr_comparison(token_s **cur_token)
 		op = typ;
 		next(cur_token);
 		that = parse_expr_addsub(cur_token);
-		this = expr_init(E_COMPARISON, this, that, op, 0, 0, 0);
+		this = expr_init(E_INEQUALITY, this, that, op, 0, 0, 0);
 		typ = get_type(cur_token);
 	}
 	return this;
@@ -224,8 +224,21 @@ ast_expr *parse_expr_pre_unary(token_s **cur_token)
 		inner = parse_expr(cur_token);
 		return expr_init(E_PRE_UNARY, inner, 0, typ, 0, 0, 0);
 	default:
-		return parse_expr_unit(cur_token);
+		return parse_expr_post_unary(cur_token);
 	}
+}
+
+ast_expr *parse_expr_post_unary(token_s **cur_token)
+{
+	ast_expr *inner = parse_expr_unit(cur_token);
+	token_t typ = get_type(cur_token);
+	// something like x++++; should parse but fail at typechecking. Could fail it now but w/e.
+	while (typ == T_DPLUS || typ == T_DMINUS) {
+		next(cur_token);
+		inner = expr_init(E_POST_UNARY, inner, 0, typ, 0, 0, 0);
+		typ = get_type(cur_token);
+	}
+	return inner;
 }
 
 ast_expr *parse_expr_unit(token_s **cur_token)
@@ -234,7 +247,11 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 	token_s *cur = *cur_token;
 	strvec *txt;
 	ast_expr *inner = 0;
+	token_t op;
 	switch (typ) {
+	case T_DPLUS:
+	case T_DMINUS:
+		while ((op = get_type(cur_token)) == T_DPLUS || op == T_DMINUS)
 	case T_LPAREN:
 		next(cur_token);
 		inner = parse_expr(cur_token);
