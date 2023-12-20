@@ -49,20 +49,21 @@ void tok_print(token_s *t)
 {
 	if (!t)
 		return;
-	switch (t->type) {
+	tok_t_print(t->type);
+	printf(" ");
+	if (t->text)
+		strvec_print(t->text);
+	printf("\tLine %lu Col %lu (type %d)\n", t->line, t->col, t->type);
+}
+
+void tok_t_print(token_t t)
+{
+	switch (t) {
 	case T_ERROR:
-		printf("Error at line %lu col %lu", t->line, t->col);
-		if (t->text != 0) {
-			printf(": ");
-			strvec_print(t->text);
-		}
-		printf("\n");
+		printf("ERROR");
 		return;
 	case T_EOF:
 		printf("EOF");
-		break;
-	case T_IDENTIFIER:
-		strvec_print(t->text);
 		break;
 	case T_I32:
 		printf("i32");
@@ -235,22 +236,8 @@ void tok_print(token_s *t)
 	case T_RBRACKET:
 		printf("]");
 		break;
-	case T_INT_LIT:
-		strvec_print(t->text);
-		break;
-	case T_CHAR_LIT:
-		printf("'");
-		strvec_print(t->text);
-		printf("'");
-		break;
-	case T_STR_LIT:
-		printf("\"");
-		strvec_print(t->text);
-		printf("\"");
-		break;
 	default:
-		printf("%d", t->type);
+		printf("%d", t);
 		break;
 	}
-	printf("\tLine %lu Col %lu (type %d)\n", t->line, t->col, t->type);
 }

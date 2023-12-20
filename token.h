@@ -98,4 +98,5 @@ void tok_list_destroy(token_s *head);
 void tok_destroy(token_s *tok);
 void tok_setnext(token_s *cur, token_s *next);
 void tok_print(token_s *token);
+void tok_t_print(token_t t);
 #endif
