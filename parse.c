@@ -51,26 +51,37 @@ ast_decl *parse_program(token_s **cur_token)
 	return ret;
 }
 
-ast_decl *parse_decl(token_s **cur_token)
+
+ast_typed_symbol *parse_typed_symbol(token_s **cur_token)
 {
 	ast_type *type = 0;
 	strvec *name = 0;
-	ast_expr *expr = 0;
 
 	type = parse_type(cur_token);
-
 	if (!type)
-		goto decl_parse_err;
+		goto parse_typsym_err;
+	if (get_type(cur_token) != T_IDENTIFIER)
+		goto parse_typsym_err;
+	name = (*cur_token)->text;
+	(*cur_token)->text = 0;
+	next(cur_token);
+	return ast_typed_symbol_init(type, name);
 
-	if (get_type(cur_token) != T_IDENTIFIER) {
-		report_error_tok("Missing identifier or valid type specifier",
-				 *cur_token);
+parse_typsym_err:
+	type_destroy(type);
+	strvec_destroy(name);
+	return 0;
+}
+
+ast_decl *parse_decl(token_s **cur_token)
+{
+	ast_typed_symbol *typed_symbol = 0;
+	ast_expr *expr = 0;
+
+	typed_symbol = parse_typed_symbol(cur_token);
+	if (!typed_symbol) {
+		report_error_tok("Missing/invalid type specifier or name.", *cur_token);
 		sync_to(cur_token, T_EOF, 1);
-		goto decl_parse_err;
-	} else {
-		name = (*cur_token)->text; // Steal the strvec from the token >:)
-		(*cur_token)->text = 0;
-		next(cur_token);
 	}
 
 	if (get_type(cur_token) == T_SEMICO)
@@ -82,7 +93,7 @@ ast_decl *parse_decl(token_s **cur_token)
 			report_error_tok(
 				"Missing semicolon (possibly missing from previous line)",
 				*cur_token);
-			sync_to(cur_token, T_ERROR, 1);
+			sync_to(cur_token, T_EOF, 1);
 			goto decl_parse_err;
 		} else {
 			next(cur_token);
@@ -93,18 +104,18 @@ ast_decl *parse_decl(token_s **cur_token)
 			*cur_token);
 		goto decl_parse_err;
 	}
-	return decl_init(type, name, expr, 0);
+	return decl_init(typed_symbol, expr, 0);
 
 decl_parse_err:
-	type_destroy(type);
-	strvec_destroy(name);
+	ast_typed_symbol_destroy(typed_symbol);
 	expr_destroy(expr);
-	return decl_init(0, 0, 0, 0);
+	return decl_init(0, 0, 0);
 }
 
 ast_type *parse_type(token_s **cur_token)
 {
 	ast_type *ret = 0;
+	//ast_type *subtype = 0;
 	strvec *text = 0;
 
 	switch (get_type(cur_token)) {
@@ -125,6 +136,16 @@ ast_type *parse_type(token_s **cur_token)
 		ret = type_init(T_IDENTIFIER, text);
 		next(cur_token);
 		break;
+//	case T_LPAREN:
+//		next(cur_token);
+//		do {
+//			if (!subtype)
+//				subtype = parse_type(cur_token);
+//			else {
+//				subtype->subtype = parse_type(cur_token);
+//				subtype = subtype->subtype;
+//			}
+//		} while (get_type(cur_token) == T_COMMA);
 	default:
 		report_error_tok("Could not use the following token as a type:",
 				 *cur_token);

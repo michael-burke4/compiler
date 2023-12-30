@@ -6,12 +6,11 @@ static void expr_print(ast_expr *expr);
 static void type_print(ast_type *type);
 static void decl_print(ast_decl *decl);
 
-ast_decl *decl_init(ast_type *type, strvec *name, ast_expr *expr,
+ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr,
 		    ast_decl *next)
 {
 	ast_decl *ret = malloc(sizeof(*ret));
-	ret->type = type;
-	ret->name = name;
+	ret->typesym = typesym;
 	ret->expr = expr;
 	ret->next = next;
 	return ret;
@@ -25,6 +24,7 @@ ast_type *type_init(token_t type, strvec *name)
 	return ret;
 }
 
+
 ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op,
 		    strvec *name, int int_lit, strvec *str_lit)
 {
@@ -36,6 +36,14 @@ ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op,
 	ret->name = name;
 	ret->int_lit = int_lit;
 	ret->string_literal = str_lit;
+	return ret;
+}
+
+ast_typed_symbol *ast_typed_symbol_init(ast_type *type, strvec *symbol)
+{
+	ast_typed_symbol *ret = malloc(sizeof(*ret));
+	ret->type = type;
+	ret->symbol = symbol;
 	return ret;
 }
 
@@ -62,10 +70,18 @@ void decl_destroy(ast_decl *decl)
 {
 	if (!decl)
 		return;
-	type_destroy(decl->type);
-	strvec_destroy(decl->name);
+	ast_typed_symbol_destroy(decl->typesym);
 	expr_destroy(decl->expr);
 	free(decl);
+}
+
+void ast_typed_symbol_destroy(ast_typed_symbol *typesym)
+{
+	if (!typesym)
+		return;
+	type_destroy(typesym->type);
+	strvec_destroy(typesym->symbol);
+	free(typesym);
 }
 
 void ast_free(ast_decl *program)
@@ -165,11 +181,16 @@ static void type_print(ast_type *type)
 	}
 }
 
+static void typed_sym_print(ast_typed_symbol *typesym)
+{
+	type_print(typesym->type);
+	printf(" ");
+	strvec_print(typesym->symbol);
+}
+
 static void decl_print(ast_decl *decl)
 {
-	type_print(decl->type);
-	printf(" ");
-	strvec_print(decl->name);
+	typed_sym_print(decl->typesym);
 	if (decl->expr != 0) {
 		printf(" = ");
 		expr_print(decl->expr);
