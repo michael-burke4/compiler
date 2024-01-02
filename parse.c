@@ -51,6 +51,35 @@ ast_decl *parse_program(token_s **cur_token)
 	return ret;
 }
 
+static ast_typed_symbol *parse_arglist(token_s **cur_token)
+{
+	ast_typed_symbol *head = 0;
+	ast_typed_symbol *tmp = 0;
+	ast_typed_symbol *tmp2 = 0;
+	token_t typ;
+	while (1) {
+		typ = get_type(cur_token);
+		if (typ == T_RPAREN) {
+			next(cur_token);
+			return head;
+		} else if (!head) {
+			head = parse_typed_symbol(cur_token);
+			if (!head)
+				return 0;
+			tmp = head;
+		} else if (typ == T_COMMA) {
+			next(cur_token);
+			tmp2 = parse_typed_symbol(cur_token);
+			if (!tmp2)
+				return 0;
+			tmp->next = tmp2;
+			tmp = tmp->next;
+		} else {
+			return 0;
+		}
+
+	}
+}
 
 ast_typed_symbol *parse_typed_symbol(token_s **cur_token)
 {
@@ -115,7 +144,8 @@ decl_parse_err:
 ast_type *parse_type(token_s **cur_token)
 {
 	ast_type *ret = 0;
-	//ast_type *subtype = 0;
+	ast_type *subtype = 0;
+	ast_typed_symbol *arglist = 0;
 	strvec *text = 0;
 
 	switch (get_type(cur_token)) {
@@ -136,22 +166,25 @@ ast_type *parse_type(token_s **cur_token)
 		ret = type_init(T_IDENTIFIER, text);
 		next(cur_token);
 		break;
-//	case T_LPAREN:
-//		next(cur_token);
-//		do {
-//			if (!subtype)
-//				subtype = parse_type(cur_token);
-//			else {
-//				subtype->subtype = parse_type(cur_token);
-//				subtype = subtype->subtype;
-//			}
-//		} while (get_type(cur_token) == T_COMMA);
+	case T_LPAREN:
+		next(cur_token);
+		arglist = parse_arglist(cur_token);
+		if (get_type(cur_token) != T_ARROW) {
+			report_error_tok("Missing arrow in fn type signature", *cur_token);
+			sync_to(cur_token, T_EOF, 1);
+		}
+		next(cur_token);
+		subtype = parse_type(cur_token);
+		ret = type_init(T_ARROW, 0);
+		ret->subtype = subtype;
+		ret->arglist = arglist;
+		break;
 	default:
 		report_error_tok("Could not use the following token as a type:",
 				 *cur_token);
 		printf("\t");
 		tok_print(*cur_token);
-		sync_to(cur_token, T_ERROR, 1);
+		sync_to(cur_token, T_EOF, 1);
 	}
 	return ret;
 }

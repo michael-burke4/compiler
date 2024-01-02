@@ -5,6 +5,7 @@
 static void expr_print(ast_expr *expr);
 static void type_print(ast_type *type);
 static void decl_print(ast_decl *decl);
+static void typed_sym_print(ast_typed_symbol *typesym);
 
 ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr,
 		    ast_decl *next)
@@ -19,6 +20,8 @@ ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr,
 ast_type *type_init(token_t type, strvec *name)
 {
 	ast_type *ret = malloc(sizeof(*ret));
+	ret->subtype = 0;
+	ret->arglist = 0;
 	ret->type = type;
 	ret->name = name;
 	return ret;
@@ -44,6 +47,7 @@ ast_typed_symbol *ast_typed_symbol_init(ast_type *type, strvec *symbol)
 	ast_typed_symbol *ret = malloc(sizeof(*ret));
 	ret->type = type;
 	ret->symbol = symbol;
+	ret->next = 0;
 	return ret;
 }
 
@@ -51,6 +55,8 @@ void type_destroy(ast_type *type)
 {
 	if (!type)
 		return;
+	ast_typed_symbol_destroy(type->arglist);
+	type_destroy(type->subtype);
 	strvec_destroy(type->name);
 	free(type);
 }
@@ -79,6 +85,7 @@ void ast_typed_symbol_destroy(ast_typed_symbol *typesym)
 {
 	if (!typesym)
 		return;
+	ast_typed_symbol_destroy(typesym->next);
 	type_destroy(typesym->type);
 	strvec_destroy(typesym->symbol);
 	free(typesym);
@@ -155,8 +162,17 @@ static void expr_print(ast_expr *expr)
 	}
 }
 
+static void typed_sym_print(ast_typed_symbol *typesym)
+{
+	type_print(typesym->type);
+	printf(" ");
+	strvec_print(typesym->symbol);
+}
+
+
 static void type_print(ast_type *type)
 {
+	ast_typed_symbol *printhead = type->arglist;
 	switch (type->type) {
 	case T_I32:
 		printf("i32");
@@ -176,16 +192,26 @@ static void type_print(ast_type *type)
 	case T_BOOL:
 		printf("bool");
 		break;
+	case T_ARROW:
+		printf("(");
+		while (printhead != 0) {
+			typed_sym_print(printhead);
+			printhead = printhead->next;
+			if (printhead == 0)
+				break;
+			else
+				printf(", ");
+		}
+		printf(")");
+		printf(" -> ");
+		type_print(type->subtype);
+		break;
+	case T_IDENTIFIER:
+		strvec_print(type->name);
+		break;
 	default:
-		printf("UNSUPPORTED TYPE!");
+		printf("UNSUPPORTED TYPE! (type %d)", type->type);
 	}
-}
-
-static void typed_sym_print(ast_typed_symbol *typesym)
-{
-	type_print(typesym->type);
-	printf(" ");
-	strvec_print(typesym->symbol);
 }
 
 static void decl_print(ast_decl *decl)

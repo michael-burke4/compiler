@@ -12,6 +12,7 @@ typedef struct ast_decl {
 
 typedef struct ast_type {
 	struct ast_type *subtype;
+	struct ast_typed_symbol *arglist;
 	token_t type;
 	strvec *name;
 } ast_type;
@@ -19,6 +20,7 @@ typedef struct ast_type {
 typedef struct ast_typed_symbol {
 	struct ast_type *type;
 	strvec *symbol;
+	struct ast_typed_symbol *next; // Used for declaring functions.
 } ast_typed_symbol;
 
 typedef enum {
