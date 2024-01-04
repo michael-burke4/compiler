@@ -15,6 +15,11 @@ static inline token_t get_type(token_s **cur_token)
 	return (*cur_token)->type;
 }
 
+static inline int expect(token_s **cur_token, token_t expected)
+{
+	return get_type(cur_token) == expected;
+}
+
 static inline size_t get_line(token_s **cur_token)
 {
 	return (*cur_token)->line;
@@ -33,10 +38,10 @@ static inline size_t get_col(token_s **cur_token)
 static void sync_to(token_s **cur_token, token_t target, int or_newline)
 {
 	size_t prevline = get_line(cur_token);
-	while (get_type(cur_token) != target) {
+	while (!expect(cur_token, target)) {
 		if (or_newline && prevline != get_line(cur_token))
 			break;
-		if (get_type(cur_token) == T_EOF)
+		if (expect(cur_token, T_EOF))
 			break;
 		next(cur_token);
 	}
@@ -44,7 +49,7 @@ static void sync_to(token_s **cur_token, token_t target, int or_newline)
 
 ast_decl *parse_program(token_s **cur_token)
 {
-	if (get_type(cur_token) == T_EOF)
+	if (expect(cur_token, T_EOF))
 		return 0;
 	ast_decl *ret = parse_decl(cur_token);
 	ret->next = parse_program(cur_token);
@@ -89,7 +94,7 @@ ast_typed_symbol *parse_typed_symbol(token_s **cur_token)
 	type = parse_type(cur_token);
 	if (!type)
 		goto parse_typsym_err;
-	if (get_type(cur_token) != T_IDENTIFIER)
+	if (!expect(cur_token, T_IDENTIFIER))
 		goto parse_typsym_err;
 	name = (*cur_token)->text;
 	(*cur_token)->text = 0;
@@ -102,6 +107,7 @@ parse_typsym_err:
 	return 0;
 }
 
+//TODO: error reporting for function declarations is REALLY bad right now.
 ast_decl *parse_decl(token_s **cur_token)
 {
 	ast_typed_symbol *typed_symbol = 0;
@@ -115,10 +121,10 @@ ast_decl *parse_decl(token_s **cur_token)
 
 	if (get_type(cur_token) == T_SEMICO)
 		next(cur_token);
-	else if (get_type(cur_token) == T_ASSIGN) {
+	else if (expect(cur_token, T_ASSIGN)) {
 		next(cur_token);
 		expr = parse_expr(cur_token);
-		if (get_type(cur_token) != T_SEMICO) {
+		if (!expect(cur_token, T_SEMICO)) {
 			report_error_tok(
 				"Missing semicolon (possibly missing from previous line)",
 				*cur_token);
@@ -169,12 +175,23 @@ ast_type *parse_type(token_s **cur_token)
 	case T_LPAREN:
 		next(cur_token);
 		arglist = parse_arglist(cur_token);
-		if (get_type(cur_token) != T_ARROW) {
-			report_error_tok("Missing arrow in fn type signature", *cur_token);
+		if (!arglist) {
+			report_error_tok("Failed parsing argument list in function declaration.",
+				*cur_token);
+			sync_to(cur_token, T_ASSIGN, 1);
+		}
+		if (!expect(cur_token, T_ARROW)) {
+			report_error_tok("Missing arrow in function declaration.", *cur_token);
 			sync_to(cur_token, T_EOF, 1);
+			break;
 		}
 		next(cur_token);
 		subtype = parse_type(cur_token);
+		if (!subtype) {
+			report_error_tok("Missing/invalid return type in function declaration.",
+				*cur_token);
+			sync_to(cur_token, T_ASSIGN, 1);
+		}
 		ret = type_init(T_ARROW, 0);
 		ret->subtype = subtype;
 		ret->arglist = arglist;

@@ -40,13 +40,10 @@ int main(int argc, const char *argv[])
 	}
 
 	program_print(program);
-
-	//ast_typed_symbol_destroy(program->typesym);
 	ast_free(program);
 	tok_list_destroy(head);
 
 	fclose(f);
-	printf("done!");
 	return 0;
 
 error_ast:

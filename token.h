@@ -24,6 +24,7 @@ typedef enum {
 	T_IF,
 	T_RETURN,
 	T_WHILE,
+	T_LET,
 
 	T_DPLUS,
 	T_DMINUS,
