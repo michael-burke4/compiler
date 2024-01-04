@@ -7,8 +7,7 @@ static void type_print(ast_type *type);
 static void decl_print(ast_decl *decl);
 static void typed_sym_print(ast_typed_symbol *typesym);
 
-ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr,
-		    ast_decl *next)
+ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_decl *next)
 {
 	ast_decl *ret = malloc(sizeof(*ret));
 	ret->typesym = typesym;
@@ -26,7 +25,6 @@ ast_type *type_init(token_t type, strvec *name)
 	ret->name = name;
 	return ret;
 }
-
 
 ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op,
 		    strvec *name, int int_lit, strvec *str_lit)
@@ -104,8 +102,8 @@ static void print_op(ast_expr *expr)
 {
 	if (!expr)
 		return;
-	
-	switch(expr->kind) {
+
+	switch (expr->kind) {
 	case E_ADDSUB:
 	case E_MULDIV:
 	case E_INEQUALITY:
@@ -117,7 +115,6 @@ static void print_op(ast_expr *expr)
 	default:
 		tok_t_print(expr->op);
 	}
-
 }
 static void expr_print(ast_expr *expr)
 {
@@ -168,7 +165,6 @@ static void typed_sym_print(ast_typed_symbol *typesym)
 	printf(" ");
 	strvec_print(typesym->symbol);
 }
-
 
 static void type_print(ast_type *type)
 {

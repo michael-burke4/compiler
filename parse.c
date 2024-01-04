@@ -82,7 +82,6 @@ static ast_typed_symbol *parse_arglist(token_s **cur_token)
 		} else {
 			return 0;
 		}
-
 	}
 }
 
@@ -115,7 +114,8 @@ ast_decl *parse_decl(token_s **cur_token)
 
 	typed_symbol = parse_typed_symbol(cur_token);
 	if (!typed_symbol) {
-		report_error_tok("Missing/invalid type specifier or name.", *cur_token);
+		report_error_tok("Missing/invalid type specifier or name.",
+				 *cur_token);
 		sync_to(cur_token, T_EOF, 1);
 	}
 
@@ -176,19 +176,23 @@ ast_type *parse_type(token_s **cur_token)
 		next(cur_token);
 		arglist = parse_arglist(cur_token);
 		if (!arglist) {
-			report_error_tok("Failed parsing argument list in function declaration.",
+			report_error_tok(
+				"Failed parsing argument list in function declaration.",
 				*cur_token);
 			sync_to(cur_token, T_ASSIGN, 1);
 		}
 		if (!expect(cur_token, T_ARROW)) {
-			report_error_tok("Missing arrow in function declaration.", *cur_token);
+			report_error_tok(
+				"Missing arrow in function declaration.",
+				*cur_token);
 			sync_to(cur_token, T_EOF, 1);
 			break;
 		}
 		next(cur_token);
 		subtype = parse_type(cur_token);
 		if (!subtype) {
-			report_error_tok("Missing/invalid return type in function declaration.",
+			report_error_tok(
+				"Missing/invalid return type in function declaration.",
 				*cur_token);
 			sync_to(cur_token, T_ASSIGN, 1);
 		}
@@ -219,9 +223,10 @@ ast_expr *parse_expr_assign(token_s **cur_token)
 	ast_expr *that;
 	token_t typ = get_type(cur_token);
 	token_t op;
-	while (typ == T_ASSIGN || typ == T_ADD_ASSIGN || typ == T_SUB_ASSIGN || typ == T_MUL_ASSIGN
-		|| typ == T_DIV_ASSIGN || typ == T_MOD_ASSIGN || typ == T_BW_AND_ASSIGN ||
-		typ == T_BW_OR_ASSIGN) { // This is dumb
+	while (typ == T_ASSIGN || typ == T_ADD_ASSIGN || typ == T_SUB_ASSIGN ||
+	       typ == T_MUL_ASSIGN || typ == T_DIV_ASSIGN ||
+	       typ == T_MOD_ASSIGN || typ == T_BW_AND_ASSIGN ||
+	       typ == T_BW_OR_ASSIGN) { // This is dumb
 		op = typ;
 		next(cur_token);
 		that = parse_expr_inequality(cur_token);
@@ -323,11 +328,13 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 	case T_DPLUS:
 	case T_DMINUS:
 		while ((op = get_type(cur_token)) == T_DPLUS || op == T_DMINUS)
-	case T_LPAREN:
-		next(cur_token);
+		case T_LPAREN:
+			next(cur_token);
 		inner = parse_expr(cur_token);
 		if (get_type(cur_token) != T_RPAREN) {
-			report_error_tok("Expression is missing a closing paren", *cur_token);
+			report_error_tok(
+				"Expression is missing a closing paren",
+				*cur_token);
 			sync_to(cur_token, T_EOF, 1);
 			expr_destroy(inner);
 			return 0;
@@ -336,7 +343,8 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 		return expr_init(E_PAREN, inner, 0, 0, 0, 0, 0);
 	case T_INT_LIT:
 		next(cur_token);
-		return expr_init(E_INT_LIT, 0, 0, 0, 0, strvec_toi(cur->text), 0);
+		return expr_init(E_INT_LIT, 0, 0, 0, 0, strvec_toi(cur->text),
+				 0);
 	case T_STR_LIT:
 		txt = cur->text;
 		cur->text = 0;
