@@ -90,14 +90,19 @@ ast_typed_symbol *parse_typed_symbol(token_s **cur_token)
 	ast_type *type = 0;
 	strvec *name = 0;
 
-	type = parse_type(cur_token);
-	if (!type)
-		goto parse_typsym_err;
 	if (!expect(cur_token, T_IDENTIFIER))
 		goto parse_typsym_err;
 	name = (*cur_token)->text;
 	(*cur_token)->text = 0;
 	next(cur_token);
+
+	if (!expect(cur_token, T_COLON))
+		goto parse_typsym_err;
+	next(cur_token);
+
+	type = parse_type(cur_token);
+	if (!type)
+		goto parse_typsym_err;
 	return ast_typed_symbol_init(type, name);
 
 parse_typsym_err:
@@ -112,11 +117,18 @@ ast_decl *parse_decl(token_s **cur_token)
 	ast_typed_symbol *typed_symbol = 0;
 	ast_expr *expr = 0;
 
+	if (!expect(cur_token, T_LET)) {
+		report_error_tok("Missing 'let' keyword in declaration.", *cur_token);
+		sync_to(cur_token, T_EOF, 1); // maybe this should be in the goto
+		goto decl_parse_err;
+	}
+	next(cur_token);
 	typed_symbol = parse_typed_symbol(cur_token);
 	if (!typed_symbol) {
 		report_error_tok("Missing/invalid type specifier or name.",
 				 *cur_token);
 		sync_to(cur_token, T_EOF, 1);
+		goto decl_parse_err;
 	}
 
 	if (get_type(cur_token) == T_SEMICO)

@@ -9,6 +9,14 @@ static token_s *check_if_keyword(strvec *word, size_t line, size_t col)
 	token_s *ret = 0;
 	if (strvec_equals_str(word, "i32"))
 		ret = tok_init_nl(T_I32, line, col, 0);
+	else if (strvec_equals_str(word, "let"))
+		ret = tok_init_nl(T_LET, line, col, 0);
+	else if (strvec_equals_str(word, "if"))
+		ret = tok_init_nl(T_IF, line, col, 0);
+	else if (strvec_equals_str(word, "true"))
+		ret = tok_init_nl(T_TRUE, line, col, 0);
+	else if (strvec_equals_str(word, "false"))
+		ret = tok_init_nl(T_FALSE, line, col, 0);
 	else if (strvec_equals_str(word, "i64"))
 		ret = tok_init_nl(T_I64, line, col, 0);
 	else if (strvec_equals_str(word, "u32"))
@@ -31,18 +39,12 @@ static token_s *check_if_keyword(strvec *word, size_t line, size_t col)
 		ret = tok_init_nl(T_VOID, line, col, 0);
 	else if (strvec_equals_str(word, "char"))
 		ret = tok_init_nl(T_CHAR, line, col, 0);
-	else if (strvec_equals_str(word, "if"))
-		ret = tok_init_nl(T_IF, line, col, 0);
 	else if (strvec_equals_str(word, "return"))
 		ret = tok_init_nl(T_RETURN, line, col, 0);
 	else if (strvec_equals_str(word, "while"))
 		ret = tok_init_nl(T_WHILE, line, col, 0);
 	else if (strvec_equals_str(word, "bool"))
 		ret = tok_init_nl(T_BOOL, line, col, 0);
-	else if (strvec_equals_str(word, "true"))
-		ret = tok_init_nl(T_TRUE, line, col, 0);
-	else if (strvec_equals_str(word, "false"))
-		ret = tok_init_nl(T_FALSE, line, col, 0);
 	if (ret != 0)
 		strvec_destroy(word);
 	else

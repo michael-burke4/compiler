@@ -161,9 +161,9 @@ static void expr_print(ast_expr *expr)
 
 static void typed_sym_print(ast_typed_symbol *typesym)
 {
-	type_print(typesym->type);
-	printf(" ");
 	strvec_print(typesym->symbol);
+	printf(": ");
+	type_print(typesym->type);
 }
 
 static void type_print(ast_type *type)
@@ -212,6 +212,7 @@ static void type_print(ast_type *type)
 
 static void decl_print(ast_decl *decl)
 {
+	printf("let ");
 	typed_sym_print(decl->typesym);
 	if (decl->expr != 0) {
 		printf(" = ");
