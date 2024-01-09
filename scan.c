@@ -20,7 +20,7 @@ static token_s *check_if_keyword(strvec *word, size_t line, size_t col)
 	else if (strvec_equals_str(word, "i64"))
 		ret = tok_init_nl(T_I64, line, col, 0);
 	else if (strvec_equals_str(word, "u32"))
-		ret = tok_init_nl(T_U64, line, col, 0);
+		ret = tok_init_nl(T_U32, line, col, 0);
 	else if (strvec_equals_str(word, "u64"))
 		ret = tok_init_nl(T_U64, line, col, 0);
 	else if (strvec_equals_str(word, "string"))
