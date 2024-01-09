@@ -1,11 +1,12 @@
 #include "ast.h"
+#include "util.h"
 #include <stdlib.h>
 #include <stdio.h>
 
 
 ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt, ast_decl *next)
 {
-	ast_decl *ret = malloc(sizeof(*ret));
+	ast_decl *ret = smalloc(sizeof(*ret));
 	ret->typesym = typesym;
 	ret->body = stmt;
 	ret->expr = expr;
@@ -15,7 +16,7 @@ ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt, a
 
 ast_type *type_init(token_t type, strvec *name)
 {
-	ast_type *ret = malloc(sizeof(*ret));
+	ast_type *ret = smalloc(sizeof(*ret));
 	ret->subtype = 0;
 	ret->arglist = 0;
 	ret->type = type;
@@ -26,7 +27,7 @@ ast_type *type_init(token_t type, strvec *name)
 ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op,
 		    strvec *name, int int_lit, strvec *str_lit)
 {
-	ast_expr *ret = malloc(sizeof(*ret));
+	ast_expr *ret = smalloc(sizeof(*ret));
 	ret->kind = kind;
 	ret->left = left;
 	ret->right = right;
@@ -39,7 +40,7 @@ ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op,
 
 ast_typed_symbol *ast_typed_symbol_init(ast_type *type, strvec *symbol)
 {
-	ast_typed_symbol *ret = malloc(sizeof(*ret));
+	ast_typed_symbol *ret = smalloc(sizeof(*ret));
 	ret->type = type;
 	ret->symbol = symbol;
 	ret->next = 0;
@@ -49,7 +50,7 @@ ast_typed_symbol *ast_typed_symbol_init(ast_type *type, strvec *symbol)
 ast_stmt *stmt_init(stmt_t kind, ast_decl *decl, ast_expr *expr, ast_stmt *body,
 	ast_stmt *else_body)
 {
-	ast_stmt *ret = malloc(sizeof(*ret));
+	ast_stmt *ret = smalloc(sizeof(*ret));
 	ret->kind = kind;
 	ret->decl = decl;
 	ret->expr = expr;

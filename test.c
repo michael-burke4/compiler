@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "strvec.h"
+#include "util.h"
 
 int main(void)
 {

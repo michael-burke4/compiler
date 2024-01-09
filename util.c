@@ -1,23 +1,24 @@
+#include "util.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "strvec.h"
 
 strvec *strvec_init(size_t capacity)
 {
-	strvec *ret = malloc(sizeof(*ret));
+	strvec *ret = smalloc(sizeof(*ret));
 	ret->capacity = capacity;
 	ret->size = 0;
 	ret->text = calloc(capacity, sizeof(*(ret->text)));
 	return ret;
 }
+
 strvec *strvec_init_str(const char *str)
 {
 	size_t len = strlen(str);
-	strvec *ret = malloc(sizeof(*ret));
+	strvec *ret = smalloc(sizeof(*ret));
 	ret->capacity = len;
 	ret->size = len;
-	ret->text = malloc(len);
+	ret->text = smalloc(len);
 	memcpy(ret->text, str, len);
 	return ret;
 }
@@ -62,11 +63,34 @@ int strvec_equals_str(strvec *vec, const char *string)
 int strvec_toi(strvec *vec)
 {
 	int ret;
-	char *tmp = malloc(vec->size + 1);
+	char *tmp = smalloc(vec->size + 1);
 	memcpy(tmp, vec->text, vec->size);
 	tmp[vec->size] = '\0';
 
 	ret = atoi(tmp);
 	free(tmp);
+	return ret;
+}
+
+// Smalloc for 'safe malloc'
+// errors out if malloc fails.
+void *smalloc(size_t size) {
+	void *ret = malloc(size);
+	if (!ret)
+		err(1, "malloc failed");
+	return ret;
+}
+
+void *scalloc(size_t nmemb, size_t size) {
+	void *ret = calloc(nmemb, size);
+	if (!ret)
+		err(1, "calloc failed");
+	return ret;
+}
+
+void *srealloc(void *ptr, size_t size) {
+	void *ret = realloc(ptr, size);
+	if (!ret)
+		err(1, "realloc failed");
 	return ret;
 }

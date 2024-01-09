@@ -2,7 +2,7 @@
 #define AST_H
 
 #include "token.h"
-#include "strvec.h"
+#include "util.h"
 
 typedef struct ast_decl {
 	struct ast_typed_symbol *typesym;
@@ -49,6 +49,7 @@ typedef struct ast_expr {
 	strvec *name;
 	int int_lit;
 	strvec *string_literal;
+	ast_type type;
 } ast_expr;
 
 typedef enum {

@@ -1,6 +1,6 @@
 #ifndef TOKEN_H
 #define TOKEN_H
-#include "strvec.h"
+#include "util.h"
 #include <stddef.h>
 typedef enum {
 	T_ERROR = 0,

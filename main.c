@@ -1,7 +1,7 @@
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "strvec.h"
+#include "util.h"
 #include "token.h"
 #include "scan.h"
 #include "ast.h"
