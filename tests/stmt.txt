@@ -1,0 +1,7 @@
+let a: i32 = 5;
+let x: () -> u32 = {
+	if (x == 0) {
+		return 10;
+	}
+	return 30;
+};
