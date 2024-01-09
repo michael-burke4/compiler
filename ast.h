@@ -76,7 +76,6 @@ ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op,
 		    strvec *name, int int_lit, strvec *str_lit);
 ast_stmt *stmt_init(stmt_t kind, ast_decl *decl, ast_expr *expr, ast_stmt *body,
 		    ast_stmt *else_body);
-void program_print(ast_decl *program);
 void ast_free(ast_decl *program);
 void type_destroy(ast_type *type);
 void expr_destroy(ast_expr *expr);

@@ -6,6 +6,7 @@
 #include "scan.h"
 #include "ast.h"
 #include "parse.h"
+#include "print.h"
 
 int had_error = 0;
 

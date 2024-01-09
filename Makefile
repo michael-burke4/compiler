@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -Wpedantic -Werror -Og
-DEPS=strvec.h token.h scan.h parse.h ast.h error.h
-OBJ=strvec.o token.o scan.o parse.o ast.o error.o
+DEPS=strvec.h token.h scan.h parse.h ast.h error.h print.h
+OBJ=strvec.o token.o scan.o parse.o ast.o error.o print.c
 
 
 main: $(OBJ) main.o
