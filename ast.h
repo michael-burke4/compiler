@@ -52,14 +52,7 @@ typedef struct ast_expr {
 	ast_type type;
 } ast_expr;
 
-typedef enum {
-	S_ERROR,
-	S_BLOCK,
-	S_DECL,
-	S_EXPR,
-	S_IFELSE,
-	S_RETURN
-} stmt_t;
+typedef enum { S_ERROR, S_BLOCK, S_DECL, S_EXPR, S_IFELSE, S_RETURN } stmt_t;
 
 typedef struct ast_stmt {
 	stmt_t kind;
@@ -70,7 +63,8 @@ typedef struct ast_stmt {
 	struct ast_stmt *next;
 } ast_stmt;
 
-ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt, ast_decl *next);
+ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt,
+		    ast_decl *next);
 ast_type *type_init(token_t type, strvec *name);
 ast_typed_symbol *ast_typed_symbol_init(ast_type *type, strvec *symbol);
 ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op,

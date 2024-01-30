@@ -91,24 +91,26 @@ strvec *strvec_copy(strvec *s)
 
 // Smalloc for 'safe malloc'
 // errors out if malloc fails.
-void *smalloc(size_t size) {
+void *smalloc(size_t size)
+{
 	void *ret = malloc(size);
 	if (!ret)
 		err(1, "malloc failed");
 	return ret;
 }
 
-void *scalloc(size_t nmemb, size_t size) {
+void *scalloc(size_t nmemb, size_t size)
+{
 	void *ret = calloc(nmemb, size);
 	if (!ret)
 		err(1, "calloc failed");
 	return ret;
 }
 
-void *srealloc(void *ptr, size_t size) {
+void *srealloc(void *ptr, size_t size)
+{
 	void *ret = realloc(ptr, size);
 	if (!ret)
 		err(1, "realloc failed");
 	return ret;
 }
-

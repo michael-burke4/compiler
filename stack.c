@@ -1,7 +1,6 @@
 #include "util.h"
 #include "stack.h"
 
-
 stack *stack_init()
 {
 	stack *ret = smalloc(sizeof(*ret));
@@ -20,7 +19,6 @@ void stack_push(stack *stk, void *item)
 	new_top->next = stk->top;
 	stk->top = new_top;
 	stk->size++;
-
 }
 
 void *stack_pop(stack *stk)

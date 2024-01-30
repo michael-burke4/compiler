@@ -13,5 +13,4 @@ void scope_bind(ast_typed_symbol *symbol);
 ast_typed_symbol *scope_lookup(strvec *name);
 ast_typed_symbol *scope_lookup_current(strvec *name);
 
-
 #endif

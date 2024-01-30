@@ -11,10 +11,11 @@ void st_level_destroy(struct ht *level)
 	if (!level)
 		return;
 
-	for (i = 0 ; i < level->capacity ; ++i) {
+	for (i = 0; i < level->capacity; ++i) {
 		if (level->data[i]) {
-			ast_typed_symbol_destroy
-				((ast_typed_symbol *)level->data[i]->val); // val holds type
+			ast_typed_symbol_destroy(
+				(ast_typed_symbol *)level->data[i]
+					->val); // val holds type
 			free(level->data[i]); // Destroy the kv
 		}
 	}
@@ -70,7 +71,7 @@ ast_typed_symbol *scope_lookup(strvec *name)
 	ast_typed_symbol *found;
 	struct ht *current = (struct ht *)stack_item_from_top(sym_tab, 0);
 	while (current != 0) {
-		if((found = (ast_typed_symbol *)ht_get(current, name)))
+		if ((found = (ast_typed_symbol *)ht_get(current, name)))
 			return found;
 		i++;
 		current = (struct ht *)stack_item_from_top(sym_tab, i);

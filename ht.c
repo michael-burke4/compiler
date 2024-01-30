@@ -13,7 +13,7 @@ uint64_t hash(strvec *str)
 	uint64_t hash = 14695981039346656037UL;
 	size_t i;
 
-	for (i = 0 ; i < str->size ; ++i) {
+	for (i = 0; i < str->size; ++i) {
 		hash ^= str->text[i];
 		// FNV_prime, also from above wikipedia article.
 		hash *= 1099511628211;
@@ -29,7 +29,6 @@ struct ht *ht_init(size_t capacity)
 	ret->size = 0;
 	return ret;
 }
-
 
 static int insert(struct kv **data, size_t cap, uint64_t key_hash, void *value)
 {
@@ -58,12 +57,11 @@ int ht_insert(struct ht *tab, strvec *key, void *value)
 
 int ht_resize(struct ht *tab, size_t new_cap)
 {
-	
 	struct kv **new_data;
 	if (new_cap < tab->capacity)
 		return 0;
 	new_data = scalloc(new_cap, sizeof(*new_data));
-	for (size_t i = 0 ; i < tab->capacity ; ++i) {
+	for (size_t i = 0; i < tab->capacity; ++i) {
 		struct kv *entry = tab->data[i];
 		if (tab->data[i] == 0)
 			continue;
@@ -71,7 +69,7 @@ int ht_resize(struct ht *tab, size_t new_cap)
 	}
 	tab->data = new_data;
 	tab->capacity = new_cap;
-	
+
 	return 1;
 }
 
@@ -120,7 +118,7 @@ void *ht_get(struct ht *tab, strvec *key)
 //			tab->data[index] = 0;
 //			return 1;
 //		}
-//			
+//
 //		++index;
 //		index %= tab->capacity;
 //		++i;

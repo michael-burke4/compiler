@@ -64,7 +64,7 @@ ast_decl *parse_program(token_s **cur_token)
 //	THEORETICALLY there could be a weird error if the return value of this function
 //	is actually allocated at that 0 + sizeof(...), but I will accept that risk and continue
 //	living in denial and ignorance.
-//	
+//
 //	Could just have an `int *empty` out param but uhhhh...
 static ast_typed_symbol *parse_arglist(token_s **cur_token)
 {
@@ -130,8 +130,10 @@ ast_decl *parse_decl(token_s **cur_token)
 	ast_stmt *stmt = 0;
 
 	if (!expect(cur_token, T_LET)) {
-		report_error_tok("Missing 'let' keyword in declaration.", *cur_token);
-		sync_to(cur_token, T_EOF, 1); // maybe this should be in the goto
+		report_error_tok("Missing 'let' keyword in declaration.",
+				 *cur_token);
+		sync_to(cur_token, T_EOF,
+			1); // maybe this should be in the goto
 		goto decl_parse_err;
 	}
 	next(cur_token);
@@ -214,15 +216,19 @@ ast_stmt *parse_stmt(token_s **cur_token)
 		break;
 	case T_IF:
 		kind = S_IFELSE;
-		next(cur_token); 
+		next(cur_token);
 		if (!expect(cur_token, T_LPAREN)) {
-			report_error_tok("Missing left paren in `if` condition.", *cur_token);
+			report_error_tok(
+				"Missing left paren in `if` condition.",
+				*cur_token);
 			goto stmt_err;
 		}
 		next(cur_token);
 		expr = parse_expr(cur_token);
 		if (!expect(cur_token, T_RPAREN)) {
-			report_error_tok("Missing right paren in `if` condition.", *cur_token);
+			report_error_tok(
+				"Missing right paren in `if` condition.",
+				*cur_token);
 			goto stmt_err;
 		}
 		next(cur_token);
@@ -238,12 +244,14 @@ ast_stmt *parse_stmt(token_s **cur_token)
 		if (!expect(cur_token, T_SEMICO)) {
 			expr = parse_expr(cur_token);
 			if (!expr) {
-				report_error_tok("Could not parse expression in return statement.",
+				report_error_tok(
+					"Could not parse expression in return statement.",
 					*cur_token);
 				goto stmt_err;
 			}
 			if (!expect(cur_token, T_SEMICO)) {
-				report_error_tok("Statement missing terminating semicolon.",
+				report_error_tok(
+					"Statement missing terminating semicolon.",
 					*cur_token);
 				goto stmt_err;
 			}
@@ -254,11 +262,14 @@ ast_stmt *parse_stmt(token_s **cur_token)
 		kind = S_EXPR;
 		expr = parse_expr(cur_token);
 		if (!expr) {
-			report_error_tok("could not parse statement", *cur_token);
+			report_error_tok("could not parse statement",
+					 *cur_token);
 			goto stmt_err;
 		}
 		if (!expect(cur_token, T_SEMICO)) {
-			report_error_tok("Statement missing terminating semicolon.", *cur_token);
+			report_error_tok(
+				"Statement missing terminating semicolon.",
+				*cur_token);
 			goto stmt_err;
 		}
 		next(cur_token);
@@ -274,7 +285,7 @@ stmt_err:
 	return stmt_init(S_ERROR, 0, 0, 0, 0);
 }
 //ast_stmt *stmt_init(stmt_t kind, ast_decl *decl, ast_expr *expr, ast_stmt *body,
-		    //ast_stmt *else_body);
+//ast_stmt *else_body);
 
 ast_type *parse_type(token_s **cur_token)
 {
