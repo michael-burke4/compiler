@@ -130,8 +130,7 @@ ast_decl *parse_decl(token_s **cur_token)
 	ast_stmt *stmt = 0;
 
 	if (!expect(cur_token, T_LET)) {
-		report_error_tok("Missing 'let' keyword in declaration.",
-				 *cur_token);
+		report_error_tok("Missing 'let' keyword in declaration.", *cur_token);
 		sync_to(cur_token, T_EOF,
 			1); // maybe this should be in the goto
 		goto decl_parse_err;
@@ -139,8 +138,7 @@ ast_decl *parse_decl(token_s **cur_token)
 	next(cur_token);
 	typed_symbol = parse_typed_symbol(cur_token);
 	if (!typed_symbol) {
-		report_error_tok("Missing/invalid type specifier or name.",
-				 *cur_token);
+		report_error_tok("Missing/invalid type specifier or name.", *cur_token);
 		sync_to(cur_token, T_EOF, 1);
 		goto decl_parse_err;
 	}
@@ -154,18 +152,15 @@ ast_decl *parse_decl(token_s **cur_token)
 		else
 			expr = parse_expr(cur_token);
 		if (!expect(cur_token, T_SEMICO)) {
-			report_error_tok(
-				"Missing semicolon (possibly missing from previous line)",
-				*cur_token);
+			report_error_tok("Missing semicolon (possibly missing from previous line)",
+					 *cur_token);
 			sync_to(cur_token, T_EOF, 1);
 			goto decl_parse_err;
 		} else {
 			next(cur_token);
 		}
 	} else {
-		report_error_tok(
-			"Missing semicolon (maybe missing on previous line)",
-			*cur_token);
+		report_error_tok("Missing semicolon (maybe missing on previous line)", *cur_token);
 		goto decl_parse_err;
 	}
 	return decl_init(typed_symbol, expr, stmt, 0);
@@ -218,17 +213,13 @@ ast_stmt *parse_stmt(token_s **cur_token)
 		kind = S_IFELSE;
 		next(cur_token);
 		if (!expect(cur_token, T_LPAREN)) {
-			report_error_tok(
-				"Missing left paren in `if` condition.",
-				*cur_token);
+			report_error_tok("Missing left paren in `if` condition.", *cur_token);
 			goto stmt_err;
 		}
 		next(cur_token);
 		expr = parse_expr(cur_token);
 		if (!expect(cur_token, T_RPAREN)) {
-			report_error_tok(
-				"Missing right paren in `if` condition.",
-				*cur_token);
+			report_error_tok("Missing right paren in `if` condition.", *cur_token);
 			goto stmt_err;
 		}
 		next(cur_token);
@@ -244,15 +235,13 @@ ast_stmt *parse_stmt(token_s **cur_token)
 		if (!expect(cur_token, T_SEMICO)) {
 			expr = parse_expr(cur_token);
 			if (!expr) {
-				report_error_tok(
-					"Could not parse expression in return statement.",
-					*cur_token);
+				report_error_tok("Could not parse expression in return statement.",
+						 *cur_token);
 				goto stmt_err;
 			}
 			if (!expect(cur_token, T_SEMICO)) {
-				report_error_tok(
-					"Statement missing terminating semicolon.",
-					*cur_token);
+				report_error_tok("Statement missing terminating semicolon.",
+						 *cur_token);
 				goto stmt_err;
 			}
 			next(cur_token);
@@ -262,14 +251,11 @@ ast_stmt *parse_stmt(token_s **cur_token)
 		kind = S_EXPR;
 		expr = parse_expr(cur_token);
 		if (!expr) {
-			report_error_tok("could not parse statement",
-					 *cur_token);
+			report_error_tok("could not parse statement", *cur_token);
 			goto stmt_err;
 		}
 		if (!expect(cur_token, T_SEMICO)) {
-			report_error_tok(
-				"Statement missing terminating semicolon.",
-				*cur_token);
+			report_error_tok("Statement missing terminating semicolon.", *cur_token);
 			goto stmt_err;
 		}
 		next(cur_token);
@@ -316,9 +302,8 @@ ast_type *parse_type(token_s **cur_token)
 		next(cur_token);
 		arglist = parse_arglist(cur_token);
 		if (!arglist) {
-			report_error_tok(
-				"Failed parsing argument list in function declaration.",
-				*cur_token);
+			report_error_tok("Failed parsing argument list in function declaration.",
+					 *cur_token);
 			sync_to(cur_token, T_ASSIGN, 1);
 		}
 		// This is kind of genius but also 100% a dumb hack
@@ -326,18 +311,15 @@ ast_type *parse_type(token_s **cur_token)
 			arglist = 0;
 		}
 		if (!expect(cur_token, T_ARROW)) {
-			report_error_tok(
-				"Missing arrow in function declaration.",
-				*cur_token);
+			report_error_tok("Missing arrow in function declaration.", *cur_token);
 			sync_to(cur_token, T_EOF, 1);
 			break;
 		}
 		next(cur_token);
 		subtype = parse_type(cur_token);
 		if (!subtype) {
-			report_error_tok(
-				"Missing/invalid return type in function declaration.",
-				*cur_token);
+			report_error_tok("Missing/invalid return type in function declaration.",
+					 *cur_token);
 			sync_to(cur_token, T_ASSIGN, 1);
 		}
 		ret = type_init(T_ARROW, 0);
@@ -345,8 +327,7 @@ ast_type *parse_type(token_s **cur_token)
 		ret->arglist = arglist;
 		break;
 	default:
-		report_error_tok("Could not use the following token as a type:",
-				 *cur_token);
+		report_error_tok("Could not use the following token as a type:", *cur_token);
 		printf("\t");
 		tok_print(*cur_token);
 		sync_to(cur_token, T_EOF, 1);
@@ -368,9 +349,8 @@ ast_expr *parse_expr_assign(token_s **cur_token)
 	token_t typ = get_type(cur_token);
 	token_t op;
 	while (typ == T_ASSIGN || typ == T_ADD_ASSIGN || typ == T_SUB_ASSIGN ||
-	       typ == T_MUL_ASSIGN || typ == T_DIV_ASSIGN ||
-	       typ == T_MOD_ASSIGN || typ == T_BW_AND_ASSIGN ||
-	       typ == T_BW_OR_ASSIGN) { // This is dumb
+	       typ == T_MUL_ASSIGN || typ == T_DIV_ASSIGN || typ == T_MOD_ASSIGN ||
+	       typ == T_BW_AND_ASSIGN || typ == T_BW_OR_ASSIGN) { // This is dumb
 		op = typ;
 		next(cur_token);
 		that = parse_expr_inequality(cur_token);
@@ -503,8 +483,7 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 		return expr_init(E_PAREN, inner, 0, 0, 0, 0, 0);
 	case T_INT_LIT:
 		next(cur_token);
-		return expr_init(E_INT_LIT, 0, 0, 0, 0, strvec_toi(cur->text),
-				 0);
+		return expr_init(E_INT_LIT, 0, 0, 0, 0, strvec_toi(cur->text), 0);
 	case T_STR_LIT:
 		txt = cur->text;
 		cur->text = 0;
@@ -522,9 +501,8 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 		next(cur_token);
 		return expr_init(E_FALSE_LIT, 0, 0, 0, 0, 0, 0);
 	default:
-		report_error_tok(
-			"Could not parse expr unit. The offending token in question:",
-			*cur_token);
+		report_error_tok("Could not parse expr unit. The offending token in question:",
+				 *cur_token);
 		printf("\t");
 		tok_print(*cur_token);
 		sync_to(cur_token, T_EOF, 1);

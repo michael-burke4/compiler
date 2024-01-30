@@ -63,12 +63,11 @@ typedef struct ast_stmt {
 	struct ast_stmt *next;
 } ast_stmt;
 
-ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt,
-		    ast_decl *next);
+ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt, ast_decl *next);
 ast_type *type_init(token_t type, strvec *name);
 ast_typed_symbol *ast_typed_symbol_init(ast_type *type, strvec *symbol);
-ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op,
-		    strvec *name, int int_lit, strvec *str_lit);
+ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, strvec *name,
+		    int int_lit, strvec *str_lit);
 ast_stmt *stmt_init(stmt_t kind, ast_decl *decl, ast_expr *expr, ast_stmt *body,
 		    ast_stmt *else_body);
 void ast_free(ast_decl *program);

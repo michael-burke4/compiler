@@ -3,8 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt,
-		    ast_decl *next)
+ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt, ast_decl *next)
 {
 	ast_decl *ret = smalloc(sizeof(*ret));
 	ret->typesym = typesym;
@@ -24,8 +23,8 @@ ast_type *type_init(token_t type, strvec *name)
 	return ret;
 }
 
-ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op,
-		    strvec *name, int int_lit, strvec *str_lit)
+ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, strvec *name,
+		    int int_lit, strvec *str_lit)
 {
 	ast_expr *ret = smalloc(sizeof(*ret));
 	ret->kind = kind;

@@ -12,10 +12,8 @@ extern struct stack *sym_tab;
 int main(void)
 {
 	st_init();
-	ast_typed_symbol *s = ast_typed_symbol_init(type_init(T_I32, 0),
-						    strvec_init_str("hello"));
-	ast_typed_symbol *s2 = ast_typed_symbol_init(type_init(T_U32, 0),
-						     strvec_init_str("hello"));
+	ast_typed_symbol *s = ast_typed_symbol_init(type_init(T_I32, 0), strvec_init_str("hello"));
+	ast_typed_symbol *s2 = ast_typed_symbol_init(type_init(T_U32, 0), strvec_init_str("hello"));
 	strvec *hi = strvec_init_str("hello");
 	//ast_typed_symbol *s2 = ast_typed_symbol_init(type_init(T_U32, 0), strvec_init_str("other"));
 	scope_bind(s);

@@ -26,8 +26,7 @@ strvec *strvec_init_str(const char *str)
 void strvec_append(strvec *vec, char c)
 {
 	if (vec->capacity <= vec->size) {
-		vec->text = reallocarray(vec->text, vec->size * 2,
-					 sizeof(*(vec->text)));
+		vec->text = reallocarray(vec->text, vec->size * 2, sizeof(*(vec->text)));
 		vec->capacity *= 2;
 	}
 	vec->text[vec->size] = c;

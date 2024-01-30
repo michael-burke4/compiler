@@ -14,8 +14,7 @@ void st_level_destroy(struct ht *level)
 	for (i = 0; i < level->capacity; ++i) {
 		if (level->data[i]) {
 			ast_typed_symbol_destroy(
-				(ast_typed_symbol *)level->data[i]
-					->val); // val holds type
+				(ast_typed_symbol *)level->data[i]->val); // val holds type
 			free(level->data[i]); // Destroy the kv
 		}
 	}

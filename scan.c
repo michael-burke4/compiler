@@ -94,16 +94,14 @@ static token_s *scan_char_literal(FILE *f, size_t *line, size_t *col)
 	c = fgetc(f);
 	if (c == '\n') {
 		ungetc(c, f);
-		report_error("Bad char literal. Missing close quote?", *line,
-			     old_col);
+		report_error("Bad char literal. Missing close quote?", *line, old_col);
 		return tok_init_nl(T_ERROR, *line, old_col, 0);
 	}
 	(*col)++;
 	c2 = fgetc(f);
 	if (c2 != '\'') {
 		ungetc(c2, f);
-		report_error("Bad char literal. Missing close quote?", *line,
-			     old_col);
+		report_error("Bad char literal. Missing close quote?", *line, old_col);
 		return tok_init_nl(T_ERROR, *line, old_col, 0);
 	}
 	character = strvec_init(1);
@@ -124,8 +122,7 @@ static token_s *scan_string_literal(FILE *f, size_t *line, size_t *col)
 			ungetc(c, f);
 			(*col)--;
 			strvec_destroy(str);
-			report_error("Unterminated string literal.", *line,
-				     old_col);
+			report_error("Unterminated string literal.", *line, old_col);
 			return tok_init_nl(T_ERROR, *line, old_col, 0);
 		}
 		strvec_append(str, c);
