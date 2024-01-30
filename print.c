@@ -68,6 +68,8 @@ void expr_print(ast_expr *expr)
 
 void typed_sym_print(ast_typed_symbol *typesym)
 {
+	if (!typesym)
+		return;
 	strvec_print(typesym->symbol);
 	printf(": ");
 	type_print(typesym->type);

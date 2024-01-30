@@ -50,6 +50,12 @@ void strvec_destroy(strvec *vec)
 	free(vec);
 }
 
+int strvec_equals(strvec *a, strvec *b)
+{
+	// checking size first so it can short circuit when sizes are not the same.
+	return a->size == b->size && !memcmp(a->text, b->text, a->size);
+}
+
 int strvec_equals_str(strvec *vec, const char *string)
 {
 	if (vec->size != strlen(string))
@@ -69,6 +75,17 @@ int strvec_toi(strvec *vec)
 
 	ret = atoi(tmp);
 	free(tmp);
+	return ret;
+}
+
+strvec *strvec_copy(strvec *s)
+{
+	strvec *ret;
+	if (!s)
+		return 0;
+	ret = strvec_init(s->capacity);
+	ret->size = s->size;
+	ret->text = memcpy(ret->text, s->text, s->size);
 	return ret;
 }
 
@@ -94,3 +111,4 @@ void *srealloc(void *ptr, size_t size) {
 		err(1, "realloc failed");
 	return ret;
 }
+

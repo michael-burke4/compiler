@@ -124,3 +124,23 @@ void ast_free(ast_decl *program)
 	decl_destroy(program);
 	ast_free(next);
 }
+
+ast_typed_symbol *arglist_copy(ast_typed_symbol *arglist)
+{
+	//ast_typed_symbol *ret;
+	if (!arglist)
+		return 0;
+	return 0; // TODO
+}
+
+ast_type *type_copy(ast_type *t)
+{
+	ast_type *ret;
+
+	if (!t)
+		return 0;
+	ret = type_init(t->type, strvec_copy(t->name));
+	ret->subtype = type_copy(t->subtype);
+	ret->arglist = arglist_copy(t->arglist);
+	return 0; // TODO
+}
