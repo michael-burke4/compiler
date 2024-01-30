@@ -26,10 +26,13 @@ void stack_push(stack *stk, void *item)
 void *stack_pop(stack *stk)
 {
 	void *ret;
+	struct node *old_top;
 	if (!stk || stk->size == 0)
 		return 0;
-	ret = stk->top->data;
-	stk->top = stk->top->next;
+	old_top = stk->top;
+	ret = old_top->data;
+	stk->top = old_top->next;
+	free(old_top);
 	stk->size--;
 	return ret;
 }

@@ -1,26 +1,40 @@
 #include "symbol_table.h"
 #include "ast.h"
 #include "util.h"
-#include "ht.h"
 #include "stack.h"
 
 struct stack *sym_tab;
 
-//static void sym_table_level_destroy(struct ht *level)
-//{
-//	size_t i = 0;
-//	if (!level)
-//		return;
-//
-//	for (i = 0 ; i < level->capacity ; ++i) {
-//		if (level->data[i]) {
-//			type_destroy((ast_type *)level->data[i]->val);
-//			free(level->data[i]);
-//		}
-//	}
-//	free(level->data);
-//	free(level);
-//}
+void st_level_destroy(struct ht *level)
+{
+	size_t i = 0;
+	if (!level)
+		return;
+
+	for (i = 0 ; i < level->capacity ; ++i) {
+		if (level->data[i]) {
+			ast_typed_symbol_destroy
+				((ast_typed_symbol *)level->data[i]->val); // val holds type
+			free(level->data[i]); // Destroy the kv
+		}
+	}
+	free(level->data);
+	free(level);
+}
+
+void st_destroy()
+{
+	struct ht *level = (struct ht *)stack_item_from_top(sym_tab, 0);
+
+	while (level) {
+		st_level_destroy(level);
+		stack_pop(sym_tab);
+		level = (struct ht *)stack_item_from_top(sym_tab, 0);
+	}
+
+	free(sym_tab);
+	sym_tab = 0;
+}
 
 void st_init(void)
 {
@@ -36,10 +50,7 @@ void scope_enter(void)
 
 void scope_exit(void)
 {
-	stack_pop(sym_tab);
-	
-	//struct ht *prev_top = (struct ht *)stack_pop(sym_tab);
-	//sym_table_level_destroy(prev_top);
+	st_level_destroy((struct ht *)stack_pop(sym_tab));
 }
 
 size_t scope_level(void)
@@ -47,10 +58,10 @@ size_t scope_level(void)
 	return stack_size(sym_tab);
 }
 
-void scope_bind(strvec *name, ast_typed_symbol *symbol)
+void scope_bind(ast_typed_symbol *symbol)
 {
 	struct ht *top = (struct ht *)stack_item_from_top(sym_tab, 0);
-	ht_insert(top, name, symbol);
+	ht_insert(top, symbol->symbol, symbol);
 }
 
 ast_typed_symbol *scope_lookup(strvec *name)
