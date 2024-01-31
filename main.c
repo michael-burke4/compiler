@@ -7,8 +7,11 @@
 #include "ast.h"
 #include "parse.h"
 #include "print.h"
+#include "symbol_table.h"
+#include "typecheck.h"
 
 int had_error = 0;
+extern struct stack *sym_tab;
 
 int main(int argc, const char *argv[])
 {
@@ -40,7 +43,11 @@ int main(int argc, const char *argv[])
 		goto error_ast;
 	}
 
-	program_print(program);
+	//program_print(program);
+
+	st_init();
+	typecheck_program(program);
+	st_destroy(sym_tab);
 	ast_free(program);
 	tok_list_destroy(head);
 

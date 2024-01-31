@@ -13,8 +13,14 @@ void st_level_destroy(struct ht *level)
 
 	for (i = 0; i < level->capacity; ++i) {
 		if (level->data[i]) {
-			ast_typed_symbol_destroy(
-				(ast_typed_symbol *)level->data[i]->val); // val holds type
+			// THE SYMBOL TABLE DOES NOT OWN THIS TYPED SYMBOL.
+			// THIS BELONGS TO THE AST.
+			// I REPEAT.
+			// THE SYMBOL TABLE DOES NOT OWN THIS TYPED SYMBOL!
+			// DON'T TRY TO FREE IT! IT IS ALREADY FREED IN FREEING THE AST!!!!
+			// DONT UNCOMMENT THE FOLLOWING TWO LINES!
+			//ast_typed_symbol_destroy(
+			//	(ast_typed_symbol *)level->data[i]->val); // val holds type
 			free(level->data[i]); // Destroy the kv
 		}
 	}

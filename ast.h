@@ -77,5 +77,6 @@ void decl_destroy(ast_decl *decl);
 void stmt_destroy(ast_stmt *stmt);
 void ast_typed_symbol_destroy(ast_typed_symbol *typesym);
 ast_type *type_copy(ast_type *t);
+ast_typed_symbol *arglist_copy(ast_typed_symbol *arglist);
 
 #endif
