@@ -78,26 +78,26 @@ void typed_sym_print(ast_typed_symbol *typesym)
 void type_print(ast_type *type)
 {
 	ast_typed_symbol *printhead = type->arglist;
-	switch (type->type) {
-	case T_I32:
+	switch (type->kind) {
+	case Y_I32:
 		printf("i32");
 		break;
-	case T_U32:
+	case Y_U32:
 		printf("u32");
 		break;
-	case T_I64:
+	case Y_I64:
 		printf("i64");
 		break;
-	case T_U64:
+	case Y_U64:
 		printf("u64");
 		break;
-	case T_VOID:
+	case Y_VOID:
 		printf("void");
 		break;
-	case T_BOOL:
+	case Y_BOOL:
 		printf("bool");
 		break;
-	case T_ARROW:
+	case Y_FUNCTION:
 		printf("(");
 		while (printhead != 0) {
 			typed_sym_print(printhead);
@@ -111,11 +111,11 @@ void type_print(ast_type *type)
 		printf(" -> ");
 		type_print(type->subtype);
 		break;
-	case T_IDENTIFIER:
+	case Y_IDENTIFIER:
 		strvec_print(type->name);
 		break;
 	default:
-		printf("UNSUPPORTED TYPE! (type %d)", type->type);
+		printf("UNSUPPORTED TYPE! (type %d)", type->kind);
 	}
 }
 

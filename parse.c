@@ -240,7 +240,7 @@ ast_stmt *parse_stmt(token_s **cur_token)
 				goto stmt_err;
 			}
 			if (!expect(cur_token, T_SEMICO)) {
-				report_error_tok("Statement missing terminating semicolon.",
+				report_error_tok("Statement missing terminating semicolon a.",
 						 *cur_token);
 				goto stmt_err;
 			}
@@ -255,7 +255,7 @@ ast_stmt *parse_stmt(token_s **cur_token)
 			goto stmt_err;
 		}
 		if (!expect(cur_token, T_SEMICO)) {
-			report_error_tok("Statement missing terminating semicolon.", *cur_token);
+			report_error_tok("Statement missing terminating semicolon b.", *cur_token);
 			goto stmt_err;
 		}
 		next(cur_token);
@@ -282,20 +282,41 @@ ast_type *parse_type(token_s **cur_token)
 
 	switch (get_type(cur_token)) {
 	case T_I64:
+		ret = type_init(Y_I64, 0);
+		next(cur_token);
+		break;
 	case T_I32:
+		ret = type_init(Y_I32, 0);
+		next(cur_token);
+		break;
 	case T_U64:
+		ret = type_init(Y_U64, 0);
+		next(cur_token);
+		break;
 	case T_U32:
+		ret = type_init(Y_U32, 0);
+		next(cur_token);
+		break;
 	case T_STRING:
+		ret = type_init(Y_U32, 0);
+		next(cur_token);
+		break;
 	case T_CHAR:
+		ret = type_init(Y_U32, 0);
+		next(cur_token);
+		break;
 	case T_VOID:
+		ret = type_init(Y_U32, 0);
+		next(cur_token);
+		break;
 	case T_BOOL:
-		ret = type_init(get_type(cur_token), 0);
+		ret = type_init(Y_BOOL, 0);
 		next(cur_token);
 		break;
 	case T_IDENTIFIER:
 		text = (*cur_token)->text;
 		(*cur_token)->text = 0;
-		ret = type_init(T_IDENTIFIER, text);
+		ret = type_init(Y_IDENTIFIER, text);
 		next(cur_token);
 		break;
 	case T_LPAREN:
@@ -322,7 +343,7 @@ ast_type *parse_type(token_s **cur_token)
 					 *cur_token);
 			sync_to(cur_token, T_ASSIGN, 1);
 		}
-		ret = type_init(T_ARROW, 0);
+		ret = type_init(Y_FUNCTION, 0);
 		ret->subtype = subtype;
 		ret->arglist = arglist;
 		break;

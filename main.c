@@ -43,7 +43,7 @@ int main(int argc, const char *argv[])
 		goto error_ast;
 	}
 
-	//program_print(program);
+	program_print(program);
 
 	st_init();
 	typecheck_program(program);

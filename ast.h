@@ -11,10 +11,22 @@ typedef struct ast_decl {
 	struct ast_decl *next;
 } ast_decl;
 
+typedef enum {
+	Y_I32,
+	Y_I64,
+	Y_U32,
+	Y_U64,
+	Y_STRING,
+	Y_BOOL,
+	Y_VOID,
+	Y_IDENTIFIER, // for custom types.
+	Y_FUNCTION,
+} type_t;
+
 typedef struct ast_type {
 	struct ast_type *subtype;
 	struct ast_typed_symbol *arglist;
-	token_t type;
+	type_t kind;
 	strvec *name;
 } ast_type;
 
@@ -64,7 +76,7 @@ typedef struct ast_stmt {
 } ast_stmt;
 
 ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt, ast_decl *next);
-ast_type *type_init(token_t type, strvec *name);
+ast_type *type_init(type_t kind, strvec *name);
 ast_typed_symbol *ast_typed_symbol_init(ast_type *type, strvec *symbol);
 ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, strvec *name,
 		    int int_lit, strvec *str_lit);

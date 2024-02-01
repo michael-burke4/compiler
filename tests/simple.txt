@@ -1,2 +1,5 @@
 let a: i32;
 let y: i32 = a;
+let x: (a: i32) -> void = {
+	let a: i32 = 50;
+};

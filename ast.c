@@ -13,12 +13,12 @@ ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt, a
 	return ret;
 }
 
-ast_type *type_init(token_t type, strvec *name)
+ast_type *type_init(type_t kind, strvec *name)
 {
 	ast_type *ret = smalloc(sizeof(*ret));
 	ret->subtype = 0;
 	ret->arglist = 0;
-	ret->type = type;
+	ret->kind = kind;
 	ret->name = name;
 	return ret;
 }
@@ -129,7 +129,7 @@ ast_type *type_copy(ast_type *t)
 	ast_type *ret;
 	if (!t)
 		return 0;
-	ret = type_init(t->type, strvec_copy(t->name));
+	ret = type_init(t->kind, strvec_copy(t->name));
 	ret->subtype = type_copy(t->subtype);
 	ret->arglist = arglist_copy(t->arglist);
 	return ret;

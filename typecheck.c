@@ -34,7 +34,7 @@ ast_type *derive_expr_type(ast_expr *expr)
 		return 0;
 	switch (expr->kind) {
 	case E_INT_LIT: // TODO: worry about i32, i64, u32, u64
-		return type_init(T_I32, 0);
+		return type_init(Y_I32, 0);
 	case E_IDENTIFIER:
 		ts = scope_lookup(expr->name);
 		if (ts) {
@@ -69,5 +69,5 @@ int type_equals(ast_type *a, ast_type *b)
 	if (!a || !b)
 		return 0;
 	return type_equals(a->subtype, b->subtype) && arglist_equals(a->arglist, b->arglist) &&
-	       a->type == b->type;
+	       a->kind == b->kind;
 }
