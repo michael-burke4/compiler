@@ -26,6 +26,7 @@ void expr_print(ast_expr *expr)
 {
 	if (!expr)
 		return;
+	ast_expr *current = 0;
 	switch (expr->kind) {
 	case E_POST_UNARY:
 		expr_print(expr->left);
@@ -54,6 +55,18 @@ void expr_print(ast_expr *expr)
 		break;
 	case E_IDENTIFIER:
 		strvec_print(expr->name);
+		break;
+	case E_FNCALL:
+		strvec_print(expr->name);
+		printf("(");
+		current = expr->left;
+		while (current && current->left != 0) {
+			if (!(current == expr->left))
+				printf(", ");
+			expr_print(current->left);
+			current = current->right;
+		}
+		printf(")");
 		break;
 	case E_FALSE_LIT:
 		printf("false");

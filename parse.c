@@ -29,6 +29,7 @@ static inline size_t get_col(token_s **cur_token)
 {
 	return (*cur_token)->line;
 }
+
 // Can search for a specific token to sync to. the or_newline enabled means the
 // parser will consider itself synced upon reaching the specified target token
 // type, OR a newline. If you just want to sync to a newline, put T_EOF as the
@@ -484,17 +485,18 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 	token_s *cur = *cur_token;
 	strvec *txt;
 	ast_expr *inner = 0;
-	token_t op;
+	ast_expr *arglist = 0;
+	ast_expr *cur_link = 0;
+	//token_t op;
 	switch (typ) {
-	case T_DPLUS:
-	case T_DMINUS:
-		while ((op = get_type(cur_token)) == T_DPLUS || op == T_DMINUS)
-		case T_LPAREN:
-			next(cur_token);
+	case T_LPAREN:
+		next(cur_token);
 		inner = parse_expr(cur_token);
 		if (get_type(cur_token) != T_RPAREN) {
+			// TODO leave error handling to fns like parse_stmt and parse_decl.
+			// Just bubble the error up by returning zero.
 			report_error_tok(
-				"Expression is missing a closing paren", // TODO leave error handling to fns like parse_stmt and parse_decl. Just bubble the error up by returning zero.
+				"Expression is missing a closing paren", 
 				*cur_token);
 			sync_to(cur_token, T_EOF, 1);
 			expr_destroy(inner);
@@ -514,7 +516,35 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 		txt = cur->text;
 		cur->text = 0;
 		next(cur_token);
-		return expr_init(E_IDENTIFIER, 0, 0, 0, txt, 0, 0);
+		if (expect(cur_token, T_LPAREN)) {
+//ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, strvec *name,
+		    //int int_lit, strvec *str_lit);
+		    	next(cur_token);
+			if (expect(cur_token, T_RPAREN)) {
+				next(cur_token);
+				return expr_init(E_FNCALL, 0, 0, 0, txt, 0, 0);
+			}
+			arglist = expr_init(E_LINK, 0, 0, 0, 0, 0, 0);
+			cur_link = arglist;
+			do {
+				if (arglist->left)
+					next(cur_token);
+				inner = parse_expr(cur_token);
+				cur_link->left = inner;
+				cur_link->right = expr_init(E_LINK, 0, 0, 0, 0, 0, 0);
+				cur_link = cur_link->right;
+			} while (expect(cur_token, T_COMMA));
+
+			if (!expect(cur_token, T_RPAREN)) {
+				report_error_tok("Function call missing comma or closing paren",
+					*cur_token);
+				sync_to(cur_token, T_EOF, 1);
+				expr_destroy(arglist);
+			}
+			next(cur_token);
+			return expr_init(E_FNCALL, arglist, 0, 0, txt, 0, 0);
+		} else
+			return expr_init(E_IDENTIFIER, 0, 0, 0, txt, 0, 0);
 	case T_TRUE:
 		next(cur_token);
 		return expr_init(E_TRUE_LIT, 0, 0, 0, 0, 0, 0);

@@ -1,5 +1,10 @@
 let a: i32;
 let y: i32 = a;
+let z: () -> void = {
+	a = 100;
+};
 let x: (a: i32) -> void = {
-	let a: i32 = 50;
+	(x + 3) - 5;
+	x(3);
+	z();
 };
