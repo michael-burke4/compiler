@@ -47,6 +47,8 @@ int main(int argc, const char *argv[])
 
 	st_init();
 	typecheck_program(program);
+	if (!had_error)
+		puts("typecheck passed!");
 	st_destroy(sym_tab);
 	ast_free(program);
 	tok_list_destroy(head);

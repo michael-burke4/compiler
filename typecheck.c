@@ -14,6 +14,7 @@ void typecheck_program(ast_decl *program)
 
 void typecheck_decl(ast_decl *decl)
 {
+	// TODO: prohibit duplicate declarations within same scope!
 	ast_type *expr_type;
 	if (decl->expr) {
 		expr_type = derive_expr_type(decl->expr);
@@ -33,8 +34,25 @@ ast_type *derive_expr_type(ast_expr *expr)
 	if (!expr)
 		return 0;
 	switch (expr->kind) {
+	case E_ADDSUB:
+	case E_MULDIV:
+	case E_EQUALITY:
+	case E_INEQUALITY:
+	case E_ASSIGN:
+	case E_PAREN:
+	case E_PRE_UNARY:
+	case E_POST_UNARY:
+		return 0;
+	case E_STR_LIT:
+		return type_init(Y_STRING, 0);
+	case E_CHAR_LIT:
+		return type_init(Y_CHAR, 0);
+	case E_TRUE_LIT:
+	case E_FALSE_LIT:
+		return type_init(Y_BOOL, 0);
 	case E_INT_LIT: // TODO: worry about i32, i64, u32, u64
 		return type_init(Y_I32, 0);
+
 	case E_IDENTIFIER:
 		ts = scope_lookup(expr->name);
 		if (ts) {

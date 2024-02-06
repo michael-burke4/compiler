@@ -16,6 +16,7 @@ typedef enum {
 	Y_I64,
 	Y_U32,
 	Y_U64,
+	Y_CHAR,
 	Y_STRING,
 	Y_BOOL,
 	Y_VOID,

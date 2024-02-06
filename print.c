@@ -53,6 +53,16 @@ void expr_print(ast_expr *expr)
 	case E_INT_LIT:
 		printf("%d", expr->int_lit);
 		break;
+	case E_CHAR_LIT:
+		printf("'");
+		strvec_print(expr->string_literal);
+		printf("'");
+		break;
+	case E_STR_LIT:
+		printf("\"");
+		strvec_print(expr->string_literal);
+		printf("\"");
+		break;
 	case E_IDENTIFIER:
 		strvec_print(expr->name);
 		break;
@@ -109,6 +119,12 @@ void type_print(ast_type *type)
 		break;
 	case Y_BOOL:
 		printf("bool");
+		break;
+	case Y_STRING:
+		printf("string");
+		break;
+	case Y_CHAR:
+		printf("char");
 		break;
 	case Y_FUNCTION:
 		printf("(");
