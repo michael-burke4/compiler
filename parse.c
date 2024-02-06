@@ -298,15 +298,15 @@ ast_type *parse_type(token_s **cur_token)
 		next(cur_token);
 		break;
 	case T_STRING:
-		ret = type_init(Y_U32, 0);
+		ret = type_init(Y_STRING, 0);
 		next(cur_token);
 		break;
 	case T_CHAR:
-		ret = type_init(Y_U32, 0);
+		ret = type_init(Y_CHAR, 0);
 		next(cur_token);
 		break;
 	case T_VOID:
-		ret = type_init(Y_U32, 0);
+		ret = type_init(Y_VOID, 0);
 		next(cur_token);
 		break;
 	case T_BOOL:
@@ -521,6 +521,11 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 	case T_FALSE:
 		next(cur_token);
 		return expr_init(E_FALSE_LIT, 0, 0, 0, 0, 0, 0);
+	case T_CHAR_LIT:
+		txt = cur->text;
+		cur->text = 0;
+		next(cur_token);
+		return expr_init(E_CHAR_LIT, 0, 0, 0, 0, 0, txt);
 	default:
 		report_error_tok("Could not parse expr unit. The offending token in question:",
 				 *cur_token);
