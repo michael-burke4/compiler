@@ -91,16 +91,53 @@ static ast_type *typecheck_fncall(ast_expr *expr)
 	return type_copy(st_fn->type->subtype);
 }
 
+static int is_numeric_type(ast_type *t)
+{
+	if (!t)
+		return 0;
+	switch (t->kind) {
+	case Y_I32:
+	case Y_I64:
+	case Y_U32:
+	case Y_U64:
+		return 1;
+	default:
+		return 0;
+	}
+}
 ast_type *derive_expr_type(ast_expr *expr)
 {
 	ast_typed_symbol *ts = 0;
+	ast_type *left;
+	ast_type *right;
 	if (!expr)
 		return 0;
 	switch (expr->kind) {
 	case E_ADDSUB:
 	case E_MULDIV:
+		left = derive_expr_type(expr->left);
+		right = derive_expr_type(expr->right);
+		if (type_equals(left, right) && is_numeric_type(left)) {
+			type_destroy(right);
+			return left;
+		}
+		had_error = 1;
+		type_destroy(left);
+		type_destroy(right);
+		return 0;
 	case E_EQUALITY:
 	case E_INEQUALITY:
+		left = derive_expr_type(expr->left);
+		right = derive_expr_type(expr->right);
+		if (type_equals(left, right) && is_numeric_type(left)) {
+			type_destroy(left);
+			type_destroy(right);
+			return type_init(Y_BOOL, 0);
+		}
+		had_error = 1;
+		type_destroy(left);
+		type_destroy(right);
+		return 0;
 	case E_ASSIGN:
 	case E_PAREN:
 	case E_PRE_UNARY:
