@@ -14,4 +14,4 @@ test: $(OBJ) test.o
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 clean:
-	rm *.o main test
+	-rm *.o main test
