@@ -439,7 +439,7 @@ ast_expr *parse_expr_muldiv(token_s **cur_token)
 	while (typ == T_STAR || typ == T_FSLASH || typ == T_PERCENT) {
 		op = typ;
 		next(cur_token);
-		that = parse_expr_unit(cur_token);
+		that = parse_expr_unit(cur_token); // TODO make this parse_expr_pre_unary
 		this = expr_init(E_MULDIV, this, that, op, 0, 0, 0);
 		typ = get_type(cur_token);
 	}
