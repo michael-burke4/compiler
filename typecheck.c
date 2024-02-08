@@ -139,7 +139,33 @@ ast_type *derive_expr_type(ast_expr *expr)
 		type_destroy(right);
 		return 0;
 	case E_ASSIGN:
+		if (expr->left->kind != E_IDENTIFIER || !expr->left->name) {
+			puts("Assignment expression's left side must be an identifier"); // TODO arrays!!!
+			had_error = 1;
+			return 0;
+		}
+		ts = scope_lookup(expr->left->name);
+		if (!ts) {
+			printf("Use of undeclared identifier ");
+			strvec_print(expr->left->name);
+			puts("");
+			had_error = 1;
+			return 0;
+		}
+		left = ts->type;
+		right = derive_expr_type(expr->right);
+		if (type_equals(left, right))
+			return right;
+		printf("Attempted to assign expression of type ");
+		type_print(right);
+		printf(" to a variable of type ");
+		type_print(left);
+		type_destroy(right);
+		puts("");
+		had_error = 1;
+		return 0;
 	case E_PAREN:
+		return derive_expr_type(expr->left);
 	case E_PRE_UNARY:
 	case E_POST_UNARY:
 		return 0;
