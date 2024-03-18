@@ -247,6 +247,8 @@ ast_stmt *parse_stmt(token_s **cur_token)
 			}
 			next(cur_token);
 		}
+		else
+			next(cur_token);
 		break;
 	default:
 		kind = S_EXPR;

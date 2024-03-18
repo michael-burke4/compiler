@@ -181,7 +181,12 @@ void stmt_print(ast_stmt *stmt)
 		printf("}");
 		break;
 	case S_RETURN:
-		printf("return ");
+		printf("return");
+		if (!stmt->expr) {
+			printf(";");
+			break;
+		}
+		printf(" ");
 		// fall through
 	case S_EXPR:
 		expr_print(stmt->expr);
