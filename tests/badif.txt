@@ -1,0 +1,7 @@
+let x: () -> i32 = {
+	if (false) {
+		return false;
+	} else {
+		return 6;
+	}
+};
