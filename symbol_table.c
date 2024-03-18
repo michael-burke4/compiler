@@ -89,3 +89,15 @@ ast_typed_symbol *scope_lookup_current(strvec *name)
 	struct ht *current = (struct ht *)stack_item_from_top(sym_tab, 0);
 	return ht_get(current, name);
 }
+
+void scope_bind_return_type(ast_type *type)
+{
+	struct ht *top = (struct ht *)stack_item_from_top(sym_tab, 0);
+	top->return_type = type;
+}
+
+ast_type *scope_get_return_type(void)
+{
+	struct ht *current = (struct ht *)stack_item_from_top(sym_tab, 0);
+	return current->return_type;
+}

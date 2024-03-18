@@ -18,6 +18,13 @@ void typecheck_decl(ast_decl *decl)
 {
 	// TODO: prohibit duplicate declarations within same scope!
 	ast_type *expr_type;
+	if (decl->typesym->type->kind == Y_FUNCTION) {
+		if (decl->body) {
+			scope_bind_return_type(decl->typesym->type->subtype);
+			typecheck_stmt(decl->body);
+			scope_bind_return_type(0);
+		}
+	}
 	if (decl->expr) {
 		expr_type = derive_expr_type(decl->expr);
 		if (!(type_equals(decl->typesym->type, expr_type))) {
@@ -198,8 +205,70 @@ ast_type *derive_expr_type(ast_expr *expr)
 
 void typecheck_stmt(ast_stmt *stmt)
 {
+	ast_type *typ;
 	if (!stmt)
-		puts("Typechecking empty statement?");
+		return;
+	switch (stmt->kind) {
+	case S_ERROR:
+		had_error = 1;
+		puts("WARNING typechecking a bad stmt. Big problem?!");
+		typecheck_stmt(stmt->next);
+		break;
+	case S_IFELSE:
+		if (!stmt->expr) {
+			had_error = 1;
+			puts("if statement condition must be non-empty");
+		}
+		typ = derive_expr_type(stmt->expr);
+		if (!typ || typ->kind != Y_BOOL) {
+			had_error = 1;
+			puts("if statement condition be a boolean");
+		}
+		type_destroy(typ);
+		typecheck_stmt(stmt->body);
+		typecheck_stmt(stmt->else_body);
+		typecheck_stmt(stmt->next);
+		break;
+	case S_BLOCK:
+		// DO NOT DESTROY TYP HERE!
+		// YOU DO NOT OWN TYP!!
+		typ = scope_get_return_type();
+		scope_enter();
+		scope_bind_return_type(typ);
+		typecheck_stmt(stmt->next);
+		scope_exit();
+		break;
+	case S_DECL:
+		typecheck_decl(stmt->decl);
+		typecheck_stmt(stmt->next);
+		break;
+	case S_EXPR:
+		type_destroy(derive_expr_type(stmt->expr));
+		typecheck_stmt(stmt->next);
+		break;
+	case S_RETURN:
+		// See above warning about typ ownership
+		typ = scope_get_return_type();
+		if (!typ) {
+			had_error = 1;
+			puts("Cannot use a return statement outside of a function");
+		} else if (!stmt->expr) {
+			if (typ->kind != Y_VOID) {
+				had_error = 1;
+				puts("Non-void function has empty return statement.");
+			}
+		} else {
+			// Dangerous reuse of typ: now 'owns' what is points to.
+			typ = derive_expr_type(stmt->expr);
+			if (!type_equals(typ, scope_get_return_type())) {
+				had_error = 1;
+				puts("Return value does not match function signature");
+			}
+			type_destroy(typ);
+		}
+		typecheck_stmt(stmt->next);
+		break;
+	}
 }
 
 static int arglist_equals(ast_typed_symbol *a, ast_typed_symbol *b)

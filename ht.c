@@ -27,6 +27,10 @@ struct ht *ht_init(size_t capacity)
 	ret->data = scalloc(capacity, sizeof(*ret->data));
 	ret->capacity = capacity;
 	ret->size = 0;
+
+	// See TODO in ht.h Move where the return type is stored to a wrapper struct or something.
+	ret->return_type = 0;
+
 	return ret;
 }
 
@@ -46,7 +50,7 @@ static int insert(struct kv **data, size_t cap, uint64_t key_hash, void *value)
 
 int ht_insert(struct ht *tab, strvec *key, void *value)
 {
-	if (tab->size == tab->capacity * 3 / 4)
+	if (tab->size >= tab->capacity * 3 / 4)
 		ht_resize(tab, tab->capacity * 2);
 	if (insert(tab->data, tab->capacity, hash(key), value)) {
 		tab->size += 1;
