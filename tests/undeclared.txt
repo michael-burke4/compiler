@@ -1,0 +1,4 @@
+let a: () -> void = {
+	this_doesnt_exist();
+	return;
+};

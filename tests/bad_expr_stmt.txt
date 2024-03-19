@@ -1,0 +1,4 @@
+let a: () -> void = {
+	5 + true;
+	return;
+};

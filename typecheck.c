@@ -14,28 +14,69 @@ void typecheck_program(ast_decl *program)
 	typecheck_program(program->next);
 }
 
+static void scope_bind_args(ast_decl *decl)
+{
+	ast_typed_symbol *sym;
+	if (!decl) {
+		printf("NULL FN IN BINDING ARGS?!");
+		had_error = 1;
+		return;
+	}
+	sym = decl->typesym->type->arglist;
+	while (sym) {
+		//typed_sym_print(sym);
+		scope_bind(sym);
+		sym = sym->next;
+	}
+}
+
+static void typecheck_fnbody(ast_decl *decl)
+{
+	if (!decl || !decl->body) {
+		printf("NULL FN IN TYPECHECKING FNBODY?!");
+		had_error = 1;
+		return;
+	}
+	scope_enter();
+	scope_bind_return_type(decl->typesym->type->subtype);
+	scope_bind_args(decl);
+	typecheck_stmt(decl->body->next); // Skip the body statement. We know whats up.
+	scope_exit();
+}
+
 void typecheck_decl(ast_decl *decl)
 {
-	// TODO: prohibit duplicate declarations within same scope!
-	ast_type *expr_type;
-	if (decl->typesym->type->kind == Y_FUNCTION) {
-		if (decl->body) {
-			scope_bind_return_type(decl->typesym->type->subtype);
-			typecheck_stmt(decl->body);
-			scope_bind_return_type(0);
-		}
+	ast_type *typ;
+	if (!decl) {
+		printf("Typechecking empty decl!?!?!");
+		had_error = 1;
+		return;
 	}
-	if (decl->expr) {
-		expr_type = derive_expr_type(decl->expr);
-		if (!(type_equals(decl->typesym->type, expr_type))) {
+	if (scope_lookup_current(decl->typesym->symbol)) {
+		printf("Duplicate declaration of symbol \"");
+		strvec_print(decl->typesym->symbol);
+		printf("\"\n");
+		had_error = 1;
+		return;
+	}
+	if (decl->typesym->type->kind == Y_FUNCTION) {
+		scope_bind(decl->typesym);
+		typecheck_fnbody(decl);
+		//typ = scope_get_return_type();
+		//scope_bind_return_type(decl->typesym->type->subtype);
+		//typecheck_stmt(decl->body);
+		//scope_bind_return_type(typ);
+	} else if (decl->expr) {
+		typ = derive_expr_type(decl->expr);
+		if (!(type_equals(decl->typesym->type, typ))) {
 			had_error = 1;
 			puts("Failed typecheck TODO: good error messages.");
 		}
-		type_destroy(expr_type);
-
+		type_destroy(typ);
+		scope_bind(decl->typesym);
 	}
-	scope_bind(decl->typesym);
 }
+
 
 /*
 Assumes that expr is a function call.
@@ -58,9 +99,10 @@ static ast_type *typecheck_fncall(ast_expr *expr)
 	int flag = 0;
 
 	if (!st_fn) {
-		printf("call to undeclared function \"");
+		printf("Call to undeclared function \"");
 		strvec_print(expr->name);
 		puts("\"");
+		had_error = 1;
 		return 0;
 	}
 	st_current = st_fn->type->arglist;
@@ -112,6 +154,7 @@ static int is_numeric_type(ast_type *t)
 		return 0;
 	}
 }
+
 ast_type *derive_expr_type(ast_expr *expr)
 {
 	ast_typed_symbol *ts = 0;
@@ -129,6 +172,9 @@ ast_type *derive_expr_type(ast_expr *expr)
 			return left;
 		}
 		had_error = 1;
+		printf("Typecheck failed at expresion \"");
+		expr_print(expr);
+		puts("\"");
 		type_destroy(left);
 		type_destroy(right);
 		return 0;
@@ -142,6 +188,9 @@ ast_type *derive_expr_type(ast_expr *expr)
 			return type_init(Y_BOOL, 0);
 		}
 		had_error = 1;
+		printf("Typecheck failed at expresion \"");
+		expr_print(expr);
+		puts("\"");
 		type_destroy(left);
 		type_destroy(right);
 		return 0;
@@ -173,9 +222,6 @@ ast_type *derive_expr_type(ast_expr *expr)
 		return 0;
 	case E_PAREN:
 		return derive_expr_type(expr->left);
-	case E_PRE_UNARY:
-	case E_POST_UNARY:
-		return 0;
 	case E_STR_LIT:
 		return type_init(Y_STRING, 0);
 	case E_CHAR_LIT:
@@ -192,9 +238,10 @@ ast_type *derive_expr_type(ast_expr *expr)
 		if (ts) {
 			return type_copy(ts->type);
 		}
-		printf("Use of undeclared identifier '");
+		printf("Use of undeclared identifier \"");
 		strvec_print(expr->name);
-		puts("'");
+		puts("\"");
+		had_error = 1;
 		return 0;
 	default:
 		puts("unsupported expr kind while typechecking!");
