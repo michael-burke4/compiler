@@ -169,6 +169,7 @@ ast_decl *parse_decl(token_s **cur_token)
 decl_parse_err:
 	ast_typed_symbol_destroy(typed_symbol);
 	expr_destroy(expr);
+	stmt_destroy(stmt);
 	return decl_init(0, 0, 0, 0);
 }
 
