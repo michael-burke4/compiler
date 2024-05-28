@@ -1,6 +1,7 @@
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "codegen.h"
 #include "util.h"
 #include "token.h"
 #include "scan.h"
@@ -49,7 +50,22 @@ int main(int argc, const char *argv[])
 	typecheck_program(program);
 	if (!had_error)
 		puts("typecheck passed!");
-	st_destroy(sym_tab);
+
+	LLVMModuleRef mod = program_codegen(program);
+	char *error = 0;
+	LLVMVerifyModule(mod, LLVMAbortProcessAction, &error);
+	LLVMDisposeMessage(error);
+
+	error = 0;
+	LLVMLinkInMCJIT();
+	LLVMInitializeNativeTarget();
+	LLVMInitializeNativeAsmPrinter();
+
+	if (LLVMWriteBitcodeToFile(mod, "sum.bc") != 0) {
+		fprintf(stderr, "Could not write bitcode to file!");
+	}
+
+	st_destroy();
 	ast_free(program);
 	tok_list_destroy(head);
 
