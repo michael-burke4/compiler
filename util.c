@@ -127,10 +127,10 @@ void *srealloc(void *ptr, size_t size)
 	return ret;
 }
 
-void strvec_tostatic(strvec *vec, char buff[BUFFER_MAX_LEN+1])
+void strvec_tostatic(strvec *vec, char buff[BUFFER_MAX_LEN])
 {
 	size_t i;
-	if (vec->size > BUFFER_MAX_LEN+1) {
+	if (vec->size > BUFFER_MAX_LEN - 1) {
 		fprintf(stderr, "vector too big to put in static buffer!");
 		exit(1);
 	}
