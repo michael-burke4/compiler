@@ -5,6 +5,8 @@
 #include <err.h>
 #include <stddef.h>
 
+#define BUFFER_MAX_LEN 127
+
 typedef struct {
 	size_t size;
 	size_t capacity;
@@ -24,4 +26,5 @@ void strvec_print(strvec *vec);
 void strvec_destroy(strvec *vec);
 int strvec_equals_str(strvec *vec, const char *string);
 int strvec_toi(strvec *vec);
+void strvec_tostatic(strvec *vec, char buff[BUFFER_MAX_LEN+1]);
 #endif

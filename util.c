@@ -23,10 +23,23 @@ strvec *strvec_init_str(const char *str)
 	return ret;
 }
 
+void *_reallocarray(void *ptr, size_t nmemb, size_t size) {
+    if (nmemb > 0 && SIZE_MAX / nmemb < size) {
+        return NULL;
+    }
+
+    size_t total_size = nmemb * size;
+    if (size != 0 && total_size / size != nmemb) {
+        return NULL;
+    }
+
+    return realloc(ptr, total_size);
+}
+
 void strvec_append(strvec *vec, char c)
 {
 	if (vec->capacity <= vec->size) {
-		vec->text = reallocarray(vec->text, vec->size * 2, sizeof(*(vec->text)));
+		vec->text = _reallocarray(vec->text, vec->size * 2, sizeof(*(vec->text)));
 		vec->capacity *= 2;
 	}
 	vec->text[vec->size] = c;
@@ -112,4 +125,16 @@ void *srealloc(void *ptr, size_t size)
 	if (!ret)
 		err(1, "realloc failed");
 	return ret;
+}
+
+void strvec_tostatic(strvec *vec, char buff[BUFFER_MAX_LEN+1])
+{
+	size_t i;
+	if (vec->size > BUFFER_MAX_LEN+1) {
+		fprintf(stderr, "vector too big to put in static buffer!");
+		exit(1);
+	}
+	for (i = 0; i < vec->size ; ++i) //strvec char array is NON-NULL TERMINATED!
+		buff[i] = vec->text[i];
+	buff[i] = '\0';
 }
