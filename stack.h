@@ -13,7 +13,7 @@ typedef struct stack {
 	struct node *top;
 } stack;
 
-stack *stack_init();
+stack *stack_init(void);
 void stack_push(stack *stk, void *item);
 void *stack_pop(stack *stk);
 void *stack_item_from_base(stack *stk, size_t position);

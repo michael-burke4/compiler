@@ -28,7 +28,7 @@ void st_level_destroy(struct ht *level)
 	free(level);
 }
 
-void st_destroy()
+void st_destroy(void)
 {
 	struct ht *level = (struct ht *)stack_item_from_top(sym_tab, 0);
 
@@ -50,8 +50,8 @@ void st_init(void)
 
 void scope_enter(void)
 {
-	struct ht *new = ht_init(8);
-	stack_push(sym_tab, (void *)new);
+	struct ht *new_ht = ht_init(8);
+	stack_push(sym_tab, (void *)new_ht);
 }
 
 void scope_exit(void)
@@ -87,7 +87,7 @@ ast_typed_symbol *scope_lookup(strvec *name)
 ast_typed_symbol *scope_lookup_current(strvec *name)
 {
 	struct ht *current = (struct ht *)stack_item_from_top(sym_tab, 0);
-	return ht_get(current, name);
+	return (ast_typed_symbol *)ht_get(current, name);
 }
 
 void scope_bind_return_type(ast_type *type)

@@ -1,7 +1,7 @@
 #include "util.h"
 #include "stack.h"
 
-stack *stack_init()
+stack *stack_init(void)
 {
 	stack *ret = smalloc(sizeof(*ret));
 	ret->size = 0;

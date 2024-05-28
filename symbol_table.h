@@ -4,7 +4,7 @@
 #include "ht.h"
 
 void st_init(void);
-void st_destroy();
+void st_destroy(void);
 void st_level_destroy(struct ht *level);
 void scope_enter(void);
 void scope_exit(void);
