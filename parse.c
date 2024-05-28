@@ -25,11 +25,6 @@ static inline size_t get_line(token_s **cur_token)
 	return (*cur_token)->line;
 }
 
-static inline size_t get_col(token_s **cur_token)
-{
-	return (*cur_token)->line;
-}
-
 // Can search for a specific token to sync to. the or_newline enabled means the
 // parser will consider itself synced upon reaching the specified target token
 // type, OR a newline. If you just want to sync to a newline, put T_EOF as the
@@ -57,43 +52,40 @@ ast_decl *parse_program(token_s **cur_token)
 	return ret;
 }
 
-// Parsing a non-empty arglist will return a linked list of typed symbols
-// An arglist with an error in it will return 0
-// an empty arglist will return a pointer to the area in memory that is 0 + sizeof(ast_typed_symbol)
-//	This is a dumb hack to get around the fact that an empty arglist should be 0 but I also
-//	want to communicate that there was no issue.
-//	THEORETICALLY there could be a weird error if the return value of this function
-//	is actually allocated at that 0 + sizeof(...), but I will accept that risk and continue
-//	living in denial and ignorance.
-//
-//	Could just have an `int *empty` out param but uhhhh...
-static ast_typed_symbol *parse_arglist(token_s **cur_token)
+static ast_typed_symbol *parse_arglist(token_s **cur_token, int *had_error)
 {
 	ast_typed_symbol *head = 0;
 	ast_typed_symbol *tmp = 0;
 	ast_typed_symbol *tmp2 = 0;
 	token_t typ;
-
-	head += 1;
+	int empty = 1;
+	*had_error = 0;
 	while (1) {
 		typ = get_type(cur_token);
 		if (typ == T_RPAREN) {
 			next(cur_token);
 			return head;
-		} else if (head == ((ast_typed_symbol *)0) + 1) {
+		} else if (empty) {
 			head = parse_typed_symbol(cur_token);
-			if (!head)
+			if (!head) {
+				*had_error = 1;
 				return 0;
+			}
+			empty = 0;
 			tmp = head;
 		} else if (typ == T_COMMA) {
 			next(cur_token);
 			tmp2 = parse_typed_symbol(cur_token);
-			if (!tmp2)
+			if (!tmp2) {
+				*had_error = 1;
 				return 0;
+			}
 			tmp->next = tmp2;
 			tmp = tmp->next;
-		} else
+		} else {
+			*had_error = 1;
 			return 0;
+		}
 	}
 }
 
@@ -283,6 +275,7 @@ ast_type *parse_type(token_s **cur_token)
 	ast_type *subtype = 0;
 	ast_typed_symbol *arglist = 0;
 	strvec *text = 0;
+	int had_arglist_err;
 
 	switch (get_type(cur_token)) {
 	case T_I64:
@@ -325,15 +318,11 @@ ast_type *parse_type(token_s **cur_token)
 		break;
 	case T_LPAREN:
 		next(cur_token);
-		arglist = parse_arglist(cur_token);
-		if (!arglist) {
+		arglist = parse_arglist(cur_token, &had_arglist_err);
+		if (had_arglist_err) {
 			report_error_tok("Failed parsing argument list in function declaration.",
 					 *cur_token);
 			sync_to(cur_token, T_ASSIGN, 1);
-		}
-		// This is kind of genius but also 100% a dumb hack
-		if (arglist == (((ast_typed_symbol *)0) + 1)) {
-			arglist = 0;
 		}
 		if (!expect(cur_token, T_ARROW)) {
 			report_error_tok("Missing arrow in function declaration.", *cur_token);
