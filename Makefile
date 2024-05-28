@@ -5,6 +5,7 @@ LDFLAGS=`llvm-config --cxxflags --ldflags --libs core executionengine mcjit inte
 DEPS=typecheck.h symbol_table.h ht.h stack.h util.h token.h scan.h parse.h ast.h error.h print.h codegen.h
 OBJ=typecheck.o symbol_table.c ht.o stack.o util.o token.o scan.o parse.o ast.o error.o print.o codegen.o
 
+.PHONY: clean
 
 main: $(OBJ) main.o
 	$(LD) -o $@ $^ $(LDFLAGS)
