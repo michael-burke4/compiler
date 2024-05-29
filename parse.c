@@ -167,28 +167,26 @@ decl_parse_err:
 
 ast_stmt *parse_stmt_block(token_s **cur_token)
 {
-	ast_stmt *head = 0;
+	ast_stmt *block = 0;
 	ast_stmt *current = 0;
 	if (!expect(cur_token, T_LCURLY)) {
 		return 0;
 	}
-	head = stmt_init(S_BLOCK, 0, 0, 0, 0);
-	head->next = 0;
+	block = stmt_init(S_BLOCK, 0, 0, 0, 0);
+	block->next = 0;
 	next(cur_token);
-	current = head;
 	while (!expect(cur_token, T_RCURLY) && !expect(cur_token, T_EOF)) {
-		//if (!head) {
-		//	head = parse_stmt(cur_token);
-		//	current = head;
-		//} else {
-		//	current->next = parse_stmt(cur_token);
-		//	current = current->next;
-		//}
-		current->next = parse_stmt(cur_token);
-		current = current->next;
+		if (!current) {
+			block->body = parse_stmt(cur_token);
+			current = block->body;
+		}
+		else {
+			current->next = parse_stmt(cur_token);
+			current = current->next;
+		}
 	}
 	next(cur_token);
-	return head;
+	return block;
 }
 ast_stmt *parse_stmt(token_s **cur_token)
 {

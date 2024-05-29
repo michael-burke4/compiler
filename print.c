@@ -171,7 +171,7 @@ void stmt_print(ast_stmt *stmt)
 		decl_print(stmt->decl);
 		break;
 	case S_BLOCK:
-		stmt = stmt->next;
+		stmt = stmt->body;
 		printf("{\n");
 		while (stmt != 0) {
 			stmt_print(stmt);

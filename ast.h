@@ -62,7 +62,7 @@ typedef struct ast_expr {
 	struct ast_expr *right;
 	token_t op;
 	strvec *name;
-	int int_lit;
+	int int_lit; // TODO: make this one field called 'literal' - worry abt parsing int/float value later.
 	strvec *string_literal;
 	ast_type type;
 } ast_expr;

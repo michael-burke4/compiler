@@ -33,14 +33,15 @@ static void scope_bind_args(ast_decl *decl)
 static void typecheck_fnbody(ast_decl *decl)
 {
 	if (!decl || !decl->body) {
-		printf("NULL FN IN TYPECHECKING FNBODY?!");
+		//TODO: Look at this.
+		printf("Currently not allowing empty fn declarations. Provide an fn body.");
 		had_error = 1;
 		return;
 	}
 	scope_enter();
 	scope_bind_return_type(decl->typesym->type->subtype);
 	scope_bind_args(decl);
-	typecheck_stmt(decl->body->next); // Skip the body statement. We know whats up.
+	typecheck_stmt(decl->body->body);
 	scope_exit();
 }
 
