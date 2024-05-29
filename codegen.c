@@ -17,13 +17,15 @@ void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 	if (!decl)
 		return;
 	if (decl->typesym->type->kind == Y_FUNCTION) {
+		char buf[BUFFER_MAX_LEN];
 		LLVMTypeRef param_types[] = { LLVMInt32Type(), LLVMInt32Type() };
 		LLVMTypeRef ret_type = LLVMFunctionType(LLVMInt32Type(), param_types, 2, 0);
-		LLVMValueRef sum = LLVMAddFunction(*mod, "sum", ret_type);
-		LLVMBasicBlockRef entry = LLVMAppendBasicBlock(sum, "entry");
+		strvec_tostatic(decl->typesym->symbol, buf);
+		LLVMValueRef fn_value = LLVMAddFunction(*mod, buf, ret_type);
+		LLVMBasicBlockRef entry = LLVMAppendBasicBlock(fn_value, "entry");
 		LLVMBuilderRef builder = LLVMCreateBuilder();
 		LLVMPositionBuilderAtEnd(builder, entry);
-		LLVMValueRef tmp = LLVMBuildAdd(builder, LLVMGetParam(sum, 0), LLVMGetParam(sum, 1), "tmp");
+		LLVMValueRef tmp = LLVMBuildAdd(builder, LLVMGetParam(fn_value, 0), LLVMGetParam(fn_value, 1), "tmp");
 		LLVMBuildRet(builder, tmp);
 		LLVMDisposeBuilder(builder);
 	}
