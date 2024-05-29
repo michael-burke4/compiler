@@ -24,17 +24,15 @@ strvec *strvec_init_str(const char *str)
 	return ret;
 }
 
-void *_reallocarray(void *ptr, size_t nmemb, size_t size) {
-    if (nmemb > 0 && SIZE_MAX / nmemb < size) {
-        return NULL;
-    }
+static void *_reallocarray(void *ptr, size_t nmemb, size_t size)
+{
+	if (nmemb > 0 && SIZE_MAX / nmemb < size)
+    		return 0;
 
-    size_t total_size = nmemb * size;
-    if (size != 0 && total_size / size != nmemb) {
-        return NULL;
-    }
-
-    return realloc(ptr, total_size);
+	size_t total_size = nmemb * size;
+	if (size != 0 && total_size / size != nmemb)
+		return 0;
+	return realloc(ptr, total_size);
 }
 
 void strvec_append(strvec *vec, char c)
