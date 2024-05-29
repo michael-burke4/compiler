@@ -10,6 +10,7 @@
 #include "print.h"
 #include "symbol_table.h"
 #include "typecheck.h"
+#include <llvm-c/Core.h>
 
 int had_error = 0;
 extern struct stack *sym_tab;
@@ -61,13 +62,15 @@ int main(int argc, const char *argv[])
 	LLVMInitializeNativeTarget();
 	LLVMInitializeNativeAsmPrinter();
 
-	if (LLVMWriteBitcodeToFile(mod, "sum.bc") != 0) {
+	if (LLVMWriteBitcodeToFile(mod, "out.bc") != 0) {
 		fprintf(stderr, "Could not write bitcode to file!");
 	}
 
 	st_destroy();
 	ast_free(program);
 	tok_list_destroy(head);
+	LLVMDisposeModule(mod);
+	LLVMShutdown();
 
 	fclose(f);
 	return 0;
