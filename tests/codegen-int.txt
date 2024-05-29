@@ -1,0 +1,3 @@
+let return_five: () -> i32 = {
+	return 5;
+};

@@ -51,6 +51,9 @@ int main(int argc, const char *argv[])
 	typecheck_program(program);
 	if (!had_error)
 		puts("typecheck passed!");
+	else {
+		goto error_typecheck;
+	}
 
 	LLVMModuleRef mod = program_codegen(program);
 	char *error = 0;
@@ -58,7 +61,6 @@ int main(int argc, const char *argv[])
 	LLVMDisposeMessage(error);
 
 	error = 0;
-	LLVMLinkInMCJIT();
 	LLVMInitializeNativeTarget();
 	LLVMInitializeNativeAsmPrinter();
 
@@ -75,10 +77,13 @@ int main(int argc, const char *argv[])
 	fclose(f);
 	return 0;
 
+error_typecheck:
+	st_destroy();
 error_ast:
 	ast_free(program);
 error_noast:
 	tok_list_destroy(head);
 	fclose(f);
+	LLVMShutdown();
 	return retcode;
 }
