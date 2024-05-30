@@ -1,4 +1,6 @@
 *.swp
 *.o
+*.bc
+*.ll
 main
 test
