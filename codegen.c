@@ -5,9 +5,9 @@
 
 unsigned long counter = 0;
 
-LLVMModuleRef program_codegen(ast_decl *program)
+LLVMModuleRef program_codegen(ast_decl *program, char *module_name)
 {
-	LLVMModuleRef ret = LLVMModuleCreateWithName("my_module");
+	LLVMModuleRef ret = LLVMModuleCreateWithName(module_name);
 	while (program) {
 		decl_codegen(&ret, program);
 		program = program->next;

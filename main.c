@@ -11,9 +11,20 @@
 #include "symbol_table.h"
 #include "typecheck.h"
 #include <llvm-c/Core.h>
+#include <string.h>
 
 int had_error = 0;
 extern struct stack *sym_tab;
+
+static void remove_extension(char *buf)
+{
+	for (int i = strlen(buf) ; i > 0 ; i--) {
+		if (buf[i] == '.') {
+			buf[i] = '\0';
+			break;
+		}
+	}
+}
 
 int main(int argc, const char *argv[])
 {
@@ -22,6 +33,9 @@ int main(int argc, const char *argv[])
 	token_s *head;
 	ast_decl *program;
 	int retcode = 0;
+	char path[4096];
+	char modname[4096];
+	char outname[4096];
 
 	if (argc != 2) {
 		printf("Invalid # of arguments: invoke like `./main [file]`\n");
@@ -55,7 +69,10 @@ int main(int argc, const char *argv[])
 		goto error_typecheck;
 	}
 
-	LLVMModuleRef mod = program_codegen(program);
+	strcpy(path, argv[1]);
+	strcpy(modname, basename(path));
+
+	LLVMModuleRef mod = program_codegen(program, modname);
 	char *error = 0;
 	LLVMVerifyModule(mod, LLVMAbortProcessAction, &error);
 	LLVMDisposeMessage(error);
@@ -64,7 +81,9 @@ int main(int argc, const char *argv[])
 	LLVMInitializeNativeTarget();
 	LLVMInitializeNativeAsmPrinter();
 
-	if (LLVMWriteBitcodeToFile(mod, "out.bc") != 0) {
+	remove_extension(modname);
+	sprintf(outname, "%s.bc", modname);
+	if (LLVMWriteBitcodeToFile(mod, outname) != 0) {
 		fprintf(stderr, "Could not write bitcode to file!");
 	}
 
