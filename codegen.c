@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "print.h"
 #include "ht.h"
+#include <string.h>
 
 unsigned long counter = 0;
 
@@ -32,15 +33,32 @@ LLVMValueRef stmt_codegen(LLVMBuilderRef builder, ast_stmt *stmt)
 	}
 }
 
+static LLVMValueRef get_param_by_name(LLVMValueRef function, char *name)
+{
+	LLVMValueRef param;
+	for (unsigned int i = 0 ; i < LLVMCountParams(function) ; ++i) {
+		param = LLVMGetParam(function, i);
+		if (LLVMGetValueName(param) && strcmp(LLVMGetValueName(param), name) == 0)
+			return param;
+	}
+	return 0;
+}
+
 LLVMValueRef expr_codegen(LLVMBuilderRef builder, ast_expr *expr)
 {
 	char buffer[128];
+	LLVMValueRef parent_fn;
 	switch (expr->kind) {
 	case E_INT_LIT:
 		return LLVMConstInt(LLVMInt32Type(), (unsigned long long)expr->int_lit,0);
 	case E_ADDSUB:
 		snprintf(buffer, sizeof(buffer), "e%lu", counter++);
 		return LLVMBuildAdd(builder, expr_codegen(builder, expr->left), expr_codegen(builder, expr->right), buffer);
+	//case E_FNCALL:
+	case E_IDENTIFIER:
+		strvec_tostatic(expr->name, buffer);
+		parent_fn = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
+		return get_param_by_name(parent_fn, buffer);
 	default:
 		printf("can't codegen that expr kind right now.");
 		exit(1);
