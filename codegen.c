@@ -6,8 +6,6 @@
 #include "ht.h"
 #include <string.h>
 
-unsigned long counter = 0;
-
 LLVMModuleRef program_codegen(ast_decl *program, char *module_name)
 {
 	LLVMModuleRef ret = LLVMModuleCreateWithName(module_name);
@@ -18,17 +16,17 @@ LLVMModuleRef program_codegen(ast_decl *program, char *module_name)
 	return ret;
 }
 
-LLVMValueRef stmt_codegen(LLVMBuilderRef builder, ast_stmt *stmt)
+LLVMValueRef stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt)
 {
 	switch (stmt->kind) {
 	case S_BLOCK:
-		return stmt_codegen(builder, stmt->body);
+		return stmt_codegen(mod, builder, stmt->body);
 	case S_EXPR:
-		return expr_codegen(builder, stmt->expr);
+		return expr_codegen(mod, builder, stmt->expr);
 	case S_RETURN:
-		return LLVMBuildRet(builder, expr_codegen(builder, stmt->expr));
+		return LLVMBuildRet(builder, expr_codegen(mod, builder, stmt->expr));
 	default:
-		printf("can't codegen that expr kind right now.");
+		printf("can't codegen that stmt kind right now.\n");
 		exit(1);
 	}
 }
@@ -44,26 +42,22 @@ static LLVMValueRef get_param_by_name(LLVMValueRef function, char *name)
 	return 0;
 }
 
-LLVMValueRef expr_codegen(LLVMBuilderRef builder, ast_expr *expr)
+#define MAX_ARGS 32
+static void get_fncall_args(LLVMModuleRef mod, LLVMBuilderRef builder,ast_expr *expr, unsigned argno, LLVMValueRef (*args)[MAX_ARGS])
 {
-	char buffer[128];
-	LLVMValueRef parent_fn;
-	switch (expr->kind) {
-	case E_INT_LIT:
-		return LLVMConstInt(LLVMInt32Type(), (unsigned long long)expr->int_lit,0);
-	case E_ADDSUB:
-		snprintf(buffer, sizeof(buffer), "e%lu", counter++);
-		return LLVMBuildAdd(builder, expr_codegen(builder, expr->left), expr_codegen(builder, expr->right), buffer);
-	//case E_FNCALL:
-	case E_IDENTIFIER:
-		strvec_tostatic(expr->name, buffer);
-		parent_fn = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
-		return get_param_by_name(parent_fn, buffer);
-	default:
-		printf("can't codegen that expr kind right now.");
-		exit(1);
+	ast_expr *cur_arg;
+	if (argno == 0)
+		return;
+	cur_arg = expr->left;
+	for (unsigned i = 0 ; i < MAX_ARGS ; ++i) {
+		if (i < argno) {
+			(*args)[i] = expr_codegen(mod, builder, cur_arg->left);
+			cur_arg = cur_arg->right;
+		} else
+			(*args)[i] = 0;
 	}
 }
+
 
 static LLVMTypeRef to_llvm_type(ast_type *tp)
 {
@@ -71,11 +65,44 @@ static LLVMTypeRef to_llvm_type(ast_type *tp)
 	case Y_I32:
 		return LLVMInt32Type();
 	default:
-		printf("couldn't convert type");
+		printf("couldn't convert type\n");
 		abort();
 	}
 }
 
+LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr)
+{
+	char buffer[BUFFER_MAX_LEN];
+	LLVMValueRef fn;
+	//TODO: Strictly enforce a max number of args. Making this static is really nice. Honestly
+	// convert all of the little hacks like 'link' expression type to be a static array within
+	// the expr struct/decl struct etc.
+	LLVMValueRef args[MAX_ARGS];
+	unsigned argno;
+	switch (expr->kind) {
+	case E_LINK:
+		printf("TRIED TO CODEGEN LINK!\n");
+		abort();
+	case E_INT_LIT:
+		return LLVMConstInt(LLVMInt32Type(), (unsigned long long)expr->int_lit,0);
+	case E_ADDSUB:
+		return LLVMBuildAdd(builder, expr_codegen(mod, builder, expr->left), expr_codegen(mod, builder, expr->right), "");
+	case E_FNCALL:
+		strvec_tostatic(expr->name, buffer);
+		fn = LLVMGetNamedFunction(mod, buffer);
+		argno = LLVMCountParams(fn);
+		get_fncall_args(mod, builder, expr, argno, &args);
+		return LLVMBuildCall(builder, fn, args, argno, "");
+	case E_IDENTIFIER:
+		//TODO: not every identifier is an argument lol.
+		strvec_tostatic(expr->name, buffer);
+		fn = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
+		return get_param_by_name(fn, buffer);
+	default:
+		printf("can't codegen that expr kind right now.");
+		exit(1);
+	}
+}
 
 static LLVMTypeRef *build_param_types(ast_decl *decl, unsigned *num)
 {
@@ -130,7 +157,7 @@ void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 
 		LLVMBuilderRef builder = LLVMCreateBuilder();
 		LLVMPositionBuilderAtEnd(builder, entry);
-		stmt_codegen(builder, decl->body);
+		stmt_codegen(*mod, builder, decl->body);
 		LLVMDisposeBuilder(builder);
 		free(param_types);
 	}

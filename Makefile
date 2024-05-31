@@ -1,5 +1,5 @@
 CC=clang
-CFLAGS=-std=c99 -Wall -Wextra -Wpedantic -Werror -Og `llvm-config --cflags`
+CFLAGS=-std=c99 -Wall -Wextra -Wpedantic -Werror -Og `llvm-config --cflags` -Wno-deprecated
 LD=clang
 LDFLAGS=`llvm-config --cxxflags --ldflags --libs core executionengine mcjit interpreter analysis native bitwriter --system-libs` -std=c99
 DEPS=typecheck.h symbol_table.h ht.h stack.h util.h token.h scan.h parse.h ast.h error.h print.h codegen.h
