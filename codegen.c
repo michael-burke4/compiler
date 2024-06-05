@@ -16,17 +16,47 @@ LLVMModuleRef program_codegen(ast_decl *program, char *module_name)
 	return ret;
 }
 
-LLVMValueRef stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt)
+void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt)
 {
+	LLVMValueRef v1;
+	LLVMBasicBlockRef b1;
+	LLVMBasicBlockRef b2;
+	LLVMValueRef cur_function;
+	ast_stmt *cur;
+
+	if (!stmt)
+		return;
+
 	switch (stmt->kind) {
 	case S_BLOCK:
-		return stmt_codegen(mod, builder, stmt->body);
+		cur = stmt->body;
+		while (cur) {
+			stmt_codegen(mod, builder, cur);
+			cur = cur->next;
+		}
+		break;
 	case S_EXPR:
-		return expr_codegen(mod, builder, stmt->expr);
+		expr_codegen(mod, builder, stmt->expr);
+		break;
 	case S_RETURN:
-		return LLVMBuildRet(builder, expr_codegen(mod, builder, stmt->expr));
+		LLVMBuildRet(builder, expr_codegen(mod, builder, stmt->expr));
+		break;
+	case S_IFELSE:
+		cur_function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
+		v1 = expr_codegen(mod, builder, stmt->expr);
+		b1 = LLVMAppendBasicBlock(cur_function, "");
+		b2 = LLVMAppendBasicBlock(cur_function, "");
+
+		LLVMBuildCondBr(builder, v1, b1, b2);
+
+		LLVMPositionBuilderAtEnd(builder, b1);
+		stmt_codegen(mod, builder, stmt->body);
+
+		LLVMPositionBuilderAtEnd(builder, b2);
+		stmt_codegen(mod, builder, stmt->else_body);
+		break;
 	default:
-		printf("can't codegen that stmt kind right now.\n");
+		printf("can't codegen that stmt kind right now. (%d)\n", stmt->kind);
 		exit(1);
 	}
 }
@@ -85,8 +115,18 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		abort();
 	case E_INT_LIT:
 		return LLVMConstInt(LLVMInt32Type(), (unsigned long long)expr->int_lit,0);
+	case E_MULDIV:
+		if (expr->op == T_STAR)
+			return LLVMBuildMul(builder, expr_codegen(mod, builder, expr->left), expr_codegen(mod, builder, expr->right), "");
+		else
+			return LLVMBuildSDiv(builder, expr_codegen(mod, builder, expr->left), expr_codegen(mod, builder, expr->right), "");
 	case E_ADDSUB:
-		return LLVMBuildAdd(builder, expr_codegen(mod, builder, expr->left), expr_codegen(mod, builder, expr->right), "");
+		if (expr->op == T_MINUS)
+			return LLVMBuildSub(builder, expr_codegen(mod, builder, expr->left), expr_codegen(mod, builder, expr->right), "");
+		else
+			return LLVMBuildAdd(builder, expr_codegen(mod, builder, expr->left), expr_codegen(mod, builder, expr->right), "");
+	case E_EQUALITY:
+		return LLVMBuildICmp(builder, LLVMIntEQ, expr_codegen(mod, builder, expr->left), expr_codegen(mod, builder, expr->right), "");
 	case E_FNCALL:
 		strvec_tostatic(expr->name, buffer);
 		fn = LLVMGetNamedFunction(mod, buffer);
@@ -98,6 +138,14 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		strvec_tostatic(expr->name, buffer);
 		fn = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
 		return get_param_by_name(fn, buffer);
+	case E_FALSE_LIT:
+		return LLVMConstInt(LLVMInt32Type(), 0, 0);
+	case E_TRUE_LIT:
+		return LLVMConstInt(LLVMInt32Type(), 1, 0);
+	case E_INEQUALITY:
+		if (expr->op == T_LT) {
+			return LLVMBuildICmp(builder, LLVMIntSLT, expr_codegen(mod, builder, expr->left), expr_codegen(mod, builder, expr->right), "");
+		}
 	default:
 		printf("can't codegen that expr kind right now.");
 		exit(1);
@@ -153,7 +201,7 @@ void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 		strvec_tostatic(decl->typesym->symbol, buf);
 		LLVMValueRef fn_value = LLVMAddFunction(*mod, buf, ret_type);
 		set_param_names(fn_value, decl, num_args);
-		LLVMBasicBlockRef entry = LLVMAppendBasicBlock(fn_value, "entry");
+		LLVMBasicBlockRef entry = LLVMAppendBasicBlock(fn_value, "");
 
 		LLVMBuilderRef builder = LLVMCreateBuilder();
 		LLVMPositionBuilderAtEnd(builder, entry);
