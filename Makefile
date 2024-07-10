@@ -5,7 +5,7 @@ LDFLAGS=`llvm-config --cxxflags --ldflags --libs core executionengine mcjit inte
 DEPS=typecheck.h symbol_table.h ht.h stack.h util.h token.h scan.h parse.h ast.h error.h print.h codegen.h
 OBJ=typecheck.o symbol_table.c ht.o stack.o util.o token.o scan.o parse.o ast.o error.o print.o codegen.o
 
-.PHONY: clean
+.PHONY: clean compile
 
 main: $(OBJ) main.o
 	$(LD) -o $@ $^ $(LDFLAGS)
@@ -16,5 +16,15 @@ test: $(OBJ) test.o
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
+compile: main
+ifdef SRC
+	./main $(SRC)
+	llc --filetype=obj $(subst .txt,.bc,$(notdir $(SRC)))
+	gcc $(subst .txt,.o,$(notdir $(SRC))) -o $(subst .txt,,$(notdir $(SRC)))
+else
+	$(error no SRC supplied. Please specify SRC=srcfile)
+endif
+
 clean:
-	-rm *.o *.bc *.ll main test
+	-rm *.o *.bc *.ll
+	-find . -perm +100 -type f -delete
