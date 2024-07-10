@@ -6,6 +6,17 @@
 #include "ht.h"
 #include <string.h>
 
+static LLVMTypeRef to_llvm_type(ast_type *tp)
+{
+	switch (tp->kind) {
+	case Y_I32:
+		return LLVMInt32Type();
+	default:
+		printf("couldn't convert type\n");
+		abort();
+	}
+}
+
 LLVMModuleRef program_codegen(ast_decl *program, char *module_name)
 {
 	LLVMModuleRef ret = LLVMModuleCreateWithName(module_name);
@@ -23,6 +34,7 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt)
 	LLVMBasicBlockRef b2;
 	LLVMValueRef cur_function;
 	ast_stmt *cur;
+	char buffer[BUFFER_MAX_LEN];
 
 	if (!stmt)
 		return;
@@ -55,6 +67,10 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt)
 		LLVMPositionBuilderAtEnd(builder, b2);
 		stmt_codegen(mod, builder, stmt->else_body);
 		break;
+	case S_DECL:
+		strvec_tostatic(stmt->decl->typesym->symbol, buffer);
+		LLVMBuildAlloca(builder, to_llvm_type(stmt->decl->typesym->type), buffer);
+		break;
 	default:
 		printf("can't codegen that stmt kind right now. (%d)\n", stmt->kind);
 		exit(1);
@@ -85,18 +101,6 @@ static void get_fncall_args(LLVMModuleRef mod, LLVMBuilderRef builder,ast_expr *
 			cur_arg = cur_arg->right;
 		} else
 			(*args)[i] = 0;
-	}
-}
-
-
-static LLVMTypeRef to_llvm_type(ast_type *tp)
-{
-	switch (tp->kind) {
-	case Y_I32:
-		return LLVMInt32Type();
-	default:
-		printf("couldn't convert type\n");
-		abort();
 	}
 }
 
