@@ -4,6 +4,54 @@
 #include <string.h>
 #include <stdint.h>
 
+static void *_reallocarray(void *ptr, size_t nmemb, size_t size)
+{
+	if (nmemb > 0 && SIZE_MAX / nmemb < size)
+    		return 0;
+
+	size_t total_size = nmemb * size;
+	if (size != 0 && total_size / size != nmemb)
+		return 0;
+	return realloc(ptr, total_size);
+}
+
+vec *vec_init(size_t capacity)
+{
+	vec *ret = smalloc(sizeof(*ret));
+	ret->capacity = capacity;
+	ret->size = 0;
+	ret->elements = calloc(capacity, sizeof(*(ret->elements)));
+	return ret;
+}
+
+void vec_append(vec *v, void *e)
+{
+	if (v->capacity <= v->size) {
+		v->elements = _reallocarray(v->elements, v->size * 2, sizeof(*(v->elements)));
+		v->capacity *= 2;
+	}
+	v->elements[v->size] = e;
+	v->size++;
+}
+
+// user must free/destroy each internal element themselves!
+void vec_destroy(vec *v) {
+	if (!v)
+		return;
+	free(v->elements);
+	v->capacity = 0;
+	v->size = 0;
+	free(v);
+}
+
+void *vec_get(vec *v, size_t i) {
+	if (i > v->size) {
+		printf("Vec index out of bounds [%lu not within bound %lu]\n", i, v->size-1);
+		exit(1);
+	}
+	return v->elements[i];
+}
+
 strvec *strvec_init(size_t capacity)
 {
 	strvec *ret = smalloc(sizeof(*ret));
@@ -22,17 +70,6 @@ strvec *strvec_init_str(const char *str)
 	ret->text = smalloc(len);
 	memcpy(ret->text, str, len);
 	return ret;
-}
-
-static void *_reallocarray(void *ptr, size_t nmemb, size_t size)
-{
-	if (nmemb > 0 && SIZE_MAX / nmemb < size)
-    		return 0;
-
-	size_t total_size = nmemb * size;
-	if (size != 0 && total_size / size != nmemb)
-		return 0;
-	return realloc(ptr, total_size);
 }
 
 void strvec_append(strvec *vec, char c)

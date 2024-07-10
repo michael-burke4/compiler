@@ -9,8 +9,8 @@
 
 LLVMModuleRef program_codegen(ast_decl *program, char *module_name);
 void decl_codegen(LLVMModuleRef *mod, ast_decl *decl);
-void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt);
-LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr);
+void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec *varvec);
+LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, vec *v);
 
 
 #endif

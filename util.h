@@ -13,6 +13,14 @@ typedef struct {
 	char *text;
 } strvec;
 
+typedef struct {
+	size_t size;
+	size_t capacity;
+	void **elements;
+} vec;
+
+// CURRENLTY: strvec and vec are two different things
+
 void *smalloc(size_t size);
 void *scalloc(size_t nmemb, size_t size);
 void *srealloc(void *ptr, size_t size);
@@ -27,4 +35,9 @@ void strvec_destroy(strvec *vec);
 int strvec_equals_str(strvec *vec, const char *string);
 int strvec_toi(strvec *vec);
 void strvec_tostatic(strvec *vec, char buff[BUFFER_MAX_LEN]);
+
+vec *vec_init(size_t capacity);
+void vec_append(vec *vec, void *e);
+void vec_destroy(vec *vec);
+
 #endif
