@@ -69,7 +69,9 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt)
 		break;
 	case S_DECL:
 		strvec_tostatic(stmt->decl->typesym->symbol, buffer);
-		LLVMBuildAlloca(builder, to_llvm_type(stmt->decl->typesym->type), buffer);
+		v1 = LLVMBuildAlloca(builder, to_llvm_type(stmt->decl->typesym->type), buffer);
+		if (stmt->decl->expr != 0)
+			LLVMBuildStore(builder, expr_codegen(mod, builder, stmt->decl->expr), v1);
 		break;
 	default:
 		printf("can't codegen that stmt kind right now. (%d)\n", stmt->kind);
