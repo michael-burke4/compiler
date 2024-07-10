@@ -162,6 +162,11 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 			ret = LLVMBuildLoad(builder, ret, "");
 		}
 		return ret;
+	case E_ASSIGN:
+		strvec_tostatic(expr->left->name, buffer);
+		printf("%s\n", buffer);
+		v = val_vec_lookup(nv, buffer);
+		return LLVMBuildStore(builder, expr_codegen(mod, builder, expr->right, nv), v);
 	case E_FALSE_LIT:
 		return LLVMConstInt(LLVMInt32Type(), 0, 0);
 	case E_TRUE_LIT:
