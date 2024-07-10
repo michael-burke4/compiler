@@ -25,6 +25,15 @@ else
 	$(error no SRC supplied. Please specify SRC=srcfile)
 endif
 
+dis: main
+ifdef SRC
+	./main $(SRC)
+	llvm-dis $(subst .txt,.bc,$(notdir $(SRC)))
+	cat $(subst .txt,.ll,$(notdir $(SRC)))
+else
+	$(error no SRC supplied. Please specify SRC=srcfile)
+endif
+
 clean:
 	-rm *.o *.bc *.ll
 	-find . -perm +100 -type f -delete
