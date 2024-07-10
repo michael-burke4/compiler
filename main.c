@@ -12,6 +12,7 @@
 #include "typecheck.h"
 #include <llvm-c/Core.h>
 #include <string.h>
+#include <libgen.h>
 
 int had_error = 0;
 extern struct stack *sym_tab;
