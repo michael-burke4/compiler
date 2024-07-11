@@ -78,7 +78,9 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec
 
 		LLVMPositionBuilderAtEnd(builder, b1);
 		stmt_codegen(mod, builder, stmt->body, v);
-		LLVMBuildBr(builder, b3);
+		v1 = LLVMGetLastInstruction(b1);
+		if (!LLVMIsATerminatorInst(v1))
+			LLVMBuildBr(builder, b3);
 
 		LLVMPositionBuilderAtEnd(builder, b2);
 		stmt_codegen(mod, builder, stmt->else_body, v);
@@ -102,8 +104,11 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec
 
 		LLVMPositionBuilderAtEnd(builder, b1);
 		stmt_codegen(mod, builder, stmt->body, v);
-		v1 = expr_codegen(mod, builder, stmt->expr, v);
-		LLVMBuildCondBr(builder, v1, b1, b2);
+		v1 = LLVMGetLastInstruction(b1);
+		if (!LLVMIsATerminatorInst(v1)) {
+			v1 = expr_codegen(mod, builder, stmt->expr, v);
+			LLVMBuildCondBr(builder, v1, b1, b2);
+		}
 
 		LLVMPositionBuilderAtEnd(builder, b2);
 		break;
