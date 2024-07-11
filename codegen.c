@@ -125,6 +125,11 @@ static void get_fncall_args(LLVMModuleRef mod, LLVMBuilderRef builder,ast_expr *
 	}
 }
 
+// Remaining expr types to codegen:
+//E_STR_LIT,
+//E_CHAR_LIT,
+//E_PRE_UNARY,
+//E_POST_UNARY,
 LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, vec *nv)
 {
 	char buffer[BUFFER_MAX_LEN];
@@ -182,9 +187,16 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	case E_TRUE_LIT:
 		return LLVMConstInt(LLVMInt32Type(), 1, 0);
 	case E_INEQUALITY:
-		if (expr->op == T_LT) {
+		if (expr->op == T_LT)
 			return LLVMBuildICmp(builder, LLVMIntSLT, expr_codegen(mod, builder, expr->left, nv), expr_codegen(mod, builder, expr->right, nv), "");
-		}
+		else if (expr->op == T_LTE)
+			return LLVMBuildICmp(builder, LLVMIntSLE, expr_codegen(mod, builder, expr->left, nv), expr_codegen(mod, builder, expr->right, nv), "");
+		else if (expr->op == T_GT)
+			return LLVMBuildICmp(builder, LLVMIntSGT, expr_codegen(mod, builder, expr->left, nv), expr_codegen(mod, builder, expr->right, nv), "");
+		else
+			return LLVMBuildICmp(builder, LLVMIntSGE, expr_codegen(mod, builder, expr->left, nv), expr_codegen(mod, builder, expr->right, nv), "");
+	case E_PAREN:
+		return expr_codegen(mod, builder, expr->left, nv);
 	default:
 		printf("can't codegen that expr kind right now.");
 		exit(1);
