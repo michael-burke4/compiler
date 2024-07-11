@@ -203,9 +203,9 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		}
 		return LLVMBuildStore(builder, expr_codegen(mod, builder, expr->right, nv), v);
 	case E_FALSE_LIT:
-		return LLVMConstInt(LLVMInt32Type(), 0, 0);
+		return LLVMConstInt(LLVMInt1Type(), 0, 0);
 	case E_TRUE_LIT:
-		return LLVMConstInt(LLVMInt32Type(), 1, 0);
+		return LLVMConstInt(LLVMInt1Type(), 1, 0);
 	case E_INEQUALITY:
 		if (expr->op == T_LT)
 			return LLVMBuildICmp(builder, LLVMIntSLT, expr_codegen(mod, builder, expr->left, nv), expr_codegen(mod, builder, expr->right, nv), "");
