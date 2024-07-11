@@ -35,6 +35,7 @@ LLVMModuleRef program_codegen(ast_decl *program, char *module_name)
 		decl_codegen(&ret, program);
 		program = program->next;
 	}
+	LLVMDumpModule(ret);
 	return ret;
 }
 
@@ -91,6 +92,20 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec
 		vec_append(v, (void *)v1);
 		if (stmt->decl->expr != 0)
 			LLVMBuildStore(builder, expr_codegen(mod, builder, stmt->decl->expr, v), v1);
+		break;
+	case S_WHILE:
+		cur_function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
+		v1 = expr_codegen(mod, builder, stmt->expr, v);
+		b1 = LLVMAppendBasicBlock(cur_function, "");
+		b2 = LLVMAppendBasicBlock(cur_function, "");
+		LLVMBuildCondBr(builder, v1, b1, b2);
+
+		LLVMPositionBuilderAtEnd(builder, b1);
+		stmt_codegen(mod, builder, stmt->body, v);
+		v1 = expr_codegen(mod, builder, stmt->expr, v);
+		LLVMBuildCondBr(builder, v1, b1, b2);
+
+		LLVMPositionBuilderAtEnd(builder, b2);
 		break;
 	default:
 		printf("can't codegen that stmt kind right now. (%d)\n", stmt->kind);

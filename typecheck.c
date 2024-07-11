@@ -277,6 +277,20 @@ void typecheck_stmt(ast_stmt *stmt)
 		typecheck_stmt(stmt->else_body);
 		typecheck_stmt(stmt->next);
 		break;
+	case S_WHILE:
+		if (!stmt->expr) {
+			had_error = 1;
+			puts("if statement condition must be non-empty");
+		}
+		typ = derive_expr_type(stmt->expr);
+		if (!typ || typ->kind != Y_BOOL) {
+			had_error = 1;
+			puts("if statement condition must be a boolean");
+		}
+		type_destroy(typ);
+		typecheck_stmt(stmt->body);
+		typecheck_stmt(stmt->next);
+		break;
 	case S_BLOCK:
 		// DO NOT DESTROY TYP HERE!
 		// YOU DO NOT OWN TYP!!

@@ -202,6 +202,12 @@ void stmt_print(ast_stmt *stmt)
 			stmt_print(stmt->else_body);
 		}
 		break;
+	case S_WHILE:
+		printf("while (");
+		expr_print(stmt->expr);
+		printf(") ");
+		stmt_print(stmt->body);
+		break;
 	default:
 		printf("Somehow reached error/unkown statement printing case?\n");
 	}

@@ -221,6 +221,22 @@ ast_stmt *parse_stmt(token_s **cur_token)
 			else_body = parse_stmt_block(cur_token);
 		}
 		break;
+	case T_WHILE:
+		kind = S_WHILE;
+		next(cur_token);
+		if (!expect(cur_token, T_LPAREN)) {
+			report_error_tok("Missing left paren in `while` condition.", *cur_token);
+			goto stmt_err;
+		}
+		next(cur_token);
+		expr = parse_expr(cur_token);
+		if (!expect(cur_token, T_RPAREN)) {
+			report_error_tok("Missing right paren in `while` condition.", *cur_token);
+			goto stmt_err;
+		}
+		next(cur_token);
+		body = parse_stmt_block(cur_token);
+		break;
 	case T_RETURN:
 		kind = S_RETURN;
 		next(cur_token);
