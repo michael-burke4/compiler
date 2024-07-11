@@ -67,11 +67,13 @@ static token_s *scan_word(FILE *f, size_t *line, size_t *col)
 	ungetc(c, f);
 	return check_if_keyword(word, *line, old_col);
 }
-static token_s *scan_number(FILE *f, size_t *line, size_t *col)
+static token_s *scan_number(int negative, FILE *f, size_t *line, size_t *col)
 {
 	int c;
 	strvec *num = strvec_init(5);
 	size_t old_col = *col;
+	if (negative)
+		strvec_append(num, '-');
 	while (1) {
 		c = fgetc(f);
 		// TODO: Support float literals
@@ -149,7 +151,7 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		return scan_word(f, line, col);
 	} else if (isdigit(c)) {
 		ungetc(c, f);
-		return scan_number(f, line, col);
+		return scan_number(0, f, line, col);
 	}
 	switch (c) {
 	case EOF:
@@ -180,6 +182,10 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		} else if (c == '>') {
 			*col += 2;
 			return tok_init_nl(T_ARROW, *line, temp_col, 0);
+		} else if (isdigit(c)) {
+			*col += 1;
+			ungetc(c, f);
+			return scan_number(1, f, line, col);
 		}
 		ungetc(c, f);
 		return tok_init_nl(T_MINUS, *line, (*col)++, 0);
