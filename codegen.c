@@ -43,6 +43,7 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec
 	LLVMValueRef v1;
 	LLVMBasicBlockRef b1;
 	LLVMBasicBlockRef b2;
+	LLVMBasicBlockRef b3;
 	LLVMValueRef cur_function;
 	ast_stmt *cur;
 	char buffer[BUFFER_MAX_LEN];
@@ -57,6 +58,8 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec
 			stmt_codegen(mod, builder, cur, v);
 			cur = cur->next;
 		}
+
+		LLVMDumpModule(mod);
 		break;
 	case S_EXPR:
 		expr_codegen(mod, builder, stmt->expr, v);
@@ -69,14 +72,19 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec
 		v1 = expr_codegen(mod, builder, stmt->expr, v);
 		b1 = LLVMAppendBasicBlock(cur_function, "");
 		b2 = LLVMAppendBasicBlock(cur_function, "");
+		b3 = LLVMAppendBasicBlock(cur_function, "");
 
 		LLVMBuildCondBr(builder, v1, b1, b2);
 
 		LLVMPositionBuilderAtEnd(builder, b1);
 		stmt_codegen(mod, builder, stmt->body, v);
+		LLVMBuildBr(builder, b3);
 
 		LLVMPositionBuilderAtEnd(builder, b2);
 		stmt_codegen(mod, builder, stmt->else_body, v);
+		LLVMBuildBr(builder, b3);
+
+		LLVMPositionBuilderAtEnd(builder, b3);
 		break;
 	case S_DECL:
 		strvec_tostatic(stmt->decl->typesym->symbol, buffer);
