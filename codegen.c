@@ -145,6 +145,41 @@ static void get_fncall_args(LLVMModuleRef mod, LLVMBuilderRef builder,ast_expr *
 	}
 }
 
+static LLVMValueRef assign_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, vec *nv, LLVMValueRef loc)
+{
+	LLVMValueRef ret;
+	LLVMValueRef tempval;
+	ast_expr *temp;
+	if (expr->op == T_ASSIGN)
+		return LLVMBuildStore(builder, expr_codegen(mod, builder, expr->right, nv), loc);
+
+	switch (expr->op) {
+	case T_MUL_ASSIGN:
+		temp = expr_init(E_MULDIV, expr->left, expr->right, T_STAR, 0, 0, 0);
+		break;
+	case T_DIV_ASSIGN:
+		temp = expr_init(E_MULDIV, expr->left, expr->right, T_FSLASH, 0, 0, 0);
+		break;
+	case T_MOD_ASSIGN:
+		temp = expr_init(E_MULDIV, expr->left, expr->right, T_PERCENT, 0, 0, 0);
+		break;
+	case T_ADD_ASSIGN:
+		temp = expr_init(E_ADDSUB, expr->left, expr->right, T_PLUS, 0, 0, 0);
+		break;
+	case T_SUB_ASSIGN:
+		temp = expr_init(E_ADDSUB, expr->left, expr->right, T_MINUS, 0, 0, 0);
+		break;
+	default:
+		expr_print(expr);
+		printf("\nCan't codegen assignment type with operation token %d\n", expr->op);
+		printf("%d\n", T_MUL_ASSIGN);
+		abort();
+	}
+	tempval = expr_codegen(mod, builder, temp, nv);
+	ret = LLVMBuildStore(builder, tempval, loc);
+	free(temp); // do NOT expr_destroy!!!
+	return ret;
+}
 // Remaining expr types to codegen:
 //E_STR_LIT,
 //E_CHAR_LIT,
@@ -201,7 +236,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 			v = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
 			v = get_param_by_name(v, buffer);
 		}
-		return LLVMBuildStore(builder, expr_codegen(mod, builder, expr->right, nv), v);
+		return assign_codegen(mod, builder, expr, nv, v);
 	case E_FALSE_LIT:
 		return LLVMConstInt(LLVMInt1Type(), 0, 0);
 	case E_TRUE_LIT:
