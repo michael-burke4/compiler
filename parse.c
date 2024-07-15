@@ -257,6 +257,22 @@ ast_stmt *parse_stmt(token_s **cur_token)
 		else
 			next(cur_token);
 		break;
+	case T_PRINT:
+		kind = S_PRINT;
+		next(cur_token);
+		expr = parse_expr(cur_token);
+		if (!expr) {
+			report_error_tok("Could not parse expression in print statement.",
+					 *cur_token);
+			goto stmt_err;
+		}
+		if (!expect(cur_token, T_SEMICO)) {
+			report_error_tok("Statement missing terminating semicolon a.",
+					 *cur_token);
+			goto stmt_err;
+		}
+		next(cur_token);
+		break;
 	default:
 		kind = S_EXPR;
 		expr = parse_expr(cur_token);

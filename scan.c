@@ -45,6 +45,8 @@ static token_s *check_if_keyword(strvec *word, size_t line, size_t col)
 		ret = tok_init_nl(T_WHILE, line, col, 0);
 	else if (strvec_equals_str(word, "bool"))
 		ret = tok_init_nl(T_BOOL, line, col, 0);
+	else if (strvec_equals_str(word, "print"))
+		ret = tok_init_nl(T_PRINT, line, col, 0);
 	if (ret != 0)
 		strvec_destroy(word);
 	else

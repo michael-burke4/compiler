@@ -6,11 +6,20 @@
 #include "ht.h"
 #include <string.h>
 
+static void create_print_function(LLVMModuleRef module) {
+	LLVMTypeRef putsArgs[] = { LLVMPointerType(LLVMInt8Type(), 0) };
+	LLVMTypeRef putsFuncType = LLVMFunctionType(LLVMInt32Type(), putsArgs, 1, 0);
+	LLVMValueRef putsFunc = LLVMAddFunction(module, "puts", putsFuncType);
+	LLVMSetFunctionCallConv(putsFunc, LLVMCCallConv);
+}
+
 static LLVMTypeRef to_llvm_type(ast_type *tp)
 {
 	switch (tp->kind) {
 	case Y_I32:
 		return LLVMInt32Type();
+	case Y_STRING:
+		return LLVMPointerType(LLVMInt8Type(), 0);
 	default:
 		printf("couldn't convert type\n");
 		abort();
@@ -31,10 +40,14 @@ static LLVMValueRef val_vec_lookup(vec *vec, char *name) {
 LLVMModuleRef program_codegen(ast_decl *program, char *module_name)
 {
 	LLVMModuleRef ret = LLVMModuleCreateWithName(module_name);
+
+	create_print_function(ret);
+
 	while (program) {
 		decl_codegen(&ret, program);
 		program = program->next;
 	}
+
 	LLVMDumpModule(ret);
 	return ret;
 }
@@ -112,6 +125,10 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec
 
 		LLVMPositionBuilderAtEnd(builder, b2);
 		break;
+	case S_PRINT: // TODO: make printing not depend on C puts function.
+		v1 = expr_codegen(mod, builder, stmt->expr, v);
+		LLVMBuildCall(builder, LLVMGetNamedFunction(mod, "puts"), &v1, 1, "");
+		break;
 	default:
 		printf("can't codegen that stmt kind right now. (%d)\n", stmt->kind);
 		exit(1);
@@ -180,8 +197,25 @@ static LLVMValueRef assign_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, as
 	free(temp); // do NOT expr_destroy!!!
 	return ret;
 }
+
+// this function is courtesy of
+// https://stackoverflow.com/questions/65042902/create-and-reference-a-string-literal-via-llvm-c-interface
+LLVMValueRef define_string_literal(LLVMModuleRef module, LLVMBuilderRef builder, const char *source_string, size_t size) {
+	LLVMTypeRef str_type = LLVMArrayType(LLVMInt8Type(), size);
+	LLVMValueRef str = LLVMAddGlobal(module, str_type, "");
+	LLVMSetInitializer(str, LLVMConstString(source_string, size, 1));
+	LLVMSetGlobalConstant(str, 1);
+	LLVMSetLinkage(str, LLVMPrivateLinkage);
+	LLVMSetUnnamedAddress(str, LLVMGlobalUnnamedAddr);
+	LLVMSetAlignment(str, 1);
+
+	LLVMValueRef zero_index = LLVMConstInt(LLVMInt64Type(), 0, 1);
+	LLVMValueRef indices[2] = {zero_index, zero_index};
+	LLVMValueRef g = LLVMBuildInBoundsGEP2(builder, str_type, str, indices, 2, "");
+	return g;
+}
+
 // Remaining expr types to codegen:
-//E_STR_LIT,
 //E_CHAR_LIT,
 //E_PRE_UNARY,
 //E_POST_UNARY,
@@ -220,7 +254,6 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		get_fncall_args(mod, builder, expr, argno, &args, nv);
 		return LLVMBuildCall(builder, v, args, argno, "");
 	case E_IDENTIFIER:
-		//TODO: not every identifier is an argument lol.
 		strvec_tostatic(expr->name, buffer);
 		v = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
 		ret = get_param_by_name(v, buffer);
@@ -241,6 +274,9 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		return LLVMConstInt(LLVMInt1Type(), 0, 0);
 	case E_TRUE_LIT:
 		return LLVMConstInt(LLVMInt1Type(), 1, 0);
+	case E_STR_LIT: // TODO: upon moving away from C puts for printing, move away from null terminator?
+		strvec_append(expr->string_literal, '\0');
+		return define_string_literal(mod, builder, expr->string_literal->text, expr->string_literal->size);
 	case E_INEQUALITY:
 		if (expr->op == T_LT)
 			return LLVMBuildICmp(builder, LLVMIntSLT, expr_codegen(mod, builder, expr->left, nv), expr_codegen(mod, builder, expr->right, nv), "");
@@ -253,7 +289,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	case E_PAREN:
 		return expr_codegen(mod, builder, expr->left, nv);
 	default:
-		printf("can't codegen that expr kind right now.");
+		printf("can't codegen that expr kind right now.\n");
 		exit(1);
 	}
 }
@@ -311,7 +347,7 @@ void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 		LLVMBasicBlockRef entry = LLVMAppendBasicBlock(fn_value, "");
 		LLVMBuilderRef builder = LLVMCreateBuilder();
 		LLVMPositionBuilderAtEnd(builder, entry);
-		
+
 		alloca_params_as_local_vars(builder, fn_value, decl, param_types, num_args, v);
 
 		stmt_codegen(*mod, builder, decl->body, v);

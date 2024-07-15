@@ -167,6 +167,11 @@ void stmt_print(ast_stmt *stmt)
 	if (!stmt)
 		return;
 	switch (stmt->kind) {
+	case S_PRINT:
+		printf("print ");
+		expr_print(stmt->expr);
+		printf(";");
+		break;
 	case S_DECL:
 		decl_print(stmt->decl);
 		break;
