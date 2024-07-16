@@ -36,4 +36,3 @@ endif
 
 clean:
 	-rm *.o *.bc *.ll
-	-find . -perm +100 -type f -delete
