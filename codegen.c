@@ -20,6 +20,8 @@ static LLVMTypeRef to_llvm_type(ast_type *tp)
 		return LLVMInt32Type();
 	case Y_STRING:
 		return LLVMPointerType(LLVMInt8Type(), 0);
+	case Y_VOID:
+		return LLVMVoidType();
 	default:
 		printf("couldn't convert type\n");
 		abort();
@@ -52,7 +54,7 @@ LLVMModuleRef program_codegen(ast_decl *program, char *module_name)
 	return ret;
 }
 
-void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec *v)
+void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec *v, int in_fn)
 {
 	LLVMValueRef v1;
 	LLVMBasicBlockRef b1;
@@ -61,6 +63,7 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec
 	LLVMValueRef cur_function;
 	ast_stmt *cur;
 	char buffer[BUFFER_MAX_LEN];
+	int need_retvoid = 1;
 
 	if (!stmt)
 		return;
@@ -69,16 +72,22 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec
 	case S_BLOCK:
 		cur = stmt->body;
 		while (cur) {
-			stmt_codegen(mod, builder, cur, v);
+			if (!in_fn || cur->kind == S_RETURN)
+				need_retvoid = 0;
+			stmt_codegen(mod, builder, cur, v, 0);
 			cur = cur->next;
 		}
-
+		if (need_retvoid)
+			LLVMBuildRetVoid(builder);
 		break;
 	case S_EXPR:
 		expr_codegen(mod, builder, stmt->expr, v);
 		break;
 	case S_RETURN:
-		LLVMBuildRet(builder, expr_codegen(mod, builder, stmt->expr, v));
+		if (stmt->expr == 0)
+			LLVMBuildRetVoid(builder);
+		else
+			LLVMBuildRet(builder, expr_codegen(mod, builder, stmt->expr, v));
 		break;
 	case S_IFELSE:
 		cur_function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
@@ -90,13 +99,13 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec
 		LLVMBuildCondBr(builder, v1, b1, b2);
 
 		LLVMPositionBuilderAtEnd(builder, b1);
-		stmt_codegen(mod, builder, stmt->body, v);
+		stmt_codegen(mod, builder, stmt->body, v, 0);
 		v1 = LLVMGetLastInstruction(b1);
 		if (!LLVMIsATerminatorInst(v1))
 			LLVMBuildBr(builder, b3);
 
 		LLVMPositionBuilderAtEnd(builder, b2);
-		stmt_codegen(mod, builder, stmt->else_body, v);
+		stmt_codegen(mod, builder, stmt->else_body, v, 0);
 		LLVMBuildBr(builder, b3);
 
 		LLVMPositionBuilderAtEnd(builder, b3);
@@ -116,7 +125,7 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec
 		LLVMBuildCondBr(builder, v1, b1, b2);
 
 		LLVMPositionBuilderAtEnd(builder, b1);
-		stmt_codegen(mod, builder, stmt->body, v);
+		stmt_codegen(mod, builder, stmt->body, v, 0);
 		v1 = LLVMGetLastInstruction(b1);
 		if (!LLVMIsATerminatorInst(v1)) {
 			v1 = expr_codegen(mod, builder, stmt->expr, v);
@@ -340,7 +349,7 @@ void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 		unsigned num_args;
 		vec *v = vec_init(4);
 		LLVMTypeRef *param_types = build_param_types(decl, &num_args);
-		LLVMTypeRef ret_type = LLVMFunctionType(LLVMInt32Type(), param_types, num_args, 0);
+		LLVMTypeRef ret_type = LLVMFunctionType(to_llvm_type(decl->typesym->type->subtype), param_types, num_args, 0);
 
 		strvec_tostatic(decl->typesym->symbol, buf);
 		LLVMValueRef fn_value = LLVMAddFunction(*mod, buf, ret_type);
@@ -350,7 +359,7 @@ void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 
 		alloca_params_as_local_vars(builder, fn_value, decl, param_types, num_args, v);
 
-		stmt_codegen(*mod, builder, decl->body, v);
+		stmt_codegen(*mod, builder, decl->body, v, 1);
 		LLVMDisposeBuilder(builder);
 		free(param_types);
 		vec_destroy(v);

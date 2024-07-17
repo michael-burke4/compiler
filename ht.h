@@ -4,9 +4,6 @@
 #include <stdint.h>
 #include "util.h"
 
-// see TODO later in file. Remove this eventually
-#include "ast.h"
-
 uint64_t hash(strvec *str);
 
 struct kv {
@@ -18,14 +15,6 @@ struct ht {
 	struct kv **data;
 	size_t capacity;
 	size_t size;
-
-	// TODO move this elsewhere.
-	// this is ugly and pollutes the stand-alone purity of this
-	// hash table implementation. Make a separate 'scope' implementation that
-	// wraps ht but also has a return type field, or something like that.
-	ast_type *return_type;
-	// DO NOT FREE THIS RETURN TYPE.
-	// YOU HAVE BEEN WARNED.
 };
 
 struct ht *ht_init(size_t capacity);

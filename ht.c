@@ -28,9 +28,6 @@ struct ht *ht_init(size_t capacity)
 	ret->capacity = capacity;
 	ret->size = 0;
 
-	// See TODO in ht.h Move where the return type is stored to a wrapper struct or something.
-	ret->return_type = 0;
-
 	return ret;
 }
 
