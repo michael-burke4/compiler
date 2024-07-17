@@ -273,8 +273,8 @@ void typecheck_stmt(ast_stmt *stmt)
 			puts("if statement condition must be a boolean");
 		}
 		type_destroy(typ);
-		typecheck_stmt(stmt->body);
-		typecheck_stmt(stmt->else_body);
+		typecheck_stmt(stmt->body->body); // TODO: don't put body in body (parser's problem)
+		typecheck_stmt(stmt->else_body->body);
 		typecheck_stmt(stmt->next);
 		break;
 	case S_WHILE:
@@ -288,7 +288,7 @@ void typecheck_stmt(ast_stmt *stmt)
 			puts("if statement condition must be a boolean");
 		}
 		type_destroy(typ);
-		typecheck_stmt(stmt->body);
+		typecheck_stmt(stmt->body->body);
 		typecheck_stmt(stmt->next);
 		break;
 	case S_BLOCK:
@@ -320,6 +320,10 @@ void typecheck_stmt(ast_stmt *stmt)
 		break;
 	case S_RETURN:
 		// See above warning about typ ownership
+		if (stmt->next != 0) {
+			had_error = 1;
+			puts("Return statements must be at the end of statement blocks.");
+		}
 		typ = scope_get_return_type();
 		if (!typ) {
 			had_error = 1;
