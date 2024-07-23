@@ -76,6 +76,8 @@ void typecheck_decl(ast_decl *decl)
 		}
 		type_destroy(typ);
 		scope_bind(decl->typesym);
+	} else {
+		scope_bind(decl->typesym);
 	}
 }
 
