@@ -28,11 +28,11 @@ static LLVMTypeRef to_llvm_type(ast_type *tp)
 	}
 }
 
-static LLVMValueRef val_vec_lookup(vec *vec, char *name) {
+static LLVMValueRef val_vect_lookup(vect *v, char *name) {
 	size_t dummy;
 	LLVMValueRef cur;
-	for (size_t i = 0  ; i < vec->size ; ++i) {
-		cur = (LLVMValueRef)vec->elements[i];
+	for (size_t i = 0  ; i < v->size ; ++i) {
+		cur = (LLVMValueRef)v->elements[i];
 		if (!strcmp(name, LLVMGetValueName2(cur, &dummy)))
 			return cur;
 	}
@@ -54,7 +54,7 @@ LLVMModuleRef program_codegen(ast_decl *program, char *module_name)
 	return ret;
 }
 
-void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec *v, int in_fn)
+void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vect *v, int in_fn)
 {
 	LLVMValueRef v1;
 	LLVMBasicBlockRef b1;
@@ -113,7 +113,7 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec
 	case S_DECL:
 		strvec_tostatic(stmt->decl->typesym->symbol, buffer);
 		v1 = LLVMBuildAlloca(builder, to_llvm_type(stmt->decl->typesym->type), buffer);
-		vec_append(v, (void *)v1);
+		vect_append(v, (void *)v1);
 		if (stmt->decl->expr != 0)
 			LLVMBuildStore(builder, expr_codegen(mod, builder, stmt->decl->expr, v), v1);
 		break;
@@ -156,7 +156,7 @@ static LLVMValueRef get_param_by_name(LLVMValueRef function, char *name)
 }
 
 #define MAX_ARGS 32
-static void get_fncall_args(LLVMModuleRef mod, LLVMBuilderRef builder,ast_expr *expr, unsigned argno, LLVMValueRef (*args)[MAX_ARGS], vec *v)
+static void get_fncall_args(LLVMModuleRef mod, LLVMBuilderRef builder,ast_expr *expr, unsigned argno, LLVMValueRef (*args)[MAX_ARGS], vect *v)
 {
 	ast_expr *cur_arg;
 	if (argno == 0)
@@ -171,7 +171,7 @@ static void get_fncall_args(LLVMModuleRef mod, LLVMBuilderRef builder,ast_expr *
 	}
 }
 
-static LLVMValueRef assign_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, vec *nv, LLVMValueRef loc)
+static LLVMValueRef assign_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, vect *nv, LLVMValueRef loc)
 {
 	LLVMValueRef ret;
 	LLVMValueRef tempval;
@@ -228,7 +228,7 @@ LLVMValueRef define_string_literal(LLVMModuleRef module, LLVMBuilderRef builder,
 //E_CHAR_LIT,
 //E_PRE_UNARY,
 //E_POST_UNARY,
-LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, vec *nv)
+LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, vect *nv)
 {
 	char buffer[BUFFER_MAX_LEN];
 	LLVMValueRef v;
@@ -267,13 +267,13 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		v = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
 		ret = get_param_by_name(v, buffer);
 		if (!ret) {
-			ret = val_vec_lookup(nv, buffer);
+			ret = val_vect_lookup(nv, buffer);
 			ret = LLVMBuildLoad(builder, ret, "");
 		}
 		return ret;
 	case E_ASSIGN:
 		strvec_tostatic(expr->left->name, buffer);
-		v = val_vec_lookup(nv, buffer);
+		v = val_vect_lookup(nv, buffer);
 		if (!v) {
 			v = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
 			v = get_param_by_name(v, buffer);
@@ -303,41 +303,38 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	}
 }
 
-static LLVMTypeRef *build_param_types(ast_decl *decl, unsigned *num)
+static LLVMTypeRef *build_param_types(ast_decl *decl)
 {
-	*num = 0;
-	ast_typed_symbol *ts;
 	LLVMTypeRef *ret;
-	size_t i = 0;
+	size_t i;
+	vect *arglist = decl->typesym->type->arglist;
 
-	for (ts = decl->typesym->type->arglist ; ts != 0 ; ts = ts->next) {
-		*num += 1;
-	}
-	if (*num == 0)
+	if (!arglist || arglist->size == 0) {
 		return 0;
-	ret = malloc(sizeof (*ret) * *num);
-	for (ts = decl->typesym->type->arglist ; ts != 0 ; ts = ts->next) {
-		ret[i] = to_llvm_type(ts->type);
-		++i;
+	}
+	ret = malloc(sizeof (*ret) * arglist->size);
+	for (i = 0 ; i < arglist->size ; ++i) {
+		ret[i] = to_llvm_type(arglist_get(arglist, i)->type);
 	}
 	return ret;
 }
 
-static void alloca_params_as_local_vars(LLVMBuilderRef builder, LLVMValueRef fn, ast_decl *decl, LLVMTypeRef *param_types, unsigned count, vec *vc) {
-	LLVMValueRef arg;
-	ast_typed_symbol *ts = 0;
-	LLVMValueRef v;
+static void alloca_params_as_local_vars(LLVMBuilderRef builder, LLVMValueRef fn, ast_decl *decl, LLVMTypeRef *param_types, vect *vc)
+{
 	char buf[BUFFER_MAX_LEN];
-
-	for  (unsigned i = 0 ; i < count ; ++i) {
-		if (!ts)
-			ts = decl->typesym->type->arglist;
-		strvec_tostatic(ts->symbol, buf);
+	LLVMValueRef arg;
+	LLVMValueRef v;
+	vect *arglist = decl->typesym->type->arglist;
+	if (!arglist || arglist->size == 0)
+		return;
+	for (size_t i = 0 ; i < arglist->size ; ++i) {
+		strvec_tostatic(arglist_get(arglist, i)->symbol, buf);
 		arg = LLVMGetParam(fn, i);
 		v = LLVMBuildAlloca(builder, param_types[i], buf);
 		LLVMBuildStore(builder, arg, v);
-		vec_append(vc, (void *)v);
+		vect_append(vc, (void *)v);
 	}
+	
 }
 
 void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
@@ -346,10 +343,11 @@ void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 		return;
 	if (decl->typesym->type->kind == Y_FUNCTION) {
 		char buf[BUFFER_MAX_LEN];
-		unsigned num_args;
-		vec *v = vec_init(4);
-		LLVMTypeRef *param_types = build_param_types(decl, &num_args);
-		LLVMTypeRef ret_type = LLVMFunctionType(to_llvm_type(decl->typesym->type->subtype), param_types, num_args, 0);
+		vect *v = vect_init(4);
+		LLVMTypeRef *param_types = build_param_types(decl);
+		vect *arglist = decl->typesym->type->arglist;
+		size_t size = !arglist ? 0 : arglist->size;
+		LLVMTypeRef ret_type = LLVMFunctionType(to_llvm_type(decl->typesym->type->subtype), param_types, size, 0);
 
 		strvec_tostatic(decl->typesym->symbol, buf);
 		LLVMValueRef fn_value = LLVMAddFunction(*mod, buf, ret_type);
@@ -357,12 +355,12 @@ void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 		LLVMBuilderRef builder = LLVMCreateBuilder();
 		LLVMPositionBuilderAtEnd(builder, entry);
 
-		alloca_params_as_local_vars(builder, fn_value, decl, param_types, num_args, v);
+		alloca_params_as_local_vars(builder, fn_value, decl, param_types, v);
 
 		stmt_codegen(*mod, builder, decl->body, v, 1);
 		LLVMDisposeBuilder(builder);
 		free(param_types);
-		vec_destroy(v);
+		vect_destroy(v);
 	}
 	else {
 		printf("Can't codegen decls of this type yet :(\n");

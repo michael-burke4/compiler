@@ -7,17 +7,17 @@
 
 #define BUFFER_MAX_LEN 128
 
-typedef struct {
+typedef struct strvec {
 	size_t size;
 	size_t capacity;
 	char *text;
 } strvec;
 
-typedef struct {
+typedef struct vect {
 	size_t size;
 	size_t capacity;
 	void **elements;
-} vec;
+} vect;
 
 // CURRENLTY: strvec and vec are two different things
 
@@ -36,8 +36,9 @@ int strvec_equals_str(strvec *vec, const char *string);
 int strvec_toi(strvec *vec);
 void strvec_tostatic(strvec *vec, char buff[BUFFER_MAX_LEN]);
 
-vec *vec_init(size_t capacity);
-void vec_append(vec *vec, void *e);
-void vec_destroy(vec *vec);
+vect *vect_init(size_t capacity);
+void vect_append(vect *vect, void *e);
+void vect_destroy(vect *vect);
+void *vect_get(vect *v, size_t i);
 
 #endif

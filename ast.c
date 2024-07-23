@@ -42,7 +42,6 @@ ast_typed_symbol *ast_typed_symbol_init(ast_type *type, strvec *symbol)
 	ast_typed_symbol *ret = smalloc(sizeof(*ret));
 	ret->type = type;
 	ret->symbol = symbol;
-	ret->next = 0;
 	return ret;
 }
 
@@ -78,7 +77,7 @@ void type_destroy(ast_type *type)
 {
 	if (!type)
 		return;
-	ast_typed_symbol_destroy(type->arglist);
+	arglist_destroy(type->arglist);
 	type_destroy(type->subtype);
 	strvec_destroy(type->name);
 	free(type);
@@ -109,7 +108,6 @@ void ast_typed_symbol_destroy(ast_typed_symbol *typesym)
 {
 	if (!typesym)
 		return;
-	ast_typed_symbol_destroy(typesym->next);
 	type_destroy(typesym->type);
 	strvec_destroy(typesym->symbol);
 	free(typesym);
@@ -135,12 +133,24 @@ ast_type *type_copy(ast_type *t)
 	return ret;
 }
 
-ast_typed_symbol *arglist_copy(ast_typed_symbol *arglist)
+vect *arglist_copy(vect *arglist)
 {
-	ast_typed_symbol *ret = 0;
+	vect *ret = 0;
 	if (!arglist)
 		return ret;
-	ret = ast_typed_symbol_init(type_copy(arglist->type), strvec_copy(arglist->symbol));
-	ret->next = arglist_copy(arglist->next);
+	ret = vect_init(arglist->size);
+	for (size_t i = 0 ; i < arglist->size ; ++i) {
+		ast_typed_symbol *cur = arglist_get(arglist, i);
+		vect_append(ret, (void *)ast_typed_symbol_init(type_copy(cur->type), strvec_copy(cur->symbol)));
+	}
 	return ret;
+}
+
+void arglist_destroy(vect *arglist)
+{
+	if (!arglist)
+		return;
+	for (size_t i = 0 ; i < arglist->size ; ++i)
+		ast_typed_symbol_destroy(arglist_get(arglist, i));
+	vect_destroy(arglist);
 }

@@ -4,6 +4,8 @@
 #include "token.h"
 #include "util.h"
 
+#define arglist_get(list, i) ((ast_typed_symbol *)vect_get(list, i))
+
 typedef struct ast_decl {
 	struct ast_typed_symbol *typesym;
 	struct ast_expr *expr;
@@ -26,7 +28,7 @@ typedef enum {
 
 typedef struct ast_type {
 	struct ast_type *subtype;
-	struct ast_typed_symbol *arglist;
+	vect *arglist;
 	type_t kind;
 	strvec *name;
 } ast_type;
@@ -34,7 +36,6 @@ typedef struct ast_type {
 typedef struct ast_typed_symbol {
 	struct ast_type *type;
 	strvec *symbol;
-	struct ast_typed_symbol *next; // Used for declaring functions.
 } ast_typed_symbol;
 
 typedef enum {
@@ -92,6 +93,8 @@ void decl_destroy(ast_decl *decl);
 void stmt_destroy(ast_stmt *stmt);
 void ast_typed_symbol_destroy(ast_typed_symbol *typesym);
 ast_type *type_copy(ast_type *t);
-ast_typed_symbol *arglist_copy(ast_typed_symbol *arglist);
+vect *arglist_copy(vect *arglist);
+
+void arglist_destroy(vect *arglist);
 
 #endif

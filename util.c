@@ -15,16 +15,16 @@ static void *_reallocarray(void *ptr, size_t nmemb, size_t size)
 	return realloc(ptr, total_size);
 }
 
-vec *vec_init(size_t capacity)
+vect *vect_init(size_t capacity)
 {
-	vec *ret = smalloc(sizeof(*ret));
+	vect *ret = smalloc(sizeof(*ret));
 	ret->capacity = capacity;
 	ret->size = 0;
 	ret->elements = calloc(capacity, sizeof(*(ret->elements)));
 	return ret;
 }
 
-void vec_append(vec *v, void *e)
+void vect_append(vect *v, void *e)
 {
 	if (v->capacity <= v->size) {
 		v->elements = _reallocarray(v->elements, v->size * 2, sizeof(*(v->elements)));
@@ -35,7 +35,7 @@ void vec_append(vec *v, void *e)
 }
 
 // user must free/destroy each internal element themselves!
-void vec_destroy(vec *v) {
+void vect_destroy(vect *v) {
 	if (!v)
 		return;
 	free(v->elements);
@@ -44,7 +44,7 @@ void vec_destroy(vec *v) {
 	free(v);
 }
 
-void *vec_get(vec *v, size_t i) {
+void *vect_get(vect *v, size_t i) {
 	if (i > v->size) {
 		printf("Vec index out of bounds [%lu not within bound %lu]\n", i, v->size-1);
 		exit(1);

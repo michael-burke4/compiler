@@ -52,38 +52,36 @@ ast_decl *parse_program(token_s **cur_token)
 	return ret;
 }
 
-static ast_typed_symbol *parse_arglist(token_s **cur_token, int *had_error)
+static vect *parse_arglist(token_s **cur_token, int *had_arglist_error)
 {
-	ast_typed_symbol *head = 0;
-	ast_typed_symbol *tmp = 0;
-	ast_typed_symbol *tmp2 = 0;
-	token_t typ;
+	vect *ret = 0;
 	int empty = 1;
-	*had_error = 0;
+	token_t typ;
+	ast_typed_symbol *ts;
 	while (1) {
 		typ = get_type(cur_token);
 		if (typ == T_RPAREN) {
 			next(cur_token);
-			return head;
+			return ret;
 		} else if (empty) {
-			head = parse_typed_symbol(cur_token);
-			if (!head) {
-				*had_error = 1;
+			ts = parse_typed_symbol(cur_token);
+			if (!ts) {
+				*had_arglist_error = 1;
 				return 0;
 			}
 			empty = 0;
-			tmp = head;
+			ret = vect_init(2);
+			vect_append(ret, (void *)ts);
 		} else if (typ == T_COMMA) {
 			next(cur_token);
-			tmp2 = parse_typed_symbol(cur_token);
-			if (!tmp2) {
-				*had_error = 1;
+			ts = parse_typed_symbol(cur_token);
+			if (!ts) {
+				*had_arglist_error = 1;
 				return 0;
 			}
-			tmp->next = tmp2;
-			tmp = tmp->next;
+			vect_append(ret, (void *)ts);
 		} else {
-			*had_error = 1;
+			*had_arglist_error = 1;
 			return 0;
 		}
 	}
@@ -110,6 +108,7 @@ ast_typed_symbol *parse_typed_symbol(token_s **cur_token)
 	return ast_typed_symbol_init(type, name);
 
 parse_typsym_err:
+	tok_print(*cur_token);
 	type_destroy(type);
 	strvec_destroy(name);
 	return 0;
@@ -303,9 +302,9 @@ ast_type *parse_type(token_s **cur_token)
 {
 	ast_type *ret = 0;
 	ast_type *subtype = 0;
-	ast_typed_symbol *arglist = 0;
+	vect *arglist = 0;
 	strvec *text = 0;
-	int had_arglist_err;
+	int had_arglist_err = 0;
 
 	switch (get_type(cur_token)) {
 	case T_I64:

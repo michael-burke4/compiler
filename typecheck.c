@@ -1,6 +1,7 @@
 #include "typecheck.h"
 #include <stdio.h>
 #include "symbol_table.h"
+#include "util.h"
 
 #include "print.h"
 
@@ -16,18 +17,18 @@ void typecheck_program(ast_decl *program)
 
 static void scope_bind_args(ast_decl *decl)
 {
-	ast_typed_symbol *sym;
+	size_t i;
+	vect *arglist;
 	if (!decl) {
 		printf("NULL FN IN BINDING ARGS?!");
 		had_error = 1;
 		return;
 	}
-	sym = decl->typesym->type->arglist;
-	while (sym) {
-		//typed_sym_print(sym);
-		scope_bind(sym);
-		sym = sym->next;
-	}
+	arglist = decl->typesym->type->arglist;
+	if (!arglist)
+		return;
+	for (i = 0 ; i < arglist->size ; ++i)
+		scope_bind(arglist_get(arglist, i));
 }
 
 static void typecheck_fnbody(ast_decl *decl)
@@ -91,54 +92,57 @@ assuming these conditions are met, return the return type found in the symbol ta
 
 should these conditions fail, return zero.
 */
+
+
 static ast_type *typecheck_fncall(ast_expr *expr)
 {
 	ast_expr *e_current;
-	ast_typed_symbol *st_current;
-	ast_typed_symbol *st_fn = scope_lookup(expr->name);
+	ast_typed_symbol *fn_ts = scope_lookup(expr->name);
 	ast_type *derived;
+	vect *arglist;
+	int fn_ts_argless;
 	int flag = 0;
-
-	if (!st_fn) {
+	size_t i;
+	if (!fn_ts) {
 		printf("Call to undeclared function \"");
 		strvec_print(expr->name);
 		puts("\"");
 		had_error = 1;
 		return 0;
 	}
-	st_current = st_fn->type->arglist;
+	arglist = fn_ts->type->arglist;
 	e_current = expr->left;
-	if (!e_current && !st_current)
-		return type_copy(st_fn->type->subtype);
-	if (!e_current || !st_current) {
+	fn_ts_argless = !arglist || arglist->size == 0;
+	if (fn_ts_argless && !e_current)
+		return type_copy(fn_ts->type->subtype);
+	if (fn_ts_argless || !e_current) {
 		puts("Argument count mismatch");
 		return 0;
 	}
-
-	while (e_current->left && st_current) {
+	for (i = 0 ; e_current->left && arglist_get(arglist, i) ; ++i) {
 		derived = derive_expr_type(e_current->left);
-		if (!type_equals(st_current->type, derived)) {
+		if (!type_equals(arglist_get(arglist, i)->type, derived)) {
 			printf("Type mismatch in call to function ");
 			strvec_print(expr->name);
 			printf(": expression ");
 			expr_print(e_current->left);
 			printf(" does not resolve to positional argument's expected type (");
-			type_print(st_current->type);
+			type_print(arglist_get(arglist, i)->type);
 			puts(")");
 			had_error = 1;
 			flag = 1;
 		}
 		type_destroy(derived);
-		st_current = st_current->next;
+		derived = 0;
 		e_current = e_current->right;
 	}
 	if (flag)
 		return 0;
-	if (e_current->left || st_current) {
+	if (e_current->left || i != arglist->size) {
 		puts("Argument count mismatch");
 		return 0;
 	}
-	return type_copy(st_fn->type->subtype);
+	return type_copy(fn_ts->type->subtype);
 }
 
 static int is_numeric_type(ast_type *t)
@@ -350,13 +354,25 @@ void typecheck_stmt(ast_stmt *stmt)
 	}
 }
 
-static int arglist_equals(ast_typed_symbol *a, ast_typed_symbol *b)
+static int arglist_equals(vect *a, vect *b)
 {
+	size_t i;
+	ast_typed_symbol *at;
+	ast_typed_symbol *bt;
 	if (!a && !b)
 		return 1;
 	if (!a || !b)
 		return 0;
-	return type_equals(a->type, b->type) && arglist_equals(a->next, b->next);
+	if (a->size != b->size)
+		return 0;
+	for (i = 0 ; i < a->size ; ++i) {
+		at = arglist_get(a, i);
+		bt = arglist_get(b, i);
+		if (!type_equals(at->type, bt->type))
+			return 0;
+	}
+	return 1;
+	
 }
 int type_equals(ast_type *a, ast_type *b)
 {

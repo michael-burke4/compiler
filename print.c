@@ -100,7 +100,8 @@ void typed_sym_print(ast_typed_symbol *typesym)
 
 void type_print(ast_type *type)
 {
-	ast_typed_symbol *printhead = type->arglist;
+	vect *arglist = type->arglist;
+	ssize_t i;
 	switch (type->kind) {
 	case Y_I32:
 		printf("i32");
@@ -128,14 +129,12 @@ void type_print(ast_type *type)
 		break;
 	case Y_FUNCTION:
 		printf("(");
-		while (printhead != 0) {
-			typed_sym_print(printhead);
-			printhead = printhead->next;
-			if (printhead == 0)
-				break;
-			else
-				printf(", ");
+		for (i = 0 ; arglist && i < ((ssize_t)arglist->size) - 1 ; ++i) {
+			typed_sym_print(arglist_get(arglist, i));
+			printf(", ");
 		}
+		if (i != 0)
+			typed_sym_print(arglist_get(arglist, i));
 		printf(")");
 		printf(" -> ");
 		type_print(type->subtype);
