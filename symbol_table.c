@@ -6,36 +6,12 @@
 
 struct stack *sym_tab;
 
-void st_level_destroy(struct scope *level)
-{
-	size_t i = 0;
-	if (!level)
-		return;
-
-	for (i = 0; i < level->table->capacity; ++i) {
-		if (level->table->data[i]) {
-			// THE SYMBOL TABLE DOES NOT OWN THIS TYPED SYMBOL.
-			// THIS BELONGS TO THE AST.
-			// I REPEAT.
-			// THE SYMBOL TABLE DOES NOT OWN THIS TYPED SYMBOL!
-			// DON'T TRY TO FREE IT! IT IS ALREADY FREED IN FREEING THE AST!!!!
-			// DONT UNCOMMENT THE FOLLOWING TWO LINES!
-			//ast_typed_symbol_destroy(
-			//	(ast_typed_symbol *)level->data[i]->val); // val holds type
-			free(level->table->data[i]); // Destroy the kv
-		}
-	}
-	free(level->table->data);
-	free(level->table);
-	free(level);
-}
-
 void st_destroy(void)
 {
 	scope *level = (scope *)stack_item_from_top(sym_tab, 0);
 
 	while (level) {
-		st_level_destroy(level);
+		scope_destroy(level);
 		stack_pop(sym_tab);
 		level = (scope *)stack_item_from_top(sym_tab, 0);
 	}
@@ -58,7 +34,7 @@ void scope_enter(void)
 
 void scope_exit(void)
 {
-	st_level_destroy((scope *)stack_pop(sym_tab));
+	scope_destroy((scope *)stack_pop(sym_tab));
 }
 
 size_t scope_level(void)

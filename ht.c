@@ -1,11 +1,5 @@
 #include "ht.h"
 
-//typedef struct {
-//	size_t size;
-//	size_t capacity;
-//	char *text;
-//} strvec;
-
 uint64_t hash(strvec *str)
 {
 	// FNV offset basis, per
@@ -21,12 +15,13 @@ uint64_t hash(strvec *str)
 	return hash;
 }
 
-struct ht *ht_init(size_t capacity)
+struct ht *ht_init(size_t capacity, void (*destroyer)(void *))
 {
 	struct ht *ret = smalloc(sizeof(*ret));
 	ret->data = scalloc(capacity, sizeof(*ret->data));
 	ret->capacity = capacity;
-	ret->size = 0;
+	ret->num_elements = 0;
+	ret->element_destroyer = destroyer;
 
 	return ret;
 }
@@ -47,10 +42,10 @@ static int insert(struct kv **data, size_t cap, uint64_t key_hash, void *value)
 
 int ht_insert(struct ht *tab, strvec *key, void *value)
 {
-	if (tab->size >= tab->capacity * 3 / 4)
+	if (tab->num_elements >= tab->capacity * 3 / 4)
 		ht_resize(tab, tab->capacity * 2);
 	if (insert(tab->data, tab->capacity, hash(key), value)) {
-		tab->size += 1;
+		tab->num_elements += 1;
 		return 1;
 	}
 	return 0;
@@ -96,34 +91,15 @@ void *ht_get(struct ht *tab, strvec *key)
 	return 0;
 }
 
-/**
- * Remove the element with key `key` from hashtable `tab`.
- *
- * If that element does not exist within the table, or the key otherwise
- * can't be removed, false is returned.
- * Returns true on successful removal.
- */
-//int ht_remove(struct ht *tab, strvec *key)
-//{
-//	uint64_t key_hash = hash(key);
-//	size_t index = key_hash % tab->capacity;
-//	size_t i = 0;
-//	while (i < tab->capacity) {
-//		struct kv *entry = tab->data[index];
-//		if (entry == 0)
-//			return 0;
-//		if (entry->key == key_hash) {
-//			if (tab->dynamic_vals)
-//				free(entry->val);
-//			free(entry);
-//			tab->data[index] = 0;
-//			return 1;
-//		}
-//
-//		++index;
-//		index %= tab->capacity;
-//		++i;
-//	}
-//	// failsafe tab->capacity limit SHOULD be unnecessary!
-//	return 0;
-//}
+void ht_destroy(struct ht *tab)
+{
+	if (!tab)
+		return;
+	for (size_t i = 0 ; i < tab->capacity ; ++i) {
+		if (tab->data[i])
+			tab->element_destroyer(tab->data[i]);
+		free(tab->data[i]);
+	}
+	free(tab->data);
+	free(tab);
+}
