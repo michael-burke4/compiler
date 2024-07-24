@@ -51,6 +51,15 @@ int ht_insert(struct ht *tab, strvec *key, void *value)
 	return 0;
 }
 
+static void ht_data_destroy(struct ht *tab) {
+	for (size_t i = 0 ; i < tab->capacity ; ++i) {
+		if (tab->data[i])
+			tab->element_destroyer(tab->data[i]);
+		free(tab->data[i]);
+	}
+	free(tab->data);
+}
+
 int ht_resize(struct ht *tab, size_t new_cap)
 {
 	struct kv **new_data;
@@ -63,6 +72,7 @@ int ht_resize(struct ht *tab, size_t new_cap)
 			continue;
 		insert(new_data, new_cap, entry->key, entry->val);
 	}
+	ht_data_destroy(tab);
 	tab->data = new_data;
 	tab->capacity = new_cap;
 
@@ -90,16 +100,10 @@ void *ht_get(struct ht *tab, strvec *key)
 	// failsafe tab->capacity limit SHOULD be unnecessary!
 	return 0;
 }
-
 void ht_destroy(struct ht *tab)
 {
 	if (!tab)
 		return;
-	for (size_t i = 0 ; i < tab->capacity ; ++i) {
-		if (tab->data[i])
-			tab->element_destroyer(tab->data[i]);
-		free(tab->data[i]);
-	}
-	free(tab->data);
+	ht_data_destroy(tab);
 	free(tab);
 }
