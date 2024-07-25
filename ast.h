@@ -68,7 +68,7 @@ typedef struct ast_expr {
 	ast_type type;
 } ast_expr;
 
-typedef enum { S_ERROR, S_BLOCK, S_DECL, S_EXPR, S_IFELSE, S_RETURN, S_WHILE, S_PRINT } stmt_t;
+typedef enum { S_ERROR, S_BLOCK, S_DECL, S_EXPR, S_IFELSE, S_RETURN, S_WHILE } stmt_t;
 
 typedef struct ast_stmt {
 	stmt_t kind;

@@ -25,7 +25,6 @@ typedef enum {
 	T_RETURN,
 	T_WHILE,
 	T_LET,
-	T_PRINT,
 
 	T_DPLUS,
 	T_DMINUS,

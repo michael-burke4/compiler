@@ -317,16 +317,6 @@ void typecheck_stmt(ast_stmt *stmt)
 		type_destroy(derive_expr_type(stmt->expr));
 		typecheck_stmt(stmt->next);
 		break;
-	case S_PRINT:
-		typ = derive_expr_type(stmt->expr);
-		if (typ->kind != Y_STRING) {
-			had_error = 1;
-			puts("Cannot print non-string expression");
-		}
-		type_destroy(typ);
-
-		typecheck_stmt(stmt->next);
-		break;
 	case S_RETURN:
 		// See above warning about typ ownership
 		if (stmt->next != 0) {

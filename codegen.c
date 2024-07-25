@@ -6,13 +6,6 @@
 #include "ht.h"
 #include <string.h>
 
-static void create_print_function(LLVMModuleRef module) {
-	LLVMTypeRef putsArgs[] = { LLVMPointerType(LLVMInt8Type(), 0) };
-	LLVMTypeRef putsFuncType = LLVMFunctionType(LLVMInt32Type(), putsArgs, 1, 0);
-	LLVMValueRef putsFunc = LLVMAddFunction(module, "puts", putsFuncType);
-	LLVMSetFunctionCallConv(putsFunc, LLVMCCallConv);
-}
-
 static LLVMTypeRef to_llvm_type(ast_type *tp)
 {
 	switch (tp->kind) {
@@ -42,8 +35,6 @@ static LLVMValueRef val_vect_lookup(vect *v, char *name) {
 LLVMModuleRef program_codegen(ast_decl *program, char *module_name)
 {
 	LLVMModuleRef ret = LLVMModuleCreateWithName(module_name);
-
-	create_print_function(ret);
 
 	while (program) {
 		decl_codegen(&ret, program);
@@ -134,10 +125,6 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec
 
 		LLVMPositionBuilderAtEnd(builder, b2);
 		break;
-	case S_PRINT: // TODO: make printing not depend on C puts function.
-		v1 = expr_codegen(mod, builder, stmt->expr, v);
-		LLVMBuildCall(builder, LLVMGetNamedFunction(mod, "puts"), &v1, 1, "");
-		break;
 	default:
 		printf("can't codegen that stmt kind right now. (%d)\n", stmt->kind);
 		exit(1);
@@ -209,9 +196,9 @@ static LLVMValueRef assign_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, as
 
 // this function is courtesy of
 // https://stackoverflow.com/questions/65042902/create-and-reference-a-string-literal-via-llvm-c-interface
-LLVMValueRef define_string_literal(LLVMModuleRef module, LLVMBuilderRef builder, const char *source_string, size_t size) {
+LLVMValueRef define_string_literal(LLVMModuleRef mod, LLVMBuilderRef builder, const char *source_string, size_t size) {
 	LLVMTypeRef str_type = LLVMArrayType(LLVMInt8Type(), size);
-	LLVMValueRef str = LLVMAddGlobal(module, str_type, "");
+	LLVMValueRef str = LLVMAddGlobal(mod, str_type, "");
 	LLVMSetInitializer(str, LLVMConstString(source_string, size, 1));
 	LLVMSetGlobalConstant(str, 1);
 	LLVMSetLinkage(str, LLVMPrivateLinkage);
@@ -283,7 +270,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		return LLVMConstInt(LLVMInt1Type(), 0, 0);
 	case E_TRUE_LIT:
 		return LLVMConstInt(LLVMInt1Type(), 1, 0);
-	case E_STR_LIT: // TODO: upon moving away from C puts for printing, move away from null terminator?
+	case E_STR_LIT:
 		strvec_append(expr->string_literal, '\0');
 		return define_string_literal(mod, builder, expr->string_literal->text, expr->string_literal->size);
 	case E_INEQUALITY:
@@ -342,6 +329,7 @@ void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 	if (!decl)
 		return;
 	if (decl->typesym->type->kind == Y_FUNCTION) {
+
 		char buf[BUFFER_MAX_LEN];
 		vect *v = vect_init(4);
 		LLVMTypeRef *param_types = build_param_types(decl);
