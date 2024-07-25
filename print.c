@@ -78,6 +78,17 @@ void expr_print(ast_expr *expr)
 		}
 		printf(")");
 		break;
+	case E_SYSCALL:
+		printf("syscall(");
+		current = expr->left;
+		while (current && current->left != 0) {
+			if (!(current == expr->left))
+				printf(", ");
+			expr_print(current->left);
+			current = current->right;
+		}
+		printf(")");
+		break;
 	case E_FALSE_LIT:
 		printf("false");
 		break;

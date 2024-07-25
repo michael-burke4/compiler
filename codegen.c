@@ -6,23 +6,23 @@
 #include "ht.h"
 #include <string.h>
 
-static void codegen_syscall3(LLVMBuilderRef builder, int syscall_no, LLVMValueRef args[3])
-{
-	LLVMTypeRef argtypes[4] = {LLVMTypeOf(args[0]), LLVMTypeOf(args[1]), LLVMTypeOf(args[2]), LLVMInt32Type()};
-	LLVMValueRef args2[4] = {args[0], args[1], args[2], LLVMConstInt(LLVMInt32Type(), syscall_no, 0)};
-	// TODO: don't just return void.
-	LLVMTypeRef functy = LLVMFunctionType(LLVMVoidType(), argtypes, 4, 0);
-	char *inline_asm = \
-		"mov w0, ${0:w}"	"\n"\
-		"mov x1, $1"		"\n"\
-		"mov w2, ${2:w}"	"\n"\
-		"mov x8, ${3:x}"	"\n"\
-		"svc #0"		"\n"\
-		;
-	char constraints[256] = "r,r,r,r,~{x0},~{x1},~{x2},~{x8},~{memory}";
-	LLVMValueRef asmcall = LLVMGetInlineAsm(functy, inline_asm, strlen(inline_asm), constraints, strlen(constraints), 1, 1, 0, 0);
-	LLVMBuildCall(builder, asmcall, args2, 4, "");
-}
+//static void codegen_syscall3(LLVMBuilderRef builder, int syscall_no, LLVMValueRef args[3])
+//{
+//	LLVMTypeRef argtypes[4] = {LLVMTypeOf(args[0]), LLVMTypeOf(args[1]), LLVMTypeOf(args[2]), LLVMInt32Type()};
+//	LLVMValueRef args2[4] = {args[0], args[1], args[2], LLVMConstInt(LLVMInt32Type(), syscall_no, 0)};
+//	// TODO: don't just return void.
+//	LLVMTypeRef functy = LLVMFunctionType(LLVMVoidType(), argtypes, 4, 0);
+//	char *inline_asm = \
+//		"mov w0, ${0:w}"	"\n"\
+//		"mov x1, $1"		"\n"\
+//		"mov w2, ${2:w}"	"\n"\
+//		"mov x8, ${3:x}"	"\n"\
+//		"svc #0"		"\n"\
+//		;
+//	char constraints[256] = "r,r,r,r,~{x0},~{x1},~{x2},~{x8},~{memory}";
+//	LLVMValueRef asmcall = LLVMGetInlineAsm(functy, inline_asm, strlen(inline_asm), constraints, strlen(constraints), 1, 1, 0, 0);
+//	LLVMBuildCall(builder, asmcall, args2, 4, "");
+//}
 
 static LLVMTypeRef to_llvm_type(ast_type *tp)
 {

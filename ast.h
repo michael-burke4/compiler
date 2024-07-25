@@ -54,6 +54,7 @@ typedef enum {
 	E_PRE_UNARY,
 	E_POST_UNARY,
 	E_FNCALL,
+	E_SYSCALL,
 	E_LINK, // dummy type to denote a linked list that makes up a list of exprs in a fn call.
 } expr_t;
 

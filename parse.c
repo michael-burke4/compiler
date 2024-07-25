@@ -516,13 +516,43 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 		cur->text = 0;
 		next(cur_token);
 		return expr_init(E_STR_LIT, 0, 0, 0, 0, 0, txt);
+	case T_SYSCALL:
+		next(cur_token);
+		if (expect(cur_token, T_LPAREN)) {
+			next(cur_token);
+		if (expect(cur_token, T_RPAREN)) {
+				report_error_tok("Cannot call syscall with no arguments", *cur_token);
+				sync_to(cur_token, T_EOF, 1);
+				next(cur_token);
+				return expr_init(E_SYSCALL, 0, 0, 0, 0, 0, 0);
+			}
+			arglist = expr_init(E_LINK, 0, 0, 0, 0, 0, 0);
+			cur_link = arglist;
+			do {
+				if (arglist->left)
+					next(cur_token);
+				inner = parse_expr(cur_token);
+				cur_link->left = inner;
+				cur_link->right = expr_init(E_LINK, 0, 0, 0, 0, 0, 0);
+				cur_link = cur_link->right;
+			} while (expect(cur_token, T_COMMA));
+
+			if (!expect(cur_token, T_RPAREN)) {
+				report_error_tok("Function call missing comma or closing paren",
+					*cur_token);
+				sync_to(cur_token, T_EOF, 1);
+				expr_destroy(arglist);
+				arglist = 0;
+			}
+			next(cur_token);
+			return expr_init(E_SYSCALL, arglist, 0, 0, 0, 0, 0);
+		} else
+			return expr_init(E_SYSCALL, 0, 0, 0, 0, 0, 0);
 	case T_IDENTIFIER:
 		txt = cur->text;
 		cur->text = 0;
 		next(cur_token);
 		if (expect(cur_token, T_LPAREN)) {
-//ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, strvec *name,
-		    //int int_lit, strvec *str_lit);
 		    	next(cur_token);
 			if (expect(cur_token, T_RPAREN)) {
 				next(cur_token);

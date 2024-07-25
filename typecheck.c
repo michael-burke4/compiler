@@ -233,6 +233,8 @@ ast_type *derive_expr_type(ast_expr *expr)
 		return type_init(Y_STRING, 0);
 	case E_CHAR_LIT:
 		return type_init(Y_CHAR, 0);
+	case E_SYSCALL:
+		return type_init(Y_VOID, 0); // TODO: let syscalls return numbers. write for example returns # bytes written.
 	case E_TRUE_LIT:
 	case E_FALSE_LIT:
 		return type_init(Y_BOOL, 0);
