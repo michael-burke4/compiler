@@ -94,17 +94,14 @@ assuming these conditions are met, return the return type found in the symbol ta
 
 should these conditions fail, return zero.
 */
-
-
 static ast_type *typecheck_fncall(ast_expr *expr)
 {
-	ast_expr *e_current;
 	ast_typed_symbol *fn_ts = scope_lookup(expr->name);
+	vect *decl_arglist = fn_ts->type->arglist;
+	vect *expr_arglist = expr->sub_exprs;
 	ast_type *derived;
-	vect *arglist;
-	int fn_ts_argless;
-	int flag = 0;
 	size_t i;
+	int flag = 0;
 	if (!fn_ts) {
 		printf("Call to undeclared function \"");
 		strvec_print(expr->name);
@@ -112,41 +109,53 @@ static ast_type *typecheck_fncall(ast_expr *expr)
 		had_error = 1;
 		return 0;
 	}
-	arglist = fn_ts->type->arglist;
-	e_current = expr->left;
-	fn_ts_argless = !arglist || arglist->size == 0;
-	if (fn_ts_argless && !e_current)
+	if (!decl_arglist && !expr_arglist)
 		return type_copy(fn_ts->type->subtype);
-	if (fn_ts_argless || !e_current) {
-		puts("Argument count mismatch");
+	if ((!decl_arglist || !expr_arglist) || (decl_arglist->size != expr_arglist->size)) {
+		printf("Argument count mismatch");
 		return 0;
 	}
-	for (i = 0 ; e_current->left && arglist_get(arglist, i) ; ++i) {
-		derived = derive_expr_type(e_current->left);
-		if (!type_equals(arglist_get(arglist, i)->type, derived)) {
+
+	for (i = 0 ; i < decl_arglist->size ; ++i) {
+		derived = derive_expr_type(expr_arglist->elements[i]);
+		if (!type_equals(arglist_get(decl_arglist, i)->type, derived)) {
 			printf("Type mismatch in call to function ");
 			strvec_print(expr->name);
 			printf(": expression ");
-			expr_print(e_current->left);
+			expr_print(expr_arglist->elements[i]);
 			printf(" does not resolve to positional argument's expected type (");
-			type_print(arglist_get(arglist, i)->type);
+			type_print(arglist_get(decl_arglist, i)->type);
 			puts(")");
 			had_error = 1;
 			flag = 1;
 		}
 		type_destroy(derived);
 		derived = 0;
-		e_current = e_current->right;
 	}
 	if (flag)
 		return 0;
-	if (e_current->left || i != arglist->size) {
-		puts("Argument count mismatch");
-		return 0;
-	}
 	return type_copy(fn_ts->type->subtype);
 }
 
+static ast_type *typecheck_syscall(ast_expr *expr)
+{
+	vect *expr_arglist = expr->sub_exprs;
+	ast_type *derived;
+	if (expr_arglist->size != 4) {
+		puts("CURRENTLY CAN ONLY SYSCALL IF THERE ARE 4 ARGS. SORRY");
+		return 0;
+	}
+	for (size_t i = 0 ; i < expr_arglist->size ; ++i) {
+		derived = derive_expr_type(expr_arglist->elements[i]);
+		if (derived->kind != Y_I32 && derived->kind != Y_STRING) {
+			puts("syscall args can only be i32s and strings right now!");
+			type_destroy(derived);
+			return 0;
+		}
+		type_destroy(derived);
+	}
+	return type_init(Y_VOID, 0);
+}
 static int is_numeric_type(ast_type *t)
 {
 	if (!t)
@@ -233,8 +242,6 @@ ast_type *derive_expr_type(ast_expr *expr)
 		return type_init(Y_STRING, 0);
 	case E_CHAR_LIT:
 		return type_init(Y_CHAR, 0);
-	case E_SYSCALL:
-		return type_init(Y_VOID, 0); // TODO: let syscalls return numbers. write for example returns # bytes written.
 	case E_TRUE_LIT:
 	case E_FALSE_LIT:
 		return type_init(Y_BOOL, 0);
@@ -242,6 +249,8 @@ ast_type *derive_expr_type(ast_expr *expr)
 		return type_init(Y_I32, 0);
 	case E_FNCALL:
 		return typecheck_fncall(expr);
+	case E_SYSCALL:
+		return typecheck_syscall(expr);
 	case E_IDENTIFIER:
 		ts = scope_lookup(expr->name);
 		if (ts) {
@@ -366,7 +375,6 @@ static int arglist_equals(vect *a, vect *b)
 			return 0;
 	}
 	return 1;
-	
 }
 int type_equals(ast_type *a, ast_type *b)
 {

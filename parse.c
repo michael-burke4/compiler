@@ -483,19 +483,46 @@ ast_expr *parse_expr_post_unary(token_s **cur_token)
 	return inner;
 }
 
+static vect *parse_comma_separated_exprs(token_s **cur_token, token_t closer) {
+	vect *ret = 0;
+	next(cur_token);
+	ast_expr *cur;
+	if (expect(cur_token, closer)) {
+		next(cur_token);
+		return ret;
+	}
+	ret = vect_init(4);
+	do {
+		if (ret->size != 0)
+			next(cur_token); // we know cur_token is a comma from while condition.
+		cur = parse_expr(cur_token);
+		if (cur)
+			vect_append(ret, (void *)cur);
+		else {
+			destroy_expr_vect(ret);
+			return 0;
+		}
+	} while (expect(cur_token, T_COMMA));
+	if (!expect(cur_token, closer)) {
+		report_error_tok("Expression list is missing closing token", *cur_token);
+		destroy_expr_vect(ret);
+		ret = 0;
+	}
+	next(cur_token);
+	return ret;
+}
+
 ast_expr *parse_expr_unit(token_s **cur_token)
 {
 	token_t typ = get_type(cur_token);
 	token_s *cur = *cur_token;
 	strvec *txt;
-	ast_expr *inner = 0;
-	ast_expr *arglist = 0;
-	ast_expr *cur_link = 0;
+	ast_expr *ex = 0;
 	//token_t op;
 	switch (typ) {
 	case T_LPAREN:
 		next(cur_token);
-		inner = parse_expr(cur_token);
+		ex = parse_expr(cur_token);
 		if (get_type(cur_token) != T_RPAREN) {
 			// TODO leave error handling to fns like parse_stmt and parse_decl.
 			// Just bubble the error up by returning zero.
@@ -503,11 +530,11 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 				"Expression is missing a closing paren", 
 				*cur_token);
 			sync_to(cur_token, T_EOF, 1);
-			expr_destroy(inner);
+			expr_destroy(ex);
 			return 0;
 		}
 		next(cur_token);
-		return expr_init(E_PAREN, inner, 0, 0, 0, 0, 0);
+		return expr_init(E_PAREN, ex, 0, 0, 0, 0, 0);
 	case T_INT_LIT:
 		next(cur_token);
 		return expr_init(E_INT_LIT, 0, 0, 0, 0, strvec_toi(cur->text), 0);
@@ -518,65 +545,22 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 		return expr_init(E_STR_LIT, 0, 0, 0, 0, 0, txt);
 	case T_SYSCALL:
 		next(cur_token);
-		if (expect(cur_token, T_LPAREN)) {
-			next(cur_token);
-		if (expect(cur_token, T_RPAREN)) {
-				report_error_tok("Cannot call syscall with no arguments", *cur_token);
-				sync_to(cur_token, T_EOF, 1);
-				next(cur_token);
-				return expr_init(E_SYSCALL, 0, 0, 0, 0, 0, 0);
-			}
-			arglist = expr_init(E_LINK, 0, 0, 0, 0, 0, 0);
-			cur_link = arglist;
-			do {
-				if (arglist->left)
-					next(cur_token);
-				inner = parse_expr(cur_token);
-				cur_link->left = inner;
-				cur_link->right = expr_init(E_LINK, 0, 0, 0, 0, 0, 0);
-				cur_link = cur_link->right;
-			} while (expect(cur_token, T_COMMA));
-
-			if (!expect(cur_token, T_RPAREN)) {
-				report_error_tok("Function call missing comma or closing paren",
-					*cur_token);
-				sync_to(cur_token, T_EOF, 1);
-				expr_destroy(arglist);
-				arglist = 0;
-			}
-			next(cur_token);
-			return expr_init(E_SYSCALL, arglist, 0, 0, 0, 0, 0);
-		} else
+		if (!expect(cur_token, T_LPAREN)) {
+			report_error_tok("Missing open paren after `syscall`", *cur_token);
+			sync_to(cur_token, T_EOF, 1);
 			return expr_init(E_SYSCALL, 0, 0, 0, 0, 0, 0);
+		}
+		ex = expr_init(E_SYSCALL, 0, 0, 0, 0, 0, 0);
+		ex->sub_exprs = parse_comma_separated_exprs(cur_token, T_RPAREN);
+		return ex;
 	case T_IDENTIFIER:
 		txt = cur->text;
 		cur->text = 0;
 		next(cur_token);
 		if (expect(cur_token, T_LPAREN)) {
-		    	next(cur_token);
-			if (expect(cur_token, T_RPAREN)) {
-				next(cur_token);
-				return expr_init(E_FNCALL, 0, 0, 0, txt, 0, 0);
-			}
-			arglist = expr_init(E_LINK, 0, 0, 0, 0, 0, 0);
-			cur_link = arglist;
-			do {
-				if (arglist->left)
-					next(cur_token);
-				inner = parse_expr(cur_token);
-				cur_link->left = inner;
-				cur_link->right = expr_init(E_LINK, 0, 0, 0, 0, 0, 0);
-				cur_link = cur_link->right;
-			} while (expect(cur_token, T_COMMA));
-
-			if (!expect(cur_token, T_RPAREN)) {
-				report_error_tok("Function call missing comma or closing paren",
-					*cur_token);
-				sync_to(cur_token, T_EOF, 1);
-				expr_destroy(arglist);
-			}
-			next(cur_token);
-			return expr_init(E_FNCALL, arglist, 0, 0, txt, 0, 0);
+			ex = expr_init(E_FNCALL, 0, 0, 0, txt, 0, 0);
+			ex->sub_exprs = parse_comma_separated_exprs(cur_token, T_RPAREN);
+			return ex;
 		} else
 			return expr_init(E_IDENTIFIER, 0, 0, 0, txt, 0, 0);
 	case T_TRUE:

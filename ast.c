@@ -23,6 +23,11 @@ ast_type *type_init(type_t kind, strvec *name)
 	return ret;
 }
 
+void expr_append_sub_expr(ast_expr *e, ast_expr *sub)
+{
+	vect_append(e->sub_exprs, (void *)sub);
+}
+
 ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, strvec *name,
 		    int int_lit, strvec *str_lit)
 {
@@ -33,6 +38,7 @@ ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, st
 	ret->op = op;
 	ret->name = name;
 	ret->int_lit = int_lit;
+	ret->sub_exprs = 0;
 	ret->string_literal = str_lit;
 	return ret;
 }
@@ -83,6 +89,15 @@ void type_destroy(ast_type *type)
 	free(type);
 }
 
+void destroy_expr_vect(vect *expr_vect)
+{
+	if (!expr_vect)
+		return;
+	for (size_t i = 0 ; i < expr_vect->size ; ++i)
+		expr_destroy((ast_expr *)expr_vect->elements[i]);
+	vect_destroy(expr_vect);
+}
+
 void expr_destroy(ast_expr *expr)
 {
 	if (!expr)
@@ -91,6 +106,7 @@ void expr_destroy(ast_expr *expr)
 	expr_destroy(expr->left);
 	strvec_destroy(expr->name);
 	strvec_destroy(expr->string_literal);
+	destroy_expr_vect(expr->sub_exprs);
 	free(expr);
 }
 

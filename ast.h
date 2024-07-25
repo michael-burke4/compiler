@@ -55,7 +55,6 @@ typedef enum {
 	E_POST_UNARY,
 	E_FNCALL,
 	E_SYSCALL,
-	E_LINK, // dummy type to denote a linked list that makes up a list of exprs in a fn call.
 } expr_t;
 
 typedef struct ast_expr {
@@ -67,7 +66,12 @@ typedef struct ast_expr {
 	int int_lit; // TODO: make this one field called 'literal' - worry abt parsing int/float value later.
 	strvec *string_literal;
 	ast_type type;
+	vect *sub_exprs;
 } ast_expr;
+
+void expr_add_sub_expr(ast_expr *e, ast_expr *sub);
+vect *sub_exprs_init(size_t size);
+void destroy_expr_vect(vect *expr_vect);
 
 typedef enum { S_ERROR, S_BLOCK, S_DECL, S_EXPR, S_IFELSE, S_RETURN, S_WHILE } stmt_t;
 

@@ -6,23 +6,22 @@
 #include "ht.h"
 #include <string.h>
 
-//static void codegen_syscall3(LLVMBuilderRef builder, int syscall_no, LLVMValueRef args[3])
-//{
-//	LLVMTypeRef argtypes[4] = {LLVMTypeOf(args[0]), LLVMTypeOf(args[1]), LLVMTypeOf(args[2]), LLVMInt32Type()};
-//	LLVMValueRef args2[4] = {args[0], args[1], args[2], LLVMConstInt(LLVMInt32Type(), syscall_no, 0)};
-//	// TODO: don't just return void.
-//	LLVMTypeRef functy = LLVMFunctionType(LLVMVoidType(), argtypes, 4, 0);
-//	char *inline_asm = \
-//		"mov w0, ${0:w}"	"\n"\
-//		"mov x1, $1"		"\n"\
-//		"mov w2, ${2:w}"	"\n"\
-//		"mov x8, ${3:x}"	"\n"\
-//		"svc #0"		"\n"\
-//		;
-//	char constraints[256] = "r,r,r,r,~{x0},~{x1},~{x2},~{x8},~{memory}";
-//	LLVMValueRef asmcall = LLVMGetInlineAsm(functy, inline_asm, strlen(inline_asm), constraints, strlen(constraints), 1, 1, 0, 0);
-//	LLVMBuildCall(builder, asmcall, args2, 4, "");
-//}
+static LLVMValueRef codegen_syscall3(LLVMBuilderRef builder, LLVMValueRef args[4])
+{
+	LLVMTypeRef argtypes[4] = {LLVMTypeOf(args[0]), LLVMTypeOf(args[1]), LLVMTypeOf(args[2]), LLVMTypeOf(args[3])};
+	// TODO: don't just return void.
+	LLVMTypeRef functy = LLVMFunctionType(LLVMVoidType(), argtypes, 4, 0);
+	char *inline_asm = \
+		"mov x8, ${0:x}"	"\n"\
+		"mov x0, ${1:x}"	"\n"\
+		"mov x1, $2"		"\n"\
+		"mov x2, ${3:x}"	"\n"\
+		"svc #0"		"\n"\
+		;
+	char constraints[256] = "r,r,r,r,~{x0},~{x1},~{x2},~{x8},~{memory}";
+	LLVMValueRef asmcall = LLVMGetInlineAsm(functy, inline_asm, strlen(inline_asm), constraints, strlen(constraints), 1, 1, 0, 0);
+	return LLVMBuildCall(builder, asmcall, args, 4, "");
+}
 
 static LLVMTypeRef to_llvm_type(ast_type *tp)
 {
@@ -160,20 +159,14 @@ static LLVMValueRef get_param_by_name(LLVMValueRef function, char *name)
 	return 0;
 }
 
+// TODO undo MAX_ARGS? Enforce MAX_ARGS? IDK just decide on something!!
 #define MAX_ARGS 32
 static void get_fncall_args(LLVMModuleRef mod, LLVMBuilderRef builder,ast_expr *expr, unsigned argno, LLVMValueRef (*args)[MAX_ARGS], vect *v)
 {
-	ast_expr *cur_arg;
 	if (argno == 0)
 		return;
-	cur_arg = expr->left;
-	for (unsigned i = 0 ; i < MAX_ARGS ; ++i) {
-		if (i < argno) {
-			(*args)[i] = expr_codegen(mod, builder, cur_arg->left, v);
-			cur_arg = cur_arg->right;
-		} else
-			(*args)[i] = 0;
-	}
+	for (size_t i = 0 ; i < expr->sub_exprs->size ; ++i)
+		(*args)[i] = expr_codegen(mod, builder, expr->sub_exprs->elements[i], v);
 }
 
 static LLVMValueRef assign_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, vect *nv, LLVMValueRef loc)
@@ -242,11 +235,9 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	// the expr struct/decl struct etc.
 	LLVMValueRef args[MAX_ARGS];
 	LLVMValueRef ret;
+	LLVMValueRef syscall_args[4];
 	unsigned argno;
 	switch (expr->kind) {
-	case E_LINK:
-		printf("TRIED TO CODEGEN LINK!\n");
-		abort();
 	case E_INT_LIT:
 		return LLVMConstInt(LLVMInt32Type(), (unsigned long long)expr->int_lit,0);
 	case E_MULDIV:
@@ -267,6 +258,11 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		argno = LLVMCountParams(v);
 		get_fncall_args(mod, builder, expr, argno, &args, nv);
 		return LLVMBuildCall(builder, v, args, argno, "");
+	case E_SYSCALL:
+		for (size_t i = 0 ; i < expr->sub_exprs->size ; ++i) {
+			syscall_args[i] = expr_codegen(mod, builder, expr->sub_exprs->elements[i], nv);
+		}
+		return codegen_syscall3(builder, syscall_args);
 	case E_IDENTIFIER:
 		strvec_tostatic(expr->name, buffer);
 		v = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));

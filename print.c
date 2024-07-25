@@ -22,11 +22,25 @@ void print_op(ast_expr *expr)
 	}
 }
 
+static void print_sub_exprs(ast_expr *expr)
+{
+	vect *subs;
+	size_t i;
+
+	if (!expr || !expr->sub_exprs)
+		return;
+	subs = expr->sub_exprs;
+	for (i = 0 ; i < subs->size - 1 ; ++i) {
+		expr_print(subs->elements[i]);
+		printf(", ");
+	}
+	expr_print(subs->elements[i]);
+}
+
 void expr_print(ast_expr *expr)
 {
 	if (!expr)
 		return;
-	ast_expr *current = 0;
 	switch (expr->kind) {
 	case E_POST_UNARY:
 		expr_print(expr->left);
@@ -69,24 +83,12 @@ void expr_print(ast_expr *expr)
 	case E_FNCALL:
 		strvec_print(expr->name);
 		printf("(");
-		current = expr->left;
-		while (current && current->left != 0) {
-			if (!(current == expr->left))
-				printf(", ");
-			expr_print(current->left);
-			current = current->right;
-		}
+		print_sub_exprs(expr);
 		printf(")");
 		break;
 	case E_SYSCALL:
 		printf("syscall(");
-		current = expr->left;
-		while (current && current->left != 0) {
-			if (!(current == expr->left))
-				printf(", ");
-			expr_print(current->left);
-			current = current->right;
-		}
+		print_sub_exprs(expr);
 		printf(")");
 		break;
 	case E_FALSE_LIT:
@@ -111,6 +113,8 @@ void typed_sym_print(ast_typed_symbol *typesym)
 
 void type_print(ast_type *type)
 {
+	if (!type)
+		return;
 	vect *arglist = type->arglist;
 	ssize_t i;
 	switch (type->kind) {
@@ -144,8 +148,9 @@ void type_print(ast_type *type)
 			typed_sym_print(arglist_get(arglist, i));
 			printf(", ");
 		}
-		if (i != 0)
+		if (arglist && arglist->size != 0) {
 			typed_sym_print(arglist_get(arglist, i));
+		}
 		printf(")");
 		printf(" -> ");
 		type_print(type->subtype);
