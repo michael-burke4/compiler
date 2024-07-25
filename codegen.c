@@ -285,7 +285,6 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	case E_TRUE_LIT:
 		return LLVMConstInt(LLVMInt1Type(), 1, 0);
 	case E_STR_LIT:
-		strvec_append(expr->string_literal, '\0');
 		return define_string_literal(mod, builder, expr->string_literal->text, expr->string_literal->size);
 	case E_INEQUALITY:
 		if (expr->op == T_LT)
