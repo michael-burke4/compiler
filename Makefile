@@ -20,7 +20,7 @@ compile: main
 ifdef SRC
 	./main $(SRC)
 	llc --filetype=obj $(subst .txt,.bc,$(notdir $(SRC)))
-	gcc $(subst .txt,.o,$(notdir $(SRC))) -o $(subst .txt,,$(notdir $(SRC)))
+	$(CC) $(subst .txt,.o,$(notdir $(SRC))) -o $(subst .txt,,$(notdir $(SRC)))
 else
 	$(error no SRC supplied. Please specify SRC=srcfile)
 endif
