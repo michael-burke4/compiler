@@ -129,7 +129,21 @@ static token_s *scan_string_literal(FILE *f, size_t *line, size_t *col)
 			report_error("Unterminated string literal.", *line, old_col);
 			return tok_init_nl(T_ERROR, *line, old_col, 0);
 		}
-		strvec_append(str, c);
+		if (c == '\\') {
+			c = fgetc(f);
+			if (c == 'n')
+				strvec_append(str, '\n');
+			else if (c == '"')
+				strvec_append(str, '"');
+			else {
+				ungetc(c, f);
+				(*col)--;
+				strvec_destroy(str);
+				report_error("Unsupported escape sequence.", *line, old_col);
+				return tok_init_nl(T_ERROR, *line, old_col, 0);
+			}
+		} else
+			strvec_append(str, c);
 	}
 	(*col)++;
 	return tok_init_nl(T_STR_LIT, *line, old_col, str);
