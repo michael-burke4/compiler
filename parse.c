@@ -358,6 +358,12 @@ ast_type *parse_type(token_s **cur_token)
 		tok_print(*cur_token);
 		sync_to(cur_token, T_EOF, 1);
 	}
+	while (get_type(cur_token) == T_STAR) {
+		subtype = ret;
+		ret = type_init(Y_POINTER, 0);
+		ret->subtype = subtype;
+		next(cur_token);
+	}
 	return ret;
 }
 
@@ -443,7 +449,7 @@ ast_expr *parse_expr_muldiv(token_s **cur_token)
 	while (typ == T_STAR || typ == T_FSLASH || typ == T_PERCENT) {
 		op = typ;
 		next(cur_token);
-		that = parse_expr_unit(cur_token); // TODO make this parse_expr_pre_unary
+		that = parse_expr_pre_unary(cur_token);
 		this = expr_init(E_MULDIV, this, that, op, 0, 0, 0);
 		typ = get_type(cur_token);
 	}
@@ -454,6 +460,7 @@ ast_expr *parse_expr_pre_unary(token_s **cur_token)
 {
 	ast_expr *inner = 0;
 	token_t typ = get_type(cur_token);
+	ast_expr *ret = 0;
 
 	switch (typ) {
 	case T_DPLUS:
@@ -461,10 +468,16 @@ ast_expr *parse_expr_pre_unary(token_s **cur_token)
 	case T_MINUS:
 	case T_NOT:
 	case T_BW_NOT:
+	case T_AMPERSAND:
+		next(cur_token);
+		inner = parse_expr_pre_unary(cur_token); // TODO: is this correct? Do a lot of thinking.
+		return expr_init(E_PRE_UNARY, inner, 0, typ, 0, 0, 0);
 	case T_STAR:
 		next(cur_token);
-		inner = parse_expr(cur_token);
-		return expr_init(E_PRE_UNARY, inner, 0, typ, 0, 0, 0);
+		inner = parse_expr_pre_unary(cur_token);
+		ret = expr_init(E_PRE_UNARY, inner, 0, typ, 0, 0, 0);
+		ret->is_lvalue = 1;
+		return ret;
 	default:
 		return parse_expr_post_unary(cur_token);
 	}
@@ -475,6 +488,7 @@ ast_expr *parse_expr_post_unary(token_s **cur_token)
 	ast_expr *inner = parse_expr_unit(cur_token);
 	token_t typ = get_type(cur_token);
 	// something like x++++; should parse but fail at typechecking. Could fail it now but w/e.
+	// TODO: Make this look just like parse_expr_pre_unary
 	while (typ == T_DPLUS || typ == T_DMINUS) {
 		next(cur_token);
 		inner = expr_init(E_POST_UNARY, inner, 0, typ, 0, 0, 0);
@@ -561,8 +575,11 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 			ex = expr_init(E_FNCALL, 0, 0, 0, txt, 0, 0);
 			ex->sub_exprs = parse_comma_separated_exprs(cur_token, T_RPAREN);
 			return ex;
-		} else
-			return expr_init(E_IDENTIFIER, 0, 0, 0, txt, 0, 0);
+		} else {
+			ex = expr_init(E_IDENTIFIER, 0, 0, 0, txt, 0, 0);
+			ex->is_lvalue = 1;
+			return ex;
+		}
 	case T_TRUE:
 		next(cur_token);
 		return expr_init(E_TRUE_LIT, 0, 0, 0, 0, 0, 0);

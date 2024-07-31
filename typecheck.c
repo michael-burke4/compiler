@@ -171,6 +171,76 @@ static int is_numeric_type(ast_type *t)
 	}
 }
 
+static ast_type *derive_assign(ast_expr *expr) {
+	ast_typed_symbol *ts = 0;
+	ast_type *left = 0;
+	ast_type *right = 0;
+	int derived = 0;
+	if (!expr->left->is_lvalue) {
+		puts("Assignment expression's left side must be an lvalue!");
+		had_error = 1;
+		return 0;
+	}
+	if (expr->left->kind == E_IDENTIFIER) {
+		ts = scope_lookup(expr->left->name);
+		if (!ts) {
+			printf("Use of undeclared identifier ");
+			strvec_print(expr->left->name);
+			puts("");
+			had_error = 1;
+			return 0;
+		}
+		left = ts->type;
+	} else {
+		left = derive_expr_type(expr->left);
+		derived = 1;
+	}
+	right = derive_expr_type(expr->right);
+	if (type_equals(left, right)) {
+		if (derived)
+			type_destroy(left);
+		return right;
+	}
+	printf("Attempted to assign expression of type ");
+	type_print(right);
+	printf(" to a variable of type ");
+	type_print(left);
+	type_destroy(right);
+	return 0;
+}
+
+static ast_type *derive_pre_unary(ast_expr *expr)
+{
+	ast_type *left;
+	ast_type *right;
+	switch (expr->op) {
+	case T_AMPERSAND:
+		left = derive_expr_type(expr->left);
+		if (!left || !expr->left->is_lvalue) {
+			puts("Cannot find address of non-lvalue expr");
+			type_destroy(left);
+			return 0;
+		}
+		right = type_init(Y_POINTER, 0);
+		right->subtype = left;
+		return right;
+	case T_STAR:
+		left = derive_expr_type(expr->left);
+		if (!left || left->kind != Y_POINTER) {
+			puts("Cannot dereference non-pointer expression");
+			type_destroy(left);
+			return 0;
+		}
+		right = type_copy(left->subtype);
+		type_destroy(left);
+		return right;
+	default:
+		puts("unsupported expr kind while typechecking!");
+		had_error = 1;
+		return 0;
+	}
+}
+
 ast_type *derive_expr_type(ast_expr *expr)
 {
 	ast_typed_symbol *ts = 0;
@@ -211,31 +281,7 @@ ast_type *derive_expr_type(ast_expr *expr)
 		type_destroy(right);
 		return 0;
 	case E_ASSIGN:
-		if (expr->left->kind != E_IDENTIFIER || !expr->left->name) {
-			puts("Assignment expression's left side must be an identifier"); // TODO arrays!!!
-			had_error = 1;
-			return 0;
-		}
-		ts = scope_lookup(expr->left->name);
-		if (!ts) {
-			printf("Use of undeclared identifier ");
-			strvec_print(expr->left->name);
-			puts("");
-			had_error = 1;
-			return 0;
-		}
-		left = ts->type;
-		right = derive_expr_type(expr->right);
-		if (type_equals(left, right))
-			return right;
-		printf("Attempted to assign expression of type ");
-		type_print(right);
-		printf(" to a variable of type ");
-		type_print(left);
-		type_destroy(right);
-		puts("");
-		had_error = 1;
-		return 0;
+		return derive_assign(expr);
 	case E_PAREN:
 		return derive_expr_type(expr->left);
 	case E_STR_LIT:
@@ -261,6 +307,8 @@ ast_type *derive_expr_type(ast_expr *expr)
 		puts("\"");
 		had_error = 1;
 		return 0;
+	case E_PRE_UNARY:
+		return derive_pre_unary(expr);
 	default:
 		puts("unsupported expr kind while typechecking!");
 		had_error = 1;

@@ -22,6 +22,7 @@ typedef enum {
 	Y_STRING,
 	Y_BOOL,
 	Y_VOID,
+	Y_POINTER,
 	Y_IDENTIFIER, // for custom types.
 	Y_FUNCTION,
 } type_t;
@@ -65,8 +66,8 @@ typedef struct ast_expr {
 	strvec *name;
 	int int_lit; // TODO: make this one field called 'literal' - worry abt parsing int/float value later.
 	strvec *string_literal;
-	ast_type type;
 	vect *sub_exprs;
+	int is_lvalue;
 } ast_expr;
 
 void expr_add_sub_expr(ast_expr *e, ast_expr *sub);
