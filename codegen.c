@@ -32,6 +32,8 @@ static LLVMTypeRef to_llvm_type(ast_type *tp)
 		return LLVMPointerType(LLVMInt8Type(), 0);
 	case Y_VOID:
 		return LLVMVoidType();
+	case Y_POINTER:
+		return LLVMPointerType(to_llvm_type(tp->subtype), 0);
 	default:
 		printf("couldn't convert type\n");
 		abort();
@@ -273,11 +275,18 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		}
 		return ret;
 	case E_ASSIGN:
-		strvec_tostatic(expr->left->name, buffer);
-		v = val_vect_lookup(nv, buffer);
-		if (!v) {
-			v = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
-			v = get_param_by_name(v, buffer);
+		if (expr->left->kind == E_IDENTIFIER) {
+			strvec_tostatic(expr->left->name, buffer);
+			v = val_vect_lookup(nv, buffer);
+			if (!v) {
+				v = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
+				v = get_param_by_name(v, buffer);
+			}
+		} else if (expr->left->kind == E_PRE_UNARY && expr->left->op == T_STAR) {
+			v = expr_codegen(mod, builder, expr->left->left, nv);
+		} else {
+			puts("Can't assign to this expr type right now.");
+			exit(1);
 		}
 		return assign_codegen(mod, builder, expr, nv, v);
 	case E_FALSE_LIT:
@@ -297,6 +306,14 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 			return LLVMBuildICmp(builder, LLVMIntSGE, expr_codegen(mod, builder, expr->left, nv), expr_codegen(mod, builder, expr->right, nv), "");
 	case E_PAREN:
 		return expr_codegen(mod, builder, expr->left, nv);
+	case E_PRE_UNARY:
+		if (expr->op == T_STAR) {
+			return LLVMBuildLoad(builder, expr_codegen(mod, builder, expr->left, nv), "");
+		} else if (expr->op == T_AMPERSAND) {
+			strvec_tostatic(expr->left->name, buffer);
+			return val_vect_lookup(nv, buffer);
+		}
+		//fallthrough
 	default:
 		printf("can't codegen that expr kind right now.\n");
 		exit(1);
