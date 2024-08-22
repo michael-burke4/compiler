@@ -11,6 +11,7 @@ typedef struct ast_decl {
 	struct ast_expr *expr;
 	struct ast_stmt *body;
 	struct ast_decl *next;
+	struct vect *initializer;
 } ast_decl;
 
 typedef enum {

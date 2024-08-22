@@ -46,6 +46,29 @@ static void typecheck_fnbody(ast_decl *decl)
 	scope_exit();
 }
 
+static void typecheck_decl_initializer(ast_decl *decl)
+{
+	ast_type *t;
+	if (!decl->initializer)
+		return;
+	if (decl->typesym->type->kind != Y_POINTER) {
+		puts("Can only assign array initializers to pointers.");
+		had_error = 1;
+		return;
+	}
+	for (size_t i = 0 ; i < decl->initializer->size ; ++i) {
+		t = derive_expr_type(decl->initializer->elements[i]);
+		if (!type_equals(t, decl->typesym->type->subtype)) {
+			puts("Type mismatch in array initializer");
+			had_error = 1;
+			type_destroy(t);
+			return;
+		}
+		type_destroy(t);
+	}
+	return;
+}
+
 void typecheck_decl(ast_decl *decl)
 {
 	ast_type *typ;
@@ -76,9 +99,11 @@ void typecheck_decl(ast_decl *decl)
 		}
 		type_destroy(typ);
 		scope_bind(decl->typesym);
-	} else {
+	} else if (decl->initializer) {
+		typecheck_decl_initializer(decl);
 		scope_bind(decl->typesym);
-	}
+	} else
+		scope_bind(decl->typesym);
 }
 
 

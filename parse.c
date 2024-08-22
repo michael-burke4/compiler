@@ -43,6 +43,35 @@ static void sync_to(token_s **cur_token, token_t target, int or_newline)
 	}
 }
 
+static vect *parse_comma_separated_exprs(token_s **cur_token, token_t closer) {
+	vect *ret = 0;
+	next(cur_token);
+	ast_expr *cur;
+	if (expect(cur_token, closer)) {
+		next(cur_token);
+		return ret;
+	}
+	ret = vect_init(4);
+	do {
+		if (ret->size != 0)
+			next(cur_token); // we know cur_token is a comma from while condition.
+		cur = parse_expr(cur_token);
+		if (cur)
+			vect_append(ret, (void *)cur);
+		else {
+			destroy_expr_vect(ret);
+			return 0;
+		}
+	} while (expect(cur_token, T_COMMA));
+	if (!expect(cur_token, closer)) {
+		report_error_tok("Expression list is missing closing token", *cur_token);
+		destroy_expr_vect(ret);
+		ret = 0;
+	}
+	next(cur_token);
+	return ret;
+}
+
 ast_decl *parse_program(token_s **cur_token)
 {
 	if (expect(cur_token, T_EOF))
@@ -120,6 +149,8 @@ ast_decl *parse_decl(token_s **cur_token)
 	ast_typed_symbol *typed_symbol = 0;
 	ast_expr *expr = 0;
 	ast_stmt *stmt = 0;
+	vect *initializer = 0;
+	ast_decl *ret = 0;
 
 	if (!expect(cur_token, T_LET)) {
 		report_error_tok("Missing 'let' keyword in declaration.", *cur_token);
@@ -141,6 +172,8 @@ ast_decl *parse_decl(token_s **cur_token)
 		next(cur_token);
 		if (expect(cur_token, T_LCURLY))
 			stmt = parse_stmt_block(cur_token);
+		else if (expect(cur_token, T_LBRACKET))
+			initializer = parse_comma_separated_exprs(cur_token, T_RBRACKET);
 		else
 			expr = parse_expr(cur_token);
 		if (!expect(cur_token, T_SEMICO)) {
@@ -155,7 +188,9 @@ ast_decl *parse_decl(token_s **cur_token)
 		report_error_tok("Missing semicolon (maybe missing on previous line)", *cur_token);
 		goto decl_parse_err;
 	}
-	return decl_init(typed_symbol, expr, stmt, 0);
+	ret = decl_init(typed_symbol, expr, stmt, 0);
+	ret->initializer = initializer;
+	return ret;
 
 decl_parse_err:
 	ast_typed_symbol_destroy(typed_symbol);
@@ -497,34 +532,6 @@ ast_expr *parse_expr_post_unary(token_s **cur_token)
 	return inner;
 }
 
-static vect *parse_comma_separated_exprs(token_s **cur_token, token_t closer) {
-	vect *ret = 0;
-	next(cur_token);
-	ast_expr *cur;
-	if (expect(cur_token, closer)) {
-		next(cur_token);
-		return ret;
-	}
-	ret = vect_init(4);
-	do {
-		if (ret->size != 0)
-			next(cur_token); // we know cur_token is a comma from while condition.
-		cur = parse_expr(cur_token);
-		if (cur)
-			vect_append(ret, (void *)cur);
-		else {
-			destroy_expr_vect(ret);
-			return 0;
-		}
-	} while (expect(cur_token, T_COMMA));
-	if (!expect(cur_token, closer)) {
-		report_error_tok("Expression list is missing closing token", *cur_token);
-		destroy_expr_vect(ret);
-		ret = 0;
-	}
-	next(cur_token);
-	return ret;
-}
 
 ast_expr *parse_expr_unit(token_s **cur_token)
 {

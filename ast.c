@@ -10,6 +10,7 @@ ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt, a
 	ret->body = stmt;
 	ret->expr = expr;
 	ret->next = next;
+	ret->initializer = 0;
 	return ret;
 }
 
@@ -118,6 +119,11 @@ void decl_destroy(ast_decl *decl)
 	ast_typed_symbol_destroy(decl->typesym);
 	expr_destroy(decl->expr);
 	stmt_destroy(decl->body);
+	if (decl->initializer) {
+		for (size_t i = 0 ; i < decl->initializer->size ; ++i) {
+			expr_destroy(decl->initializer->elements[i]);
+		}
+	}
 	free(decl);
 }
 

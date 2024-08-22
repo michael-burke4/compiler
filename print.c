@@ -22,19 +22,23 @@ void print_op(ast_expr *expr)
 	}
 }
 
-static void print_sub_exprs(ast_expr *expr)
-{
-	vect *subs;
+static void print_expr_list(vect *list) {
 	size_t i;
 
-	if (!expr || !expr->sub_exprs)
+	if (!list)
 		return;
-	subs = expr->sub_exprs;
-	for (i = 0 ; i < subs->size - 1 ; ++i) {
-		expr_print(subs->elements[i]);
+	for (i = 0 ; i < list->size - 1 ; ++i) {
+		expr_print(list->elements[i]);
 		printf(", ");
 	}
-	expr_print(subs->elements[i]);
+	expr_print(list->elements[i]);
+}
+
+static void print_sub_exprs(ast_expr *expr)
+{
+	if (!expr || !expr->sub_exprs)
+		return;
+	print_expr_list(expr->sub_exprs);
 }
 
 void expr_print(ast_expr *expr)
@@ -177,6 +181,11 @@ void decl_print(ast_decl *decl)
 	} else if (decl->body != 0) {
 		printf(" = ");
 		stmt_print(decl->body);
+	} else if (decl->initializer != 0) {
+		printf(" = ");
+		printf("[");
+		print_expr_list(decl->initializer);
+		printf("]");
 	}
 	printf(";");
 }
