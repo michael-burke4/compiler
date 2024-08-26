@@ -538,6 +538,7 @@ ast_expr *parse_expr_post_unary(token_s **cur_token)
 		}
 		inner = expr_init(E_POST_UNARY, inner, 0, typ, 0, 0, 0);
 		inner->right = e;
+		inner->is_lvalue = 1;
 		typ = get_type(cur_token);
 	}
 	return inner;
@@ -550,6 +551,7 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 	token_s *cur = *cur_token;
 	strvec *txt;
 	ast_expr *ex = 0;
+	ast_expr *ret;
 	//token_t op;
 	switch (typ) {
 	case T_LPAREN:
@@ -566,7 +568,9 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 			return 0;
 		}
 		next(cur_token);
-		return expr_init(E_PAREN, ex, 0, 0, 0, 0, 0);
+		ret = expr_init(E_PAREN, ex, 0, 0, 0, 0, 0);
+		ret->is_lvalue = ex->is_lvalue;
+		return ret;
 	case T_INT_LIT:
 		next(cur_token);
 		return expr_init(E_INT_LIT, 0, 0, 0, 0, strvec_toi(cur->text), 0);
