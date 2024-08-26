@@ -64,6 +64,29 @@ LLVMModuleRef program_codegen(ast_decl *program, char *module_name)
 	return ret;
 }
 
+
+static void initializer_codegen(LLVMModuleRef mod,LLVMBuilderRef builder, ast_stmt *stmt, vect *v)
+{
+	char buffer[BUFFER_MAX_LEN];
+	LLVMTypeRef inner_type = to_llvm_type(stmt->decl->typesym->type->subtype);
+	LLVMTypeRef arr_type = LLVMArrayType(inner_type, stmt->decl->initializer->size);
+	LLVMTypeRef ptr_type = LLVMPointerType(inner_type, 0);
+
+	LLVMValueRef allo = LLVMBuildAlloca(builder, arr_type, "");
+	strvec_tostatic(stmt->decl->typesym->symbol, buffer);
+	LLVMValueRef ptr = LLVMBuildBitCast(builder, allo, ptr_type, buffer);
+
+	for (size_t i = 0 ; i < stmt->decl->initializer->size ; ++i) {
+		LLVMValueRef i_as_llvm = LLVMConstInt(LLVMInt32Type(), i, 0);
+		LLVMValueRef a[] = {i_as_llvm};
+		LLVMValueRef cur_index = LLVMBuildGEP(builder, ptr, a, 1, "");
+		LLVMValueRef cur_expr = expr_codegen(mod, builder, stmt->decl->initializer->elements[i], v);
+		LLVMBuildStore(builder, cur_expr, cur_index);
+	}
+
+	vect_append(v, (void *)ptr);
+}
+
 void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vect *v, int in_fn)
 {
 	LLVMValueRef v1;
@@ -121,11 +144,15 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec
 		LLVMPositionBuilderAtEnd(builder, b3);
 		break;
 	case S_DECL:
-		strvec_tostatic(stmt->decl->typesym->symbol, buffer);
-		v1 = LLVMBuildAlloca(builder, to_llvm_type(stmt->decl->typesym->type), buffer);
-		vect_append(v, (void *)v1);
-		if (stmt->decl->expr != 0)
-			LLVMBuildStore(builder, expr_codegen(mod, builder, stmt->decl->expr, v), v1);
+		if (stmt->decl->initializer) {
+			initializer_codegen(mod, builder, stmt, v);
+		} else {
+			strvec_tostatic(stmt->decl->typesym->symbol, buffer);
+			v1 = LLVMBuildAlloca(builder, to_llvm_type(stmt->decl->typesym->type), buffer);
+			vect_append(v, (void *)v1);
+			if (stmt->decl->expr != 0)
+				LLVMBuildStore(builder, expr_codegen(mod, builder, stmt->decl->expr, v), v1);
+		}
 		break;
 	case S_WHILE:
 		cur_function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
