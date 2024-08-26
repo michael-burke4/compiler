@@ -47,8 +47,15 @@ void expr_print(ast_expr *expr)
 		return;
 	switch (expr->kind) {
 	case E_POST_UNARY:
-		expr_print(expr->left);
-		print_op(expr);
+		if (expr->op == T_LBRACKET) {
+			expr_print(expr->left);
+			printf("[");
+			expr_print(expr->right);
+			printf("]");
+		} else {
+			expr_print(expr->left);
+			print_op(expr);
+		}
 		break;
 	case E_PRE_UNARY:
 		print_op(expr);

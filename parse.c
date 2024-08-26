@@ -521,12 +521,23 @@ ast_expr *parse_expr_pre_unary(token_s **cur_token)
 ast_expr *parse_expr_post_unary(token_s **cur_token)
 {
 	ast_expr *inner = parse_expr_unit(cur_token);
+	ast_expr *e = 0;
 	token_t typ = get_type(cur_token);
 	// something like x++++; should parse but fail at typechecking. Could fail it now but w/e.
 	// TODO: Make this look just like parse_expr_pre_unary
-	while (typ == T_DPLUS || typ == T_DMINUS) {
+	while (typ == T_DPLUS || typ == T_DMINUS || typ == T_LBRACKET) {
 		next(cur_token);
+		if (typ == T_LBRACKET) {
+			e = parse_expr(cur_token);
+			if (!expect(cur_token, T_RBRACKET)) {
+				report_error_tok("Missing closing bracket", *cur_token);
+				expr_destroy(e);
+				return 0;
+			}
+			next(cur_token);
+		}
 		inner = expr_init(E_POST_UNARY, inner, 0, typ, 0, 0, 0);
+		inner->right = e;
 		typ = get_type(cur_token);
 	}
 	return inner;
