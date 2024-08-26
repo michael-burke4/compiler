@@ -266,6 +266,35 @@ static ast_type *derive_pre_unary(ast_expr *expr)
 	}
 }
 
+static ast_type *derive_post_unary(ast_expr *expr)
+{
+	ast_type *left;
+	ast_type *right;
+	switch (expr->op) {
+	case T_LBRACKET:
+		left = derive_expr_type(expr->left);
+		if (!left || left->kind != Y_POINTER) {
+			puts("can only use index operator on pointers");
+			type_destroy(left);
+			had_error = 1;
+			return 0;
+		}
+		right = derive_expr_type(expr->right);
+		if (!right || right->kind != Y_I32) {
+			puts("can only index pointers with integers");
+			type_destroy(left);
+			type_destroy(right);
+			had_error = 1;
+			return 0;
+		}
+		return left->subtype;
+	default:
+		puts("unsupported post unary expr while typechecking");
+		had_error = 1;
+		return 0;
+	}
+}
+
 ast_type *derive_expr_type(ast_expr *expr)
 {
 	ast_typed_symbol *ts = 0;
@@ -334,6 +363,8 @@ ast_type *derive_expr_type(ast_expr *expr)
 		return 0;
 	case E_PRE_UNARY:
 		return derive_pre_unary(expr);
+	case E_POST_UNARY:
+		return derive_post_unary(expr);
 	default:
 		puts("unsupported expr kind while typechecking!");
 		had_error = 1;
