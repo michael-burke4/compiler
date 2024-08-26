@@ -270,6 +270,7 @@ static ast_type *derive_post_unary(ast_expr *expr)
 {
 	ast_type *left;
 	ast_type *right;
+	ast_type *ret;
 	switch (expr->op) {
 	case T_LBRACKET:
 		left = derive_expr_type(expr->left);
@@ -287,7 +288,10 @@ static ast_type *derive_post_unary(ast_expr *expr)
 			had_error = 1;
 			return 0;
 		}
-		return left->subtype;
+		ret = type_copy(left->subtype);
+		type_destroy(left);
+		type_destroy(right);
+		return ret;
 	default:
 		puts("unsupported post unary expr while typechecking");
 		had_error = 1;
