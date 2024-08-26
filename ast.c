@@ -123,6 +123,8 @@ void decl_destroy(ast_decl *decl)
 		for (size_t i = 0 ; i < decl->initializer->size ; ++i) {
 			expr_destroy(decl->initializer->elements[i]);
 		}
+		free(decl->initializer->elements);
+		free(decl->initializer);
 	}
 	free(decl);
 }
