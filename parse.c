@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+union num_lit dummy = {.u64 = 0};
+
 static inline void next(token_s **cur_token)
 {
 	*cur_token = (*cur_token)->next;
@@ -421,7 +423,7 @@ ast_expr *parse_expr_assign(token_s **cur_token)
 		op = typ;
 		next(cur_token);
 		that = parse_expr_inequality(cur_token);
-		this = expr_init(E_ASSIGN, this, that, op, 0, 0, 0);
+		this = expr_init(E_ASSIGN, this, that, op, 0, dummy, 0);
 		typ = get_type(cur_token);
 	}
 	return this;
@@ -437,7 +439,7 @@ ast_expr *parse_expr_equality(token_s **cur_token)
 		op = typ;
 		next(cur_token);
 		that = parse_expr_addsub(cur_token);
-		this = expr_init(E_EQUALITY, this, that, op, 0, 0, 0);
+		this = expr_init(E_EQUALITY, this, that, op, 0, dummy, 0);
 		typ = get_type(cur_token);
 	}
 	return this;
@@ -453,7 +455,7 @@ ast_expr *parse_expr_inequality(token_s **cur_token)
 		op = typ;
 		next(cur_token);
 		that = parse_expr_addsub(cur_token);
-		this = expr_init(E_INEQUALITY, this, that, op, 0, 0, 0);
+		this = expr_init(E_INEQUALITY, this, that, op, 0, dummy, 0);
 		typ = get_type(cur_token);
 	}
 	return this;
@@ -469,7 +471,7 @@ ast_expr *parse_expr_addsub(token_s **cur_token)
 		op = typ;
 		next(cur_token);
 		that = parse_expr_muldiv(cur_token);
-		this = expr_init(E_ADDSUB, this, that, op, 0, 0, 0);
+		this = expr_init(E_ADDSUB, this, that, op, 0, dummy, 0);
 		typ = get_type(cur_token);
 	}
 	return this;
@@ -485,7 +487,7 @@ ast_expr *parse_expr_muldiv(token_s **cur_token)
 		op = typ;
 		next(cur_token);
 		that = parse_expr_pre_unary(cur_token);
-		this = expr_init(E_MULDIV, this, that, op, 0, 0, 0);
+		this = expr_init(E_MULDIV, this, that, op, 0, dummy, 0);
 		typ = get_type(cur_token);
 	}
 	return this;
@@ -506,11 +508,11 @@ ast_expr *parse_expr_pre_unary(token_s **cur_token)
 	case T_AMPERSAND:
 		next(cur_token);
 		inner = parse_expr_pre_unary(cur_token); // TODO: is this correct? Do a lot of thinking.
-		return expr_init(E_PRE_UNARY, inner, 0, typ, 0, 0, 0);
+		return expr_init(E_PRE_UNARY, inner, 0, typ, 0, dummy, 0);
 	case T_STAR:
 		next(cur_token);
 		inner = parse_expr_pre_unary(cur_token);
-		ret = expr_init(E_PRE_UNARY, inner, 0, typ, 0, 0, 0);
+		ret = expr_init(E_PRE_UNARY, inner, 0, typ, 0, dummy, 0);
 		ret->is_lvalue = 1;
 		return ret;
 	default:
@@ -536,7 +538,7 @@ ast_expr *parse_expr_post_unary(token_s **cur_token)
 			}
 			next(cur_token);
 		}
-		inner = expr_init(E_POST_UNARY, inner, 0, typ, 0, 0, 0);
+		inner = expr_init(E_POST_UNARY, inner, 0, typ, 0, dummy, 0);
 		inner->right = e;
 		inner->is_lvalue = 1;
 		typ = get_type(cur_token);
@@ -568,25 +570,27 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 			return 0;
 		}
 		next(cur_token);
-		ret = expr_init(E_PAREN, ex, 0, 0, 0, 0, 0);
+		ret = expr_init(E_PAREN, ex, 0, 0, 0, dummy, 0);
 		ret->is_lvalue = ex->is_lvalue;
 		return ret;
 	case T_INT_LIT:
 		next(cur_token);
-		return expr_init(E_INT_LIT, 0, 0, 0, 0, strvec_toi(cur->text), 0);
+		union num_lit n = {.u64 = 0};
+		n.i32 = strvec_toi(cur->text);
+		return expr_init(E_INT_LIT, 0, 0, 0, 0, n, 0);
 	case T_STR_LIT:
 		txt = cur->text;
 		cur->text = 0;
 		next(cur_token);
-		return expr_init(E_STR_LIT, 0, 0, 0, 0, 0, txt);
+		return expr_init(E_STR_LIT, 0, 0, 0, 0, dummy, txt);
 	case T_SYSCALL:
 		next(cur_token);
 		if (!expect(cur_token, T_LPAREN)) {
 			report_error_tok("Missing open paren after `syscall`", *cur_token);
 			sync_to(cur_token, T_EOF, 1);
-			return expr_init(E_SYSCALL, 0, 0, 0, 0, 0, 0);
+			return expr_init(E_SYSCALL, 0, 0, 0, 0, dummy, 0);
 		}
-		ex = expr_init(E_SYSCALL, 0, 0, 0, 0, 0, 0);
+		ex = expr_init(E_SYSCALL, 0, 0, 0, 0, dummy, 0);
 		ex->sub_exprs = parse_comma_separated_exprs(cur_token, T_RPAREN);
 		return ex;
 	case T_IDENTIFIER:
@@ -594,25 +598,25 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 		cur->text = 0;
 		next(cur_token);
 		if (expect(cur_token, T_LPAREN)) {
-			ex = expr_init(E_FNCALL, 0, 0, 0, txt, 0, 0);
+			ex = expr_init(E_FNCALL, 0, 0, 0, txt, dummy, 0);
 			ex->sub_exprs = parse_comma_separated_exprs(cur_token, T_RPAREN);
 			return ex;
 		} else {
-			ex = expr_init(E_IDENTIFIER, 0, 0, 0, txt, 0, 0);
+			ex = expr_init(E_IDENTIFIER, 0, 0, 0, txt, dummy, 0);
 			ex->is_lvalue = 1;
 			return ex;
 		}
 	case T_TRUE:
 		next(cur_token);
-		return expr_init(E_TRUE_LIT, 0, 0, 0, 0, 0, 0);
+		return expr_init(E_TRUE_LIT, 0, 0, 0, 0, dummy, 0);
 	case T_FALSE:
 		next(cur_token);
-		return expr_init(E_FALSE_LIT, 0, 0, 0, 0, 0, 0);
+		return expr_init(E_FALSE_LIT, 0, 0, 0, 0, dummy, 0);
 	case T_CHAR_LIT:
 		txt = cur->text;
 		cur->text = 0;
 		next(cur_token);
-		return expr_init(E_CHAR_LIT, 0, 0, 0, 0, 0, txt);
+		return expr_init(E_CHAR_LIT, 0, 0, 0, 0, dummy, txt);
 	default:
 		report_error_tok("Could not parse expr unit. The offending token in question:",
 				 *cur_token);

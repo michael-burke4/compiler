@@ -59,13 +59,23 @@ typedef enum {
 	E_SYSCALL,
 } expr_t;
 
+// TODO: cross platform compatability stuff ?!
+union num_lit {
+	int i32;
+	long int i64;
+	unsigned u32;
+	unsigned long u64;
+	float f32;
+	double f64;
+};
+
 typedef struct ast_expr {
 	expr_t kind;
 	struct ast_expr *left;
 	struct ast_expr *right;
 	token_t op;
 	strvec *name;
-	int int_lit; // TODO: make this one field called 'literal' - worry abt parsing int/float value later.
+	union num_lit num;
 	strvec *string_literal;
 	vect *sub_exprs;
 	int is_lvalue;
@@ -90,7 +100,7 @@ ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt, a
 ast_type *type_init(type_t kind, strvec *name);
 ast_typed_symbol *ast_typed_symbol_init(ast_type *type, strvec *symbol);
 ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, strvec *name,
-		    int int_lit, strvec *str_lit);
+		    union num_lit num, strvec *str_lit);
 ast_stmt *stmt_init(stmt_t kind, ast_decl *decl, ast_expr *expr, ast_stmt *body,
 		    ast_stmt *else_body);
 void ast_free(ast_decl *program);

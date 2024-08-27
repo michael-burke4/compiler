@@ -76,7 +76,7 @@ void expr_print(ast_expr *expr)
 		printf(")");
 		break;
 	case E_INT_LIT:
-		printf("%d", expr->int_lit);
+		printf("%d", expr->num.i32);
 		break;
 	case E_CHAR_LIT:
 		printf("'");
