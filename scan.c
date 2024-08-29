@@ -100,6 +100,9 @@ static token_s *scan_char_literal(FILE *f, size_t *line, size_t *col)
 		ungetc(c, f);
 		report_error("Bad char literal. Missing close quote?", *line, old_col);
 		return tok_init_nl(T_ERROR, *line, old_col, 0);
+	} else if (c == '\\') {
+		*(col++);
+		c = fgetc(f);
 	}
 	(*col)++;
 	c2 = fgetc(f);

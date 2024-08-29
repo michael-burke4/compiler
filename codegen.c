@@ -34,6 +34,8 @@ static LLVMTypeRef to_llvm_type(ast_type *tp)
 		return LLVMVoidType();
 	case Y_POINTER:
 		return LLVMPointerType(to_llvm_type(tp->subtype), 0);
+	case Y_CHAR:
+		return LLVMInt8Type();
 	default:
 		printf("couldn't convert type\n");
 		abort();
@@ -257,8 +259,6 @@ LLVMValueRef define_string_literal(LLVMModuleRef mod, LLVMBuilderRef builder, co
 	return g;
 }
 
-// Remaining expr types to codegen:
-//E_CHAR_LIT,
 LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, vect *nv, int store_ctxt)
 {
 	char buffer[BUFFER_MAX_LEN];
@@ -326,6 +326,8 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		return LLVMConstInt(LLVMInt1Type(), 1, 0);
 	case E_STR_LIT:
 		return define_string_literal(mod, builder, expr->string_literal->text, expr->string_literal->size);
+	case E_CHAR_LIT:
+		return LLVMConstInt(LLVMInt8Type(), (int)expr->string_literal->text[0], 0);
 	case E_INEQUALITY:
 		if (expr->op == T_LT)
 			return LLVMBuildICmp(builder, LLVMIntSLT, expr_codegen(mod, builder, expr->left, nv, 0), expr_codegen(mod, builder, expr->right, nv, 0), "");
