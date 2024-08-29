@@ -64,27 +64,32 @@ LLVMModuleRef program_codegen(ast_decl *program, char *module_name)
 	return ret;
 }
 
-
-static void initializer_codegen(LLVMModuleRef mod,LLVMBuilderRef builder, ast_stmt *stmt, vect *v)
+// This function is a little intimidating: but it is quite simple.
+// First it allocates space for an array on the stack (with element type determined by decl subtype)
+// then it populates each array space with the corresponding element from the initializer
+// then it builds a cast of the array type to a pointer type so it can be treated like any other ptr.
+// 	this casted pointer is what is used later.
+static void initializer_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vect *v)
 {
 	char buffer[BUFFER_MAX_LEN];
-	LLVMTypeRef inner_type = to_llvm_type(stmt->decl->typesym->type->subtype);
-	LLVMTypeRef arr_type = LLVMArrayType(inner_type, stmt->decl->initializer->size);
-	LLVMTypeRef ptr_type = LLVMPointerType(inner_type, 0);
-
-	LLVMValueRef allo = LLVMBuildAlloca(builder, arr_type, "");
 	strvec_tostatic(stmt->decl->typesym->symbol, buffer);
-	LLVMValueRef ptr = LLVMBuildBitCast(builder, allo, ptr_type, buffer);
+	LLVMValueRef a[2];
+	a[0] = LLVMConstInt(LLVMInt32Type(), 0, 0);
 
-	for (size_t i = 0 ; i < stmt->decl->initializer->size ; ++i) {
-		LLVMValueRef i_as_llvm = LLVMConstInt(LLVMInt32Type(), i, 0);
-		LLVMValueRef a[] = {i_as_llvm};
-		LLVMValueRef cur_index = LLVMBuildGEP(builder, ptr, a, 1, "");
-		LLVMValueRef cur_expr = expr_codegen(mod, builder, stmt->decl->initializer->elements[i], v, 0);
-		LLVMBuildStore(builder, cur_expr, cur_index);
+	LLVMTypeRef llvmified_inner = to_llvm_type(stmt->decl->typesym->type->subtype);
+
+	LLVMTypeRef array_type = LLVMArrayType(llvmified_inner, stmt->decl->initializer->size);
+	LLVMValueRef init = LLVMBuildAlloca(builder, array_type, "");
+	for (size_t i = 0 ; i < stmt->decl->initializer->size ; ++i) { // clang uses memcpy for this! would be much better!
+		a[1] = LLVMConstInt(LLVMInt32Type(), i, 0);
+		LLVMValueRef gep = LLVMBuildGEP(builder, init, a, 2, "");
+		LLVMValueRef value = expr_codegen(mod, builder, stmt->decl->initializer->elements[i], v, 0);
+		LLVMBuildStore(builder, value, gep);
 	}
-
-	vect_append(v, (void *)ptr);
+	LLVMValueRef alloca2 = LLVMBuildAlloca(builder, LLVMPointerType(llvmified_inner, 0), buffer);
+	a[1] = LLVMConstInt(LLVMInt32Type(), 0, 0);
+	LLVMBuildStore(builder, LLVMBuildPointerCast(builder, init, LLVMPointerType(llvmified_inner, 0), ""), alloca2);
+	vect_append(v, (void *)alloca2);
 }
 
 void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vect *v, int in_fn)
@@ -254,15 +259,13 @@ LLVMValueRef define_string_literal(LLVMModuleRef mod, LLVMBuilderRef builder, co
 
 // Remaining expr types to codegen:
 //E_CHAR_LIT,
-//E_PRE_UNARY,
-//E_POST_UNARY,
 LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, vect *nv, int store_ctxt)
 {
 	char buffer[BUFFER_MAX_LEN];
 	LLVMValueRef v;
+	LLVMValueRef v2;
 	LLVMValueRef args[MAX_ARGS];
 	LLVMValueRef ret;
-	LLVMValueRef a[1];
 	LLVMValueRef syscall_args[4];
 	unsigned argno;
 	switch (expr->kind) {
@@ -339,18 +342,18 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 			puts("can't codegen this post unary expr type yet");
 			exit(1);
 		}
-		strvec_tostatic(expr->left->name, buffer);
-		v = val_vect_lookup(nv, buffer);
-		a[0] = expr_codegen(mod, builder, expr->right, nv, 0);
-		v = LLVMBuildGEP(builder, v, a, 1, "");
+		v = expr_codegen(mod, builder, expr->left, nv, 0);
+		v2 = expr_codegen(mod, builder, expr->right, nv, 0);
+		v = LLVMBuildGEP(builder, v, &v2, 1, "");
 		if (!store_ctxt)
 			v = LLVMBuildLoad(builder, v, "");
 		return v;
 	case E_PRE_UNARY:
 		if (expr->op == T_STAR) {
-			return LLVMBuildLoad(builder, expr_codegen(mod, builder, expr->left, nv, 0), "");
+			v = expr_codegen(mod, builder, expr->left, nv, 0);
+			return LLVMBuildLoad(builder, v, "");
 		} else if (expr->op == T_AMPERSAND) {
-			strvec_tostatic(expr->left->name, buffer);
+			strvec_tostatic(expr->left->name, buffer); // BAND AID! TODO: MAKE THIS GOOD.
 			return val_vect_lookup(nv, buffer);
 		}
 		//fallthrough
