@@ -145,6 +145,56 @@ parse_typsym_err:
 	return 0;
 }
 
+static void destroy_def_vect(vect *def_vect)
+{
+	if (!def_vect)
+		return;
+	for (size_t i = 0 ; i < def_vect->size ; ++i)
+		ast_typed_symbol_destroy(def_vect->elements[i]);
+	vect_destroy(def_vect);
+}
+
+static vect *parse_struct_def(token_s **cur_token)
+{
+	ast_typed_symbol *cur;
+	vect *def_vect = vect_init(3);
+	if (!expect(cur_token, T_LCURLY)) {
+		report_error_tok("missing opening brace in struct definition", *cur_token);
+		sync_to(cur_token, T_SEMICO, 0);
+		destroy_def_vect(def_vect);
+		return 0;
+	}
+	next(cur_token);
+	if (expect(cur_token, T_RCURLY)) {
+		report_error_tok("struct definition can't be empty", *cur_token);
+		sync_to(cur_token, T_SEMICO, 0);
+		next(cur_token);
+		destroy_def_vect(def_vect);
+		return 0;
+	}
+	while (!expect(cur_token, T_RCURLY)) {
+		cur = parse_typed_symbol(cur_token);
+		if (cur != 0 && !expect(cur_token, T_SEMICO)) {
+			report_error_tok("missing semicolon in struct field definition", *cur_token);
+			sync_to(cur_token, T_EOF, 1);
+		} else if (cur == 0) {
+			report_error_tok("Couldn't parse typed symbol", *cur_token);
+			sync_to(cur_token, T_SEMICO, 1);
+		} else
+			next(cur_token);
+		vect_append(def_vect, cur);
+	}
+	next(cur_token);
+	if (!expect(cur_token, T_SEMICO)) {
+		report_error_tok("missing semicolon after struct definition", *cur_token);
+		sync_to(cur_token, T_EOF, 1);
+		vect_destroy(def_vect);
+		return 0;
+	}
+	next(cur_token);
+	return def_vect;
+}
+
 //TODO: error reporting for function declarations is REALLY bad right now.
 ast_decl *parse_decl(token_s **cur_token)
 {
@@ -153,8 +203,26 @@ ast_decl *parse_decl(token_s **cur_token)
 	ast_stmt *stmt = 0;
 	vect *initializer = 0;
 	ast_decl *ret = 0;
+	strvec *name;
+	ast_type *type;
+	if (expect(cur_token, T_STRUCT)) {
+		next(cur_token);
+		if (!expect(cur_token, T_IDENTIFIER)) {
+			report_error_tok("Expected struct name after struct keyword", *cur_token);
+			sync_to(cur_token, T_LCURLY, 0);
+		} else {
+			type = type_init(Y_STRUCT, 0);
+			name = (*cur_token)->text;
+			(*cur_token)->text = 0;
+			typed_symbol = ast_typed_symbol_init(type, name);
+			next(cur_token);
+		}
 
-	if (!expect(cur_token, T_LET)) {
+		initializer = parse_struct_def(cur_token);
+		typed_symbol->type->arglist = initializer;
+		ret = decl_init(typed_symbol, 0, 0, 0);
+		return ret;
+	} else if (!expect(cur_token, T_LET)) {
 		report_error_tok("Missing 'let' keyword in declaration.", *cur_token);
 		sync_to(cur_token, T_EOF,
 			1); // maybe this should be in the goto
@@ -363,6 +431,19 @@ ast_type *parse_type(token_s **cur_token)
 		text = (*cur_token)->text;
 		(*cur_token)->text = 0;
 		ret = type_init(Y_IDENTIFIER, text);
+		next(cur_token);
+		break;
+	case T_STRUCT:
+		ret = type_init(Y_STRUCT, 0);
+		next(cur_token);
+		if (!expect(cur_token, T_IDENTIFIER)) {
+			report_error_tok("struct instances require names after the `struct` keyword", *cur_token);
+			sync_to(cur_token, T_ASSIGN, 1);
+			type_destroy(ret);
+			return 0;
+		}
+		ret->name = (*cur_token)->text;
+		(*cur_token)->text = 0;
 		next(cur_token);
 		break;
 	case T_LPAREN:

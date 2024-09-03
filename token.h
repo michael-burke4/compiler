@@ -26,6 +26,7 @@ typedef enum {
 	T_WHILE,
 	T_LET,
 	T_SYSCALL,
+	T_STRUCT,
 
 	T_DPLUS,
 	T_DMINUS,

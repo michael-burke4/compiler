@@ -173,6 +173,13 @@ void type_print(ast_type *type)
 		type_print(type->subtype);
 		printf("*");
 		break;
+	case Y_STRUCT:
+		printf("struct");
+		if (type->name != 0) {
+			printf(" ");
+			strvec_print(type->name);
+		}
+		break;
 	default:
 		printf("UNSUPPORTED TYPE! (type %d)", type->kind);
 	}
@@ -180,6 +187,20 @@ void type_print(ast_type *type)
 
 void decl_print(ast_decl *decl)
 {
+	// Struct definitions don't have type names in their typesyms:
+	// the type of a struct definition is just `struct`
+	// while it is `struct (struct_name_here)` in instantiation.
+	if (decl->typesym->type->kind == Y_STRUCT && decl->typesym->type->name == 0) {
+		printf("struct ");
+		strvec_print(decl->typesym->symbol);
+		puts(" {");
+		for (size_t i = 0 ; i < decl->typesym->type->arglist->size; ++i) {
+			typed_sym_print(decl->typesym->type->arglist->elements[i]);
+			puts(";");
+		}
+		puts("};");
+		return;
+	}
 	printf("let ");
 	typed_sym_print(decl->typesym);
 	if (decl->expr != 0) {

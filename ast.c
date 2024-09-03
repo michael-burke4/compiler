@@ -112,20 +112,20 @@ void expr_destroy(ast_expr *expr)
 	free(expr);
 }
 
+
 void decl_destroy(ast_decl *decl)
 {
 	if (!decl)
 		return;
-	ast_typed_symbol_destroy(decl->typesym);
-	expr_destroy(decl->expr);
-	stmt_destroy(decl->body);
 	if (decl->initializer) {
-		for (size_t i = 0 ; i < decl->initializer->size ; ++i) {
+		for (size_t i = 0 ; i < decl->initializer->size ; ++i)
 			expr_destroy(decl->initializer->elements[i]);
-		}
 		free(decl->initializer->elements);
 		free(decl->initializer);
 	}
+	ast_typed_symbol_destroy(decl->typesym);
+	expr_destroy(decl->expr);
+	stmt_destroy(decl->body);
 	free(decl);
 }
 

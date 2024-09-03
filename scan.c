@@ -47,6 +47,8 @@ static token_s *check_if_keyword(strvec *word, size_t line, size_t col)
 		ret = tok_init_nl(T_BOOL, line, col, 0);
 	else if (strvec_equals_str(word, "syscall"))
 		ret = tok_init_nl(T_SYSCALL, line, col, 0);
+	else if (strvec_equals_str(word, "struct"))
+		ret = tok_init_nl(T_STRUCT, line, col, 0);
 	if (ret != 0)
 		strvec_destroy(word);
 	else
@@ -101,7 +103,7 @@ static token_s *scan_char_literal(FILE *f, size_t *line, size_t *col)
 		report_error("Bad char literal. Missing close quote?", *line, old_col);
 		return tok_init_nl(T_ERROR, *line, old_col, 0);
 	} else if (c == '\\') {
-		*(col++);
+		(*col)++;
 		c = fgetc(f);
 	}
 	(*col)++;

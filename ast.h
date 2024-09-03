@@ -26,6 +26,7 @@ typedef enum {
 	Y_POINTER,
 	Y_IDENTIFIER, // for custom types.
 	Y_FUNCTION,
+	Y_STRUCT,
 } type_t;
 
 typedef struct ast_type {
