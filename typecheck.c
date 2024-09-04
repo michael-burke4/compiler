@@ -28,7 +28,7 @@ static void scope_bind_args(ast_decl *decl)
 	if (!arglist)
 		return;
 	for (i = 0 ; i < arglist->size ; ++i)
-		scope_bind(arglist_get(arglist, i));
+		scope_bind_ts(arglist_get(arglist, i));
 }
 
 static void typecheck_fnbody(ast_decl *decl)
@@ -128,14 +128,14 @@ void typecheck_decl(ast_decl *decl)
 		return;
 	}
 	if (decl->typesym->type->kind == Y_FUNCTION) {
-		scope_bind(decl->typesym);
+		scope_bind_ts(decl->typesym);
 		typecheck_fnbody(decl);
 		//typ = scope_get_return_type();
 		//scope_bind_return_type(decl->typesym->type->subtype);
 		//typecheck_stmt(decl->body);
 		//scope_bind_return_type(typ);
 	} else if (decl->typesym->type->kind == Y_STRUCT && decl->typesym->type->name == 0) {
-		scope_bind(decl->typesym);
+		scope_bind_ts(decl->typesym);
 	} else if (decl->expr) {
 		typ = derive_expr_type(decl->expr);
 		if (!(type_equals(decl->typesym->type, typ))) {
@@ -143,17 +143,17 @@ void typecheck_decl(ast_decl *decl)
 			puts("Failed typecheck TODO: good error messages.");
 		}
 		type_destroy(typ);
-		scope_bind(decl->typesym);
+		scope_bind_ts(decl->typesym);
 	} else if (decl->initializer) {
 		if (decl->typesym->type->kind == Y_STRUCT) {
 			typecheck_struct_initializer(decl);
-			scope_bind(decl->typesym);
+			scope_bind_ts(decl->typesym);
 			return;
 		}
 		typecheck_array_initializer(decl);
-		scope_bind(decl->typesym);
+		scope_bind_ts(decl->typesym);
 	} else
-		scope_bind(decl->typesym);
+		scope_bind_ts(decl->typesym);
 }
 
 

@@ -42,19 +42,24 @@ size_t scope_level(void)
 	return stack_size(sym_tab);
 }
 
-void scope_bind(ast_typed_symbol *symbol)
+void scope_bind(void *symbol, strvec *name)
 {
 	scope *top = (scope *)stack_item_from_top(sym_tab, 0);
-	scope_insert(top, symbol->symbol, symbol);
+	scope_insert(top, name, symbol);
 }
 
-ast_typed_symbol *scope_lookup(strvec *name)
+void scope_bind_ts(ast_typed_symbol *symbol)
+{
+	scope_bind(symbol, symbol->symbol);
+}
+
+void *scope_lookup(strvec *name)
 {
 	int i = 0;
-	ast_typed_symbol *found;
+	void *found;
 	scope *current = (scope *)stack_item_from_top(sym_tab, 0);
 	while (current != 0) {
-		if ((found = (ast_typed_symbol *)scope_get(current, name)))
+		if ((found = scope_get(current, name)))
 			return found;
 		i++;
 		current = (scope *)stack_item_from_top(sym_tab, i);
@@ -62,10 +67,10 @@ ast_typed_symbol *scope_lookup(strvec *name)
 	return 0;
 }
 
-ast_typed_symbol *scope_lookup_current(strvec *name)
+void *scope_lookup_current(strvec *name)
 {
 	scope *current = (scope *)stack_item_from_top(sym_tab, 0);
-	return (ast_typed_symbol *)scope_get(current, name);
+	return scope_get(current, name);
 }
 
 void scope_bind_return_type(ast_type *type)
