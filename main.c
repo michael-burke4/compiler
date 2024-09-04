@@ -70,6 +70,8 @@ int main(int argc, const char *argv[])
 		goto error_typecheck;
 	}
 
+	st_destroy();
+	st_init();
 	strcpy(path, argv[1]);
 	strcpy(modname, basename(path));
 

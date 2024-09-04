@@ -4,7 +4,10 @@
 #include <stdlib.h>
 #include "print.h"
 #include "ht.h"
+#include "symbol_table.h"
 #include <string.h>
+
+extern struct stack *sym_tab;
 
 static LLVMValueRef codegen_syscall3(LLVMBuilderRef builder, LLVMValueRef args[4])
 {
@@ -42,17 +45,6 @@ static LLVMTypeRef to_llvm_type(ast_type *tp)
 	}
 }
 
-static LLVMValueRef val_vect_lookup(vect *v, char *name) {
-	size_t dummy;
-	LLVMValueRef cur;
-	for (size_t i = 0  ; i < v->size ; ++i) {
-		cur = (LLVMValueRef)v->elements[i];
-		if (!strcmp(name, LLVMGetValueName2(cur, &dummy)))
-			return cur;
-	}
-	return 0;
-}
-
 LLVMModuleRef program_codegen(ast_decl *program, char *module_name)
 {
 	LLVMModuleRef ret = LLVMModuleCreateWithName(module_name);
@@ -71,7 +63,7 @@ LLVMModuleRef program_codegen(ast_decl *program, char *module_name)
 // then it populates each array space with the corresponding element from the initializer
 // then it builds a cast of the array type to a pointer type so it can be treated like any other ptr.
 // 	this casted pointer is what is used later.
-static void initializer_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vect *v)
+static void initializer_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt)
 {
 	char buffer[BUFFER_MAX_LEN];
 	strvec_tostatic(stmt->decl->typesym->symbol, buffer);
@@ -85,16 +77,17 @@ static void initializer_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_s
 	for (size_t i = 0 ; i < stmt->decl->initializer->size ; ++i) { // clang uses memcpy for this! would be much better!
 		a[1] = LLVMConstInt(LLVMInt32Type(), i, 0);
 		LLVMValueRef gep = LLVMBuildGEP(builder, init, a, 2, "");
-		LLVMValueRef value = expr_codegen(mod, builder, stmt->decl->initializer->elements[i], v, 0);
+		LLVMValueRef value = expr_codegen(mod, builder, stmt->decl->initializer->elements[i], 0);
 		LLVMBuildStore(builder, value, gep);
 	}
 	LLVMValueRef alloca2 = LLVMBuildAlloca(builder, LLVMPointerType(llvmified_inner, 0), buffer);
 	a[1] = LLVMConstInt(LLVMInt32Type(), 0, 0);
 	LLVMBuildStore(builder, LLVMBuildPointerCast(builder, init, LLVMPointerType(llvmified_inner, 0), ""), alloca2);
-	vect_append(v, (void *)alloca2);
+	//vect_append(v, (void *)alloca2);
+	scope_bind(alloca2, stmt->decl->typesym->symbol);
 }
 
-void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vect *v, int in_fn)
+void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, int in_fn)
 {
 	LLVMValueRef v1;
 	LLVMBasicBlockRef b1;
@@ -110,28 +103,30 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec
 
 	switch (stmt->kind) {
 	case S_BLOCK:
+		scope_enter();
 		cur = stmt->body;
 		while (cur) {
 			if (!in_fn || cur->kind == S_RETURN)
 				need_retvoid = 0;
-			stmt_codegen(mod, builder, cur, v, 0);
+			stmt_codegen(mod, builder, cur, 0);
 			cur = cur->next;
 		}
 		if (need_retvoid)
 			LLVMBuildRetVoid(builder);
+		scope_exit();
 		break;
 	case S_EXPR:
-		expr_codegen(mod, builder, stmt->expr, v, 0);
+		expr_codegen(mod, builder, stmt->expr, 0);
 		break;
 	case S_RETURN:
 		if (stmt->expr == 0)
 			LLVMBuildRetVoid(builder);
 		else
-			LLVMBuildRet(builder, expr_codegen(mod, builder, stmt->expr, v, 0));
+			LLVMBuildRet(builder, expr_codegen(mod, builder, stmt->expr, 0));
 		break;
 	case S_IFELSE:
 		cur_function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
-		v1 = expr_codegen(mod, builder, stmt->expr, v, 0);
+		v1 = expr_codegen(mod, builder, stmt->expr, 0);
 		b1 = LLVMAppendBasicBlock(cur_function, "");
 		b2 = LLVMAppendBasicBlock(cur_function, "");
 		b3 = LLVMAppendBasicBlock(cur_function, "");
@@ -139,40 +134,41 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, vec
 		LLVMBuildCondBr(builder, v1, b1, b2);
 
 		LLVMPositionBuilderAtEnd(builder, b1);
-		stmt_codegen(mod, builder, stmt->body, v, 0);
+		stmt_codegen(mod, builder, stmt->body, 0);
 		v1 = LLVMGetLastInstruction(b1);
 		if (!LLVMIsATerminatorInst(v1))
 			LLVMBuildBr(builder, b3);
 
 		LLVMPositionBuilderAtEnd(builder, b2);
-		stmt_codegen(mod, builder, stmt->else_body, v, 0);
+		stmt_codegen(mod, builder, stmt->else_body, 0);
 		LLVMBuildBr(builder, b3);
 
 		LLVMPositionBuilderAtEnd(builder, b3);
 		break;
 	case S_DECL:
 		if (stmt->decl->initializer) {
-			initializer_codegen(mod, builder, stmt, v);
+			initializer_codegen(mod, builder, stmt);
 		} else {
 			strvec_tostatic(stmt->decl->typesym->symbol, buffer);
 			v1 = LLVMBuildAlloca(builder, to_llvm_type(stmt->decl->typesym->type), buffer);
-			vect_append(v, (void *)v1);
+			//vect_append(v, (void *)v1);
+			scope_bind(v1, stmt->decl->typesym->symbol);
 			if (stmt->decl->expr != 0)
-				LLVMBuildStore(builder, expr_codegen(mod, builder, stmt->decl->expr, v, 0), v1);
+				LLVMBuildStore(builder, expr_codegen(mod, builder, stmt->decl->expr, 0), v1);
 		}
 		break;
 	case S_WHILE:
 		cur_function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
-		v1 = expr_codegen(mod, builder, stmt->expr, v, 0);
+		v1 = expr_codegen(mod, builder, stmt->expr, 0);
 		b1 = LLVMAppendBasicBlock(cur_function, "");
 		b2 = LLVMAppendBasicBlock(cur_function, "");
 		LLVMBuildCondBr(builder, v1, b1, b2);
 
 		LLVMPositionBuilderAtEnd(builder, b1);
-		stmt_codegen(mod, builder, stmt->body, v, 0);
+		stmt_codegen(mod, builder, stmt->body, 0);
 		v1 = LLVMGetLastInstruction(b1);
 		if (!LLVMIsATerminatorInst(v1)) {
-			v1 = expr_codegen(mod, builder, stmt->expr, v, 0);
+			v1 = expr_codegen(mod, builder, stmt->expr, 0);
 			LLVMBuildCondBr(builder, v1, b1, b2);
 		}
 
@@ -197,22 +193,22 @@ static LLVMValueRef get_param_by_name(LLVMValueRef function, char *name)
 
 // TODO undo MAX_ARGS? Enforce MAX_ARGS? IDK just decide on something!!
 #define MAX_ARGS 32
-static void get_fncall_args(LLVMModuleRef mod, LLVMBuilderRef builder,ast_expr *expr, unsigned argno, LLVMValueRef (*args)[MAX_ARGS], vect *v)
+static void get_fncall_args(LLVMModuleRef mod, LLVMBuilderRef builder,ast_expr *expr, unsigned argno, LLVMValueRef (*args)[MAX_ARGS])
 {
 	if (argno == 0)
 		return;
 	for (size_t i = 0 ; i < expr->sub_exprs->size ; ++i)
-		(*args)[i] = expr_codegen(mod, builder, expr->sub_exprs->elements[i], v, 0);
+		(*args)[i] = expr_codegen(mod, builder, expr->sub_exprs->elements[i], 0);
 }
 
-static LLVMValueRef assign_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, vect *nv, LLVMValueRef loc)
+static LLVMValueRef assign_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, LLVMValueRef loc)
 {
 	LLVMValueRef ret;
 	LLVMValueRef tempval;
 	ast_expr *temp;
 	union num_lit dummy = {.u64=0};
 	if (expr->op == T_ASSIGN)
-		return LLVMBuildStore(builder, expr_codegen(mod, builder, expr->right, nv, 0), loc);
+		return LLVMBuildStore(builder, expr_codegen(mod, builder, expr->right, 0), loc);
 
 	switch (expr->op) {
 	case T_MUL_ASSIGN:
@@ -236,7 +232,7 @@ static LLVMValueRef assign_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, as
 		printf("%d\n", T_MUL_ASSIGN);
 		abort();
 	}
-	tempval = expr_codegen(mod, builder, temp, nv, 0);
+	tempval = expr_codegen(mod, builder, temp, 0);
 	ret = LLVMBuildStore(builder, tempval, loc);
 	free(temp); // do NOT expr_destroy!!!
 	return ret;
@@ -259,7 +255,7 @@ LLVMValueRef define_string_literal(LLVMModuleRef mod, LLVMBuilderRef builder, co
 	return g;
 }
 
-LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, vect *nv, int store_ctxt)
+LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, int store_ctxt)
 {
 	char buffer[BUFFER_MAX_LEN];
 	LLVMValueRef v;
@@ -273,53 +269,52 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		return LLVMConstInt(LLVMInt32Type(), (unsigned long long)expr->num.u64, 0);
 	case E_MULDIV:
 		if (expr->op == T_STAR)
-			return LLVMBuildMul(builder, expr_codegen(mod, builder, expr->left, nv, 0), expr_codegen(mod, builder, expr->right, nv, 0), "");
+			return LLVMBuildMul(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 		else
-			return LLVMBuildSDiv(builder, expr_codegen(mod, builder, expr->left, nv, 0), expr_codegen(mod, builder, expr->right, nv, 0), "");
+			return LLVMBuildSDiv(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 	case E_ADDSUB:
 		if (expr->op == T_MINUS)
-			return LLVMBuildSub(builder, expr_codegen(mod, builder, expr->left, nv, 0), expr_codegen(mod, builder, expr->right, nv, 0), "");
+			return LLVMBuildSub(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 		else
-			return LLVMBuildAdd(builder, expr_codegen(mod, builder, expr->left, nv, 0), expr_codegen(mod, builder, expr->right, nv, 0), "");
+			return LLVMBuildAdd(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 	case E_EQUALITY:
-		return LLVMBuildICmp(builder, LLVMIntEQ, expr_codegen(mod, builder, expr->left, nv, 0), expr_codegen(mod, builder, expr->right, nv, 0), "");
+		return LLVMBuildICmp(builder, LLVMIntEQ, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 	case E_FNCALL:
 		strvec_tostatic(expr->name, buffer);
 		v = LLVMGetNamedFunction(mod, buffer);
 		argno = LLVMCountParams(v);
-		get_fncall_args(mod, builder, expr, argno, &args, nv);
+		get_fncall_args(mod, builder, expr, argno, &args);
 		return LLVMBuildCall(builder, v, args, argno, "");
 	case E_SYSCALL:
 		for (size_t i = 0 ; i < expr->sub_exprs->size ; ++i) {
-			syscall_args[i] = expr_codegen(mod, builder, expr->sub_exprs->elements[i], nv, 0);
+			syscall_args[i] = expr_codegen(mod, builder, expr->sub_exprs->elements[i], 0);
 		}
 		return codegen_syscall3(builder, syscall_args);
 	case E_IDENTIFIER:
-		strvec_tostatic(expr->name, buffer);
 		v = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
 		ret = get_param_by_name(v, buffer);
 		if (!ret) {
-			ret = val_vect_lookup(nv, buffer);
+			ret = scope_lookup(expr->name);
 			ret = LLVMBuildLoad(builder, ret, "");
 		}
 		return ret;
 	case E_ASSIGN:
 		if (expr->left->kind == E_IDENTIFIER) {
-			strvec_tostatic(expr->left->name, buffer);
-			v = val_vect_lookup(nv, buffer);
+			v = scope_lookup(expr->left->name);
 			if (!v) {
+				strvec_tostatic(expr->left->name, buffer);
 				v = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
 				v = get_param_by_name(v, buffer);
 			}
 		} else if (expr->left->kind == E_PRE_UNARY && expr->left->op == T_STAR) {
-			v = expr_codegen(mod, builder, expr->left->left, nv, 1);
+			v = expr_codegen(mod, builder, expr->left->left, 1);
 		} else if (expr->left->kind == E_POST_UNARY && expr->left->op == T_LBRACKET) {
-			v = expr_codegen(mod, builder, expr->left, nv, 1);
+			v = expr_codegen(mod, builder, expr->left, 1);
 		} else {
 			puts("Can't assign to this expr type right now.");
 			exit(1);
 		}
-		return assign_codegen(mod, builder, expr, nv, v);
+		return assign_codegen(mod, builder, expr, v);
 	case E_FALSE_LIT:
 		return LLVMConstInt(LLVMInt1Type(), 0, 0);
 	case E_TRUE_LIT:
@@ -330,33 +325,32 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		return LLVMConstInt(LLVMInt8Type(), (int)expr->string_literal->text[0], 0);
 	case E_INEQUALITY:
 		if (expr->op == T_LT)
-			return LLVMBuildICmp(builder, LLVMIntSLT, expr_codegen(mod, builder, expr->left, nv, 0), expr_codegen(mod, builder, expr->right, nv, 0), "");
+			return LLVMBuildICmp(builder, LLVMIntSLT, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 		else if (expr->op == T_LTE)
-			return LLVMBuildICmp(builder, LLVMIntSLE, expr_codegen(mod, builder, expr->left, nv, 0), expr_codegen(mod, builder, expr->right, nv, 0), "");
+			return LLVMBuildICmp(builder, LLVMIntSLE, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 		else if (expr->op == T_GT)
-			return LLVMBuildICmp(builder, LLVMIntSGT, expr_codegen(mod, builder, expr->left, nv, 0), expr_codegen(mod, builder, expr->right, nv, 0), "");
+			return LLVMBuildICmp(builder, LLVMIntSGT, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 		else
-			return LLVMBuildICmp(builder, LLVMIntSGE, expr_codegen(mod, builder, expr->left, nv, 0), expr_codegen(mod, builder, expr->right, nv, 0), "");
+			return LLVMBuildICmp(builder, LLVMIntSGE, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 	case E_PAREN:
-		return expr_codegen(mod, builder, expr->left, nv, store_ctxt);
+		return expr_codegen(mod, builder, expr->left, store_ctxt);
 	case E_POST_UNARY:
 		if (expr->op != T_LBRACKET) {
 			puts("can't codegen this post unary expr type yet");
 			exit(1);
 		}
-		v = expr_codegen(mod, builder, expr->left, nv, 0);
-		v2 = expr_codegen(mod, builder, expr->right, nv, 0);
+		v = expr_codegen(mod, builder, expr->left,  0);
+		v2 = expr_codegen(mod, builder, expr->right, 0);
 		v = LLVMBuildGEP(builder, v, &v2, 1, "");
 		if (!store_ctxt)
 			v = LLVMBuildLoad(builder, v, "");
 		return v;
 	case E_PRE_UNARY:
 		if (expr->op == T_STAR) {
-			v = expr_codegen(mod, builder, expr->left, nv, 0);
+			v = expr_codegen(mod, builder, expr->left, 0);
 			return LLVMBuildLoad(builder, v, "");
 		} else if (expr->op == T_AMPERSAND) {
-			strvec_tostatic(expr->left->name, buffer); // BAND AID! TODO: MAKE THIS GOOD.
-			return val_vect_lookup(nv, buffer);
+			return scope_lookup(expr->left->name);
 		}
 		//fallthrough
 	default:
@@ -381,7 +375,7 @@ static LLVMTypeRef *build_param_types(ast_decl *decl)
 	return ret;
 }
 
-static void alloca_params_as_local_vars(LLVMBuilderRef builder, LLVMValueRef fn, ast_decl *decl, LLVMTypeRef *param_types, vect *vc)
+static void alloca_params_as_local_vars(LLVMBuilderRef builder, LLVMValueRef fn, ast_decl *decl, LLVMTypeRef *param_types)
 {
 	char buf[BUFFER_MAX_LEN];
 	LLVMValueRef arg;
@@ -394,7 +388,8 @@ static void alloca_params_as_local_vars(LLVMBuilderRef builder, LLVMValueRef fn,
 		arg = LLVMGetParam(fn, i);
 		v = LLVMBuildAlloca(builder, param_types[i], buf);
 		LLVMBuildStore(builder, arg, v);
-		vect_append(vc, (void *)v);
+		scope_bind(v, arglist_get(arglist,i)->symbol);
+		//vect_append(vc, (void *)v);
 	}
 	
 }
@@ -418,6 +413,7 @@ void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 	if (!decl)
 		return;
 	if (decl->typesym->type->kind == Y_FUNCTION) {
+		scope_enter();
 		char buf[BUFFER_MAX_LEN];
 		vect *v = vect_init(4);
 		LLVMTypeRef *param_types = build_param_types(decl);
@@ -431,9 +427,9 @@ void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 		LLVMBuilderRef builder = LLVMCreateBuilder();
 		LLVMPositionBuilderAtEnd(builder, entry);
 
-		alloca_params_as_local_vars(builder, fn_value, decl, param_types, v);
+		alloca_params_as_local_vars(builder, fn_value, decl, param_types);
 
-		stmt_codegen(*mod, builder, decl->body, v, 1);
+		stmt_codegen(*mod, builder, decl->body, 1);
 		LLVMDisposeBuilder(builder);
 		free(param_types);
 		vect_destroy(v);
