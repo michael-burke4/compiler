@@ -16,11 +16,11 @@ struct scope *scope_init(size_t capacity) {
 	return ret;
 }
 
-int scope_insert(struct scope *s, strvec *key, ast_typed_symbol *value) {
+int scope_insert(struct scope *s, strvec *key, void *value) {
 	return ht_insert(s->table, key, (void *)value);
 }
 
-ast_typed_symbol *scope_get(struct scope *s, strvec *key) {
+void *scope_get(struct scope *s, strvec *key) {
 	return (ast_typed_symbol *)ht_get(s->table, key);
 }
 

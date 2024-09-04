@@ -9,7 +9,7 @@ typedef struct scope {
 } scope;
 
 struct scope *scope_init(size_t capacity);
-int scope_insert(struct scope *s, strvec *key, ast_typed_symbol *value);
-ast_typed_symbol *scope_get(struct scope *s, strvec *key);
+int scope_insert(struct scope *s, strvec *key, void *value);
+void *scope_get(struct scope *s, strvec *key);
 void scope_destroy(struct scope *s);
 #endif
