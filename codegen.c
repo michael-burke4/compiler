@@ -399,12 +399,25 @@ static void alloca_params_as_local_vars(LLVMBuilderRef builder, LLVMValueRef fn,
 	
 }
 
+
+static void define_struct(ast_decl *decl) {
+	vect *al = decl->typesym->type->arglist;
+	size_t sz = al->size;
+	vect *members = vect_init(sz);
+	for (size_t i = 0 ; i < al->size ; ++i) {
+		LLVMTypeRef cur_type = to_llvm_type(((ast_typed_symbol *)vect_get(al, i))->type);
+		vect_append(members, cur_type);
+	}
+	LLVMStructType((LLVMTypeRef *)(members->elements), members->size, 0);
+	vect_destroy(members);
+}
+
+
 void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 {
 	if (!decl)
 		return;
 	if (decl->typesym->type->kind == Y_FUNCTION) {
-
 		char buf[BUFFER_MAX_LEN];
 		vect *v = vect_init(4);
 		LLVMTypeRef *param_types = build_param_types(decl);
@@ -424,8 +437,9 @@ void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 		LLVMDisposeBuilder(builder);
 		free(param_types);
 		vect_destroy(v);
-	}
-	else {
+	} else if (decl->typesym->type->kind == Y_STRUCT) {
+		define_struct(decl);
+	} else {
 		printf("Can't codegen decls of this type yet :(\n");
 		exit(1);
 	}
