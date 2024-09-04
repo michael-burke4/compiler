@@ -448,10 +448,14 @@ void typecheck_stmt(ast_stmt *stmt)
 			puts("if statement condition must be a boolean");
 		}
 		type_destroy(typ);
+		scope_enter();
 		if (stmt->body != 0)
-			typecheck_stmt(stmt->body->body); // TODO: don't put body in body (parser's problem)
+			typecheck_stmt(stmt->body);
+		scope_exit();
+		scope_enter();
 		if (stmt->else_body != 0)
-			typecheck_stmt(stmt->else_body->body);
+			typecheck_stmt(stmt->else_body);
+		scope_exit();
 		typecheck_stmt(stmt->next);
 		break;
 	case S_WHILE:
