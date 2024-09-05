@@ -316,11 +316,22 @@ static ast_type *derive_pre_unary(ast_expr *expr)
 	}
 }
 
+static ast_type *struct_field_type(ast_typed_symbol *struct_ts, strvec *name) {
+	vect *field_list = struct_ts->type->arglist;
+	ast_typed_symbol *cur;
+	for (size_t i = 0 ; i < field_list->size ; ++i) {
+		cur = arglist_get(field_list, i);
+		if (strvec_equals(name, cur->symbol))
+			return type_copy(cur->type);
+	}
+	return 0;
+}
 static ast_type *derive_post_unary(ast_expr *expr)
 {
 	ast_type *left;
 	ast_type *right;
 	ast_type *ret;
+	ast_typed_symbol *ts;
 	switch (expr->op) {
 	case T_LBRACKET:
 		left = derive_expr_type(expr->left);
@@ -341,6 +352,34 @@ static ast_type *derive_post_unary(ast_expr *expr)
 		ret = type_copy(left->subtype);
 		type_destroy(left);
 		type_destroy(right);
+		return ret;
+	case T_PERIOD:
+		left = derive_expr_type(expr->left);
+		if (!left || left->kind != Y_STRUCT || !expr->left->is_lvalue) {
+			puts("Member operator left side must be a struct");
+			type_destroy(left);
+			had_error = 1;
+			return 0;
+		}
+		if (expr->right->kind != E_IDENTIFIER) {
+			puts("Member operator right side must be an identifier");
+			type_destroy(left);
+			had_error = 1;
+			return 0;
+		}
+		ts = scope_lookup(left->name);
+		ret = struct_field_type(ts, expr->right->name);
+		if (!ret) {
+			printf("struct `");
+			strvec_print(left->name);
+			printf("` has no member `");
+			strvec_print(expr->right->name);
+			puts("`");
+			type_destroy(left);
+			had_error = 1;
+			return 0;
+		}
+		type_destroy(left);
 		return ret;
 	default:
 		puts("unsupported post unary expr while typechecking");

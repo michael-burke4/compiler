@@ -52,6 +52,10 @@ void expr_print(ast_expr *expr)
 			printf("[");
 			expr_print(expr->right);
 			printf("]");
+		} else if (expr->op == T_PERIOD) {
+			expr_print(expr->left);
+			printf(".");
+			expr_print(expr->right);
 		} else {
 			expr_print(expr->left);
 			print_op(expr);

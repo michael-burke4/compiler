@@ -58,6 +58,7 @@ typedef enum {
 	E_POST_UNARY,
 	E_FNCALL,
 	E_SYSCALL,
+	E_MEMBER,
 } expr_t;
 
 // TODO: cross platform compatability stuff ?!
