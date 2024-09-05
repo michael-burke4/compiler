@@ -30,6 +30,7 @@ static LLVMValueRef codegen_syscall3(LLVMBuilderRef builder, LLVMValueRef args[4
 
 static LLVMTypeRef to_llvm_type(LLVMModuleRef mod, ast_type *tp)
 {
+	char buffer[BUFFER_MAX_LEN];
 	LLVMContextRef ctxt = CTXT(mod);
 	switch (tp->kind) {
 	case Y_I32:
@@ -42,6 +43,9 @@ static LLVMTypeRef to_llvm_type(LLVMModuleRef mod, ast_type *tp)
 		return LLVMPointerType(to_llvm_type(mod, tp->subtype), 0);
 	case Y_CHAR:
 		return LLVMInt8TypeInContext(ctxt);
+	case Y_STRUCT:
+		strvec_tostatic(tp->name, buffer);
+		return LLVMGetTypeByName(mod, buffer);
 	default:
 		printf("couldn't convert type\n");
 		abort();
@@ -400,6 +404,8 @@ static void alloca_params_as_local_vars(LLVMBuilderRef builder, LLVMValueRef fn,
 
 
 static void define_struct(LLVMModuleRef mod, ast_decl *decl) {
+	char buf[BUFFER_MAX_LEN];
+	strvec_tostatic(decl->typesym->symbol, buf);
 	vect *al = decl->typesym->type->arglist;
 	size_t sz = al->size;
 	vect *members = vect_init(sz);
@@ -407,8 +413,14 @@ static void define_struct(LLVMModuleRef mod, ast_decl *decl) {
 		LLVMTypeRef cur_type = to_llvm_type(mod, ((ast_typed_symbol *)vect_get(al, i))->type);
 		vect_append(members, cur_type);
 	}
-	LLVMStructTypeInContext(CTXT(mod), (LLVMTypeRef *)(members->elements), members->size, 0);
-	vect_destroy(members);
+	LLVMTypeRef st_tp = LLVMStructCreateNamed(CTXT(mod), buf);
+	LLVMStructSetBody(st_tp, (LLVMTypeRef *)members->elements, members->size, 0);
+	vect_destroy(members); // WARNING! Potential use-after-free situation?
+	// The type references themelves aren't freed
+	// but the array where the pointers are stored is within members->elements
+	// If LLVMStructSetBody creates a copy of the whole array that's cool
+	// if LLVMStructSetBody itself holds onto a pointer to member->elements that
+	// could be a problem, as the data stored here will be overwritten etc.
 }
 
 
@@ -437,7 +449,7 @@ void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 		LLVMDisposeBuilder(builder);
 		free(param_types);
 		vect_destroy(v);
-	} else if (decl->typesym->type->kind == Y_STRUCT) {
+	} else if (decl->typesym->type->kind == Y_STRUCT && decl->typesym->type->name == 0) {
 		define_struct(*mod, decl);
 	} else {
 		printf("Can't codegen decls of this type yet :(\n");
