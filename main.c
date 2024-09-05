@@ -75,7 +75,8 @@ int main(int argc, const char *argv[])
 	strcpy(path, argv[1]);
 	strcpy(modname, basename(path));
 
-	LLVMModuleRef mod = program_codegen(program, modname);
+	LLVMContextRef ctxt = LLVMContextCreate();
+	LLVMModuleRef mod = module_codegen(ctxt, program, modname);
 	char *error = 0;
 	LLVMVerifyModule(mod, LLVMAbortProcessAction, &error);
 	LLVMDisposeMessage(error);
@@ -94,6 +95,7 @@ int main(int argc, const char *argv[])
 	ast_free(program);
 	tok_list_destroy(head);
 	LLVMDisposeModule(mod);
+	LLVMContextDispose(ctxt);
 	LLVMShutdown();
 
 	fclose(f);

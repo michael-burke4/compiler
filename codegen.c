@@ -7,6 +7,8 @@
 #include "symbol_table.h"
 #include <string.h>
 
+#define CTXT(mod) (LLVMGetModuleContext(mod))
+
 extern struct stack *sym_tab;
 
 static LLVMValueRef codegen_syscall3(LLVMBuilderRef builder, LLVMValueRef args[4])
@@ -26,32 +28,33 @@ static LLVMValueRef codegen_syscall3(LLVMBuilderRef builder, LLVMValueRef args[4
 	return LLVMBuildCall(builder, asmcall, args, 4, "");
 }
 
-static LLVMTypeRef to_llvm_type(ast_type *tp)
+static LLVMTypeRef to_llvm_type(LLVMModuleRef mod, ast_type *tp)
 {
+	LLVMContextRef ctxt = CTXT(mod);
 	switch (tp->kind) {
 	case Y_I32:
-		return LLVMInt32Type();
+		return LLVMInt32TypeInContext(ctxt);
 	case Y_STRING:
-		return LLVMPointerType(LLVMInt8Type(), 0);
+		return LLVMPointerType(LLVMInt8TypeInContext(ctxt), 0);
 	case Y_VOID:
-		return LLVMVoidType();
+		return LLVMVoidTypeInContext(ctxt);
 	case Y_POINTER:
-		return LLVMPointerType(to_llvm_type(tp->subtype), 0);
+		return LLVMPointerType(to_llvm_type(mod, tp->subtype), 0);
 	case Y_CHAR:
-		return LLVMInt8Type();
+		return LLVMInt8TypeInContext(ctxt);
 	default:
 		printf("couldn't convert type\n");
 		abort();
 	}
 }
 
-LLVMModuleRef program_codegen(ast_decl *program, char *module_name)
+LLVMModuleRef module_codegen(LLVMContextRef ctxt, ast_decl *start, char *module_name)
 {
-	LLVMModuleRef ret = LLVMModuleCreateWithName(module_name);
+	LLVMModuleRef ret = LLVMModuleCreateWithNameInContext(module_name, ctxt);
 
-	while (program) {
-		decl_codegen(&ret, program);
-		program = program->next;
+	while (start) {
+		decl_codegen(&ret, start);
+		start = start->next;
 	}
 
 	LLVMDumpModule(ret);
@@ -68,14 +71,14 @@ static void initializer_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_s
 	char buffer[BUFFER_MAX_LEN];
 	strvec_tostatic(stmt->decl->typesym->symbol, buffer);
 	LLVMValueRef a[2];
-	a[0] = LLVMConstInt(LLVMInt32Type(), 0, 0);
+	a[0] = LLVMConstInt(LLVMInt32TypeInContext(CTXT(mod)), 0, 0);
 
-	LLVMTypeRef llvmified_inner = to_llvm_type(stmt->decl->typesym->type->subtype);
+	LLVMTypeRef llvmified_inner = to_llvm_type(mod, stmt->decl->typesym->type->subtype);
 
 	LLVMTypeRef array_type = LLVMArrayType(llvmified_inner, stmt->decl->initializer->size);
 	LLVMValueRef init = LLVMBuildAlloca(builder, array_type, "");
 	for (size_t i = 0 ; i < stmt->decl->initializer->size ; ++i) { // clang uses memcpy for this! would be much better!
-		a[1] = LLVMConstInt(LLVMInt32Type(), i, 0);
+		a[1] = LLVMConstInt(LLVMInt32TypeInContext(CTXT(mod)), i, 0);
 		LLVMValueRef gep = LLVMBuildGEP(builder, init, a, 2, "");
 		LLVMValueRef value = expr_codegen(mod, builder, stmt->decl->initializer->elements[i], 0);
 		LLVMBuildStore(builder, value, gep);
@@ -94,6 +97,7 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, int
 	LLVMBasicBlockRef b2;
 	LLVMBasicBlockRef b3;
 	LLVMValueRef cur_function;
+	LLVMContextRef ctxt = CTXT(mod);
 	ast_stmt *cur;
 	char buffer[BUFFER_MAX_LEN];
 	int need_retvoid = 1;
@@ -127,9 +131,9 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, int
 	case S_IFELSE:
 		cur_function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
 		v1 = expr_codegen(mod, builder, stmt->expr, 0);
-		b1 = LLVMAppendBasicBlock(cur_function, "");
-		b2 = LLVMAppendBasicBlock(cur_function, "");
-		b3 = LLVMAppendBasicBlock(cur_function, "");
+		b1 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "");
+		b2 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "");
+		b3 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "");
 
 		LLVMBuildCondBr(builder, v1, b1, b2);
 
@@ -150,7 +154,7 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, int
 			initializer_codegen(mod, builder, stmt);
 		} else {
 			strvec_tostatic(stmt->decl->typesym->symbol, buffer);
-			v1 = LLVMBuildAlloca(builder, to_llvm_type(stmt->decl->typesym->type), buffer);
+			v1 = LLVMBuildAlloca(builder, to_llvm_type(mod, stmt->decl->typesym->type), buffer);
 			//vect_append(v, (void *)v1);
 			scope_bind(v1, stmt->decl->typesym->symbol);
 			if (stmt->decl->expr != 0)
@@ -160,8 +164,8 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, int
 	case S_WHILE:
 		cur_function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
 		v1 = expr_codegen(mod, builder, stmt->expr, 0);
-		b1 = LLVMAppendBasicBlock(cur_function, "");
-		b2 = LLVMAppendBasicBlock(cur_function, "");
+		b1 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "");
+		b2 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "");
 		LLVMBuildCondBr(builder, v1, b1, b2);
 
 		LLVMPositionBuilderAtEnd(builder, b1);
@@ -241,15 +245,15 @@ static LLVMValueRef assign_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, as
 // this function is courtesy of
 // https://stackoverflow.com/questions/65042902/create-and-reference-a-string-literal-via-llvm-c-interface
 LLVMValueRef define_string_literal(LLVMModuleRef mod, LLVMBuilderRef builder, const char *source_string, size_t size) {
-	LLVMTypeRef str_type = LLVMArrayType(LLVMInt8Type(), size);
+	LLVMTypeRef str_type = LLVMArrayType(LLVMInt8TypeInContext(CTXT(mod)), size);
 	LLVMValueRef str = LLVMAddGlobal(mod, str_type, "");
-	LLVMSetInitializer(str, LLVMConstString(source_string, size, 1));
+	LLVMSetInitializer(str, LLVMConstStringInContext(CTXT(mod), source_string, size, 1));
 	LLVMSetGlobalConstant(str, 1);
 	LLVMSetLinkage(str, LLVMPrivateLinkage);
 	LLVMSetUnnamedAddress(str, LLVMGlobalUnnamedAddr);
 	LLVMSetAlignment(str, 1);
 
-	LLVMValueRef zero_index = LLVMConstInt(LLVMInt64Type(), 0, 1);
+	LLVMValueRef zero_index = LLVMConstInt(LLVMInt64TypeInContext(CTXT(mod)), 0, 1);
 	LLVMValueRef indices[2] = {zero_index, zero_index};
 	LLVMValueRef g = LLVMBuildInBoundsGEP2(builder, str_type, str, indices, 2, "");
 	return g;
@@ -266,7 +270,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	unsigned argno;
 	switch (expr->kind) {
 	case E_INT_LIT:
-		return LLVMConstInt(LLVMInt32Type(), (unsigned long long)expr->num.u64, 0);
+		return LLVMConstInt(LLVMInt32TypeInContext(CTXT(mod)), (unsigned long long)expr->num.u64, 0);
 	case E_MULDIV:
 		if (expr->op == T_STAR)
 			return LLVMBuildMul(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
@@ -316,13 +320,13 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		}
 		return assign_codegen(mod, builder, expr, v);
 	case E_FALSE_LIT:
-		return LLVMConstInt(LLVMInt1Type(), 0, 0);
+		return LLVMConstInt(LLVMInt1TypeInContext(CTXT(mod)), 0, 0);
 	case E_TRUE_LIT:
-		return LLVMConstInt(LLVMInt1Type(), 1, 0);
+		return LLVMConstInt(LLVMInt1TypeInContext(CTXT(mod)), 1, 0);
 	case E_STR_LIT:
 		return define_string_literal(mod, builder, expr->string_literal->text, expr->string_literal->size);
 	case E_CHAR_LIT:
-		return LLVMConstInt(LLVMInt8Type(), (int)expr->string_literal->text[0], 0);
+		return LLVMConstInt(LLVMInt8TypeInContext(CTXT(mod)), (int)expr->string_literal->text[0], 0);
 	case E_INEQUALITY:
 		if (expr->op == T_LT)
 			return LLVMBuildICmp(builder, LLVMIntSLT, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
@@ -359,7 +363,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	}
 }
 
-static LLVMTypeRef *build_param_types(ast_decl *decl)
+static LLVMTypeRef *build_param_types(LLVMModuleRef mod, ast_decl *decl)
 {
 	LLVMTypeRef *ret;
 	size_t i;
@@ -370,7 +374,7 @@ static LLVMTypeRef *build_param_types(ast_decl *decl)
 	}
 	ret = malloc(sizeof (*ret) * arglist->size);
 	for (i = 0 ; i < arglist->size ; ++i) {
-		ret[i] = to_llvm_type(arglist_get(arglist, i)->type);
+		ret[i] = to_llvm_type(mod, arglist_get(arglist, i)->type);
 	}
 	return ret;
 }
@@ -395,15 +399,15 @@ static void alloca_params_as_local_vars(LLVMBuilderRef builder, LLVMValueRef fn,
 }
 
 
-static void define_struct(ast_decl *decl) {
+static void define_struct(LLVMModuleRef mod, ast_decl *decl) {
 	vect *al = decl->typesym->type->arglist;
 	size_t sz = al->size;
 	vect *members = vect_init(sz);
 	for (size_t i = 0 ; i < al->size ; ++i) {
-		LLVMTypeRef cur_type = to_llvm_type(((ast_typed_symbol *)vect_get(al, i))->type);
+		LLVMTypeRef cur_type = to_llvm_type(mod, ((ast_typed_symbol *)vect_get(al, i))->type);
 		vect_append(members, cur_type);
 	}
-	LLVMStructType((LLVMTypeRef *)(members->elements), members->size, 0);
+	LLVMStructTypeInContext(CTXT(mod), (LLVMTypeRef *)(members->elements), members->size, 0);
 	vect_destroy(members);
 }
 
@@ -416,15 +420,15 @@ void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 		scope_enter();
 		char buf[BUFFER_MAX_LEN];
 		vect *v = vect_init(4);
-		LLVMTypeRef *param_types = build_param_types(decl);
+		LLVMTypeRef *param_types = build_param_types(*mod, decl);
 		vect *arglist = decl->typesym->type->arglist;
 		size_t size = !arglist ? 0 : arglist->size;
-		LLVMTypeRef ret_type = LLVMFunctionType(to_llvm_type(decl->typesym->type->subtype), param_types, size, 0);
+		LLVMTypeRef ret_type = LLVMFunctionType(to_llvm_type(*mod, decl->typesym->type->subtype), param_types, size, 0);
 
 		strvec_tostatic(decl->typesym->symbol, buf);
 		LLVMValueRef fn_value = LLVMAddFunction(*mod, buf, ret_type);
-		LLVMBasicBlockRef entry = LLVMAppendBasicBlock(fn_value, "");
-		LLVMBuilderRef builder = LLVMCreateBuilder();
+		LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(CTXT(*mod), fn_value, "");
+		LLVMBuilderRef builder = LLVMCreateBuilderInContext(CTXT(*mod));
 		LLVMPositionBuilderAtEnd(builder, entry);
 
 		alloca_params_as_local_vars(builder, fn_value, decl, param_types);
@@ -434,7 +438,7 @@ void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 		free(param_types);
 		vect_destroy(v);
 	} else if (decl->typesym->type->kind == Y_STRUCT) {
-		define_struct(decl);
+		define_struct(*mod, decl);
 	} else {
 		printf("Can't codegen decls of this type yet :(\n");
 		exit(1);
