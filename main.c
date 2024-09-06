@@ -80,6 +80,7 @@ int main(int argc, const char *argv[])
 	char *error = 0;
 	LLVMVerifyModule(mod, LLVMAbortProcessAction, &error);
 	LLVMDisposeMessage(error);
+	LLVMDumpModule(mod);
 
 	error = 0;
 	LLVMInitializeNativeTarget();

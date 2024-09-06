@@ -60,8 +60,6 @@ LLVMModuleRef module_codegen(LLVMContextRef ctxt, ast_decl *start, char *module_
 		decl_codegen(&ret, start);
 		start = start->next;
 	}
-
-	LLVMDumpModule(ret);
 	return ret;
 }
 
