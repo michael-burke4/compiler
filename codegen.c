@@ -190,7 +190,7 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, int
 
 static LLVMValueRef get_param_by_name(LLVMValueRef function, char *name)
 {
-	LLVMValueRef param;
+	LLVMValueRef param = 0;
 	for (unsigned int i = 0 ; i < LLVMCountParams(function) ; ++i) {
 		param = LLVMGetParam(function, i);
 		if (LLVMGetValueName(param) && strcmp(LLVMGetValueName(param), name) == 0)
@@ -263,6 +263,34 @@ LLVMValueRef define_string_literal(LLVMModuleRef mod, LLVMBuilderRef builder, co
 	return g;
 }
 
+static size_t get_member_position(ast_decl *decl, strvec *name) {
+	vect *arglist = decl->typesym->type->arglist;
+	for (size_t i = 0  ; i < arglist->size ; ++i) {
+		if (strvec_equals(arglist_get(arglist, i)->symbol, name)) {
+			return i;
+		}
+	}
+	puts("DIDN'T FIND REQUESTED STRUCT MEMBER. FATAL ERROR.");
+	exit(1);
+}
+
+static char *shorten_struct_string(char *string) {
+	char *tmp;
+	string += 1;
+	tmp = string;
+	while (*tmp != '*' && *tmp != ' ') {
+		if (*tmp == '\0') {
+			printf("original at point of failure: %s\n", string);
+			printf("tmp right now: %s\n", tmp);
+			puts("BIG PROBLEM IN CODEGEN. NO SPACE IN STRUCT NAME!");
+			exit(1);
+		}
+		tmp += 1;
+	}
+	*tmp = '\0';
+	return string;
+}
+
 LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, int store_ctxt)
 {
 	char buffer[BUFFER_MAX_LEN];
@@ -271,6 +299,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	LLVMValueRef args[MAX_ARGS];
 	LLVMValueRef ret;
 	LLVMValueRef syscall_args[4];
+	buffer[0] = '\0';
 	unsigned argno;
 	switch (expr->kind) {
 	case E_INT_LIT:
@@ -316,7 +345,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 			}
 		} else if (expr->left->kind == E_PRE_UNARY && expr->left->op == T_STAR) {
 			v = expr_codegen(mod, builder, expr->left->left, 1);
-		} else if (expr->left->kind == E_POST_UNARY && expr->left->op == T_LBRACKET) {
+		} else if (expr->left->kind == E_POST_UNARY && (expr->left->op == T_LBRACKET || expr->left->op == T_PERIOD)) {
 			v = expr_codegen(mod, builder, expr->left, 1);
 		} else {
 			puts("Can't assign to this expr type right now.");
@@ -343,16 +372,44 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	case E_PAREN:
 		return expr_codegen(mod, builder, expr->left, store_ctxt);
 	case E_POST_UNARY:
-		if (expr->op != T_LBRACKET) {
+		if (expr->op == T_LBRACKET) {
+			v = expr_codegen(mod, builder, expr->left, 0);
+			v2 = expr_codegen(mod, builder, expr->right, 0);
+			v = LLVMBuildGEP(builder, v, &v2, 1, "");
+			if (!store_ctxt)
+				v = LLVMBuildLoad(builder, v, "");
+			return v;
+		} else if (expr->op == T_PERIOD) {
+			if (expr->left->kind == E_IDENTIFIER) {
+				v = scope_lookup(expr->left->name);
+			} else {
+				v = expr_codegen(mod, builder, expr->left, 1);
+			}
+
+			// stupid name extracting
+			LLVMTypeRef val_tp = LLVMTypeOf(v);
+			char *struct_string = LLVMPrintTypeToString(val_tp);
+			char *shortened = shorten_struct_string(struct_string);
+			strvec *name_vec = strvec_init_str(shortened);
+
+			// Look up the decl in sym tab so we can get field names
+			ast_decl *struct_decl;
+			struct_decl = scope_lookup(name_vec);
+
+			free(struct_string);
+			strvec_destroy(name_vec);
+
+			// set up gep indices
+			size_t ind = get_member_position(struct_decl, expr->right->name);
+			v2 = LLVMBuildStructGEP(builder, v, ind, "");
+			if (!store_ctxt) {
+				return LLVMBuildLoad(builder, v2, "");
+			}
+			return v2;
+		} else {
 			puts("can't codegen this post unary expr type yet");
 			exit(1);
 		}
-		v = expr_codegen(mod, builder, expr->left,  0);
-		v2 = expr_codegen(mod, builder, expr->right, 0);
-		v = LLVMBuildGEP(builder, v, &v2, 1, "");
-		if (!store_ctxt)
-			v = LLVMBuildLoad(builder, v, "");
-		return v;
 	case E_PRE_UNARY:
 		if (expr->op == T_STAR) {
 			v = expr_codegen(mod, builder, expr->left, 0);
@@ -409,6 +466,18 @@ static void define_struct(LLVMModuleRef mod, ast_decl *decl) {
 	vect *al = decl->typesym->type->arglist;
 	size_t sz = al->size;
 	vect *members = vect_init(sz);
+
+	// A brief explaination of scope-binding structs:
+	// Structs can only be defined at the top level, so scope binding
+	// 	them isn't reaaaally needed, but it's easier than keeping a
+	//	second list just for struct defs.
+	// Structs typesyms need to be accessible easily so that you can select struct fields
+	//	by name, as LLVM doesn't keep track of the field names. It only keeps track
+	//	of the types at each position.
+	// This could just bind the decl->typesym but who is keeping track anyways.
+	// Also don't free this decl! The symbol table does not own it!!
+	scope_bind(decl, decl->typesym->symbol);
+
 	for (size_t i = 0 ; i < al->size ; ++i) {
 		LLVMTypeRef cur_type = to_llvm_type(mod, ((ast_typed_symbol *)vect_get(al, i))->type);
 		vect_append(members, cur_type);
@@ -418,7 +487,7 @@ static void define_struct(LLVMModuleRef mod, ast_decl *decl) {
 	vect_destroy(members); // WARNING! Potential use-after-free situation?
 	// The type references themelves aren't freed
 	// but the array where the pointers are stored is within members->elements
-	// If LLVMStructSetBody creates a copy of the whole array that's cool
+	// If LLVMStructSetBody creates a copy of the whole array / each pointer that's cool
 	// if LLVMStructSetBody itself holds onto a pointer to member->elements that
 	// could be a problem, as the data stored here will be overwritten etc.
 }
