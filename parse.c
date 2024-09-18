@@ -391,7 +391,6 @@ ast_type *parse_type(token_s **cur_token)
 	ast_type *ret = 0;
 	ast_type *subtype = 0;
 	vect *arglist = 0;
-	strvec *text = 0;
 	int had_arglist_err = 0;
 
 	switch (get_type(cur_token)) {
@@ -425,12 +424,6 @@ ast_type *parse_type(token_s **cur_token)
 		break;
 	case T_BOOL:
 		ret = type_init(Y_BOOL, 0);
-		next(cur_token);
-		break;
-	case T_IDENTIFIER:
-		text = (*cur_token)->text;
-		(*cur_token)->text = 0;
-		ret = type_init(Y_IDENTIFIER, text);
 		next(cur_token);
 		break;
 	case T_STRUCT:

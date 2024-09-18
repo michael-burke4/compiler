@@ -71,47 +71,6 @@ static void typecheck_array_initializer(ast_decl *decl)
 }
 
 
-static void typecheck_struct_initializer(ast_decl *decl)
-{
-	ast_typed_symbol *st_struct_def;
-	if (!decl->initializer)
-		return;
-	if (decl->typesym->type->name == 0) {
-		puts("tried to typecheck a struct declaration's initializer?");
-		had_error = 1;
-		return;
-	}
-	st_struct_def = scope_lookup(decl->typesym->type->name);
-	if (st_struct_def->type->arglist->size != decl->initializer->size) {
-		puts("Struct field size mismatch"); // TODO: error overhaul
-		had_error = 1;
-		return;
-	}
-	for (size_t i = 0 ; i < decl->initializer->size ; ++i) {
-		ast_type *def_field_type = ((ast_typed_symbol *)(st_struct_def->type->arglist->elements[i]))->type;
-		ast_type *init_elem_type = derive_expr_type(decl->initializer->elements[i]);
-		if (def_field_type == 0) {
-			puts("bad type symbol in struct definition");
-			had_error = 1;
-			type_destroy(init_elem_type);
-			return;
-		}
-		if (init_elem_type == 0) {
-			had_error = 1;
-			type_destroy(init_elem_type);
-			return;
-		}
-		else if (!type_equals(def_field_type, init_elem_type)) {
-			puts("Expr type doesn't match corresponding struct field type");
-			had_error = 1;
-			type_destroy(init_elem_type);
-			return;
-		}
-		type_destroy(init_elem_type);
-	}
-}
-
-
 void typecheck_decl(ast_decl *decl)
 {
 	ast_type *typ;
@@ -145,9 +104,9 @@ void typecheck_decl(ast_decl *decl)
 		type_destroy(typ);
 		scope_bind_ts(decl->typesym);
 	} else if (decl->initializer) {
-		if (decl->typesym->type->kind == Y_STRUCT) {
-			typecheck_struct_initializer(decl);
-			scope_bind_ts(decl->typesym);
+		if (decl->typesym->type->kind != Y_POINTER) {
+			had_error = 1;
+			puts("Only pointers can use array initializers");
 			return;
 		}
 		typecheck_array_initializer(decl);
