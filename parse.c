@@ -4,6 +4,7 @@
 #include "token.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 
 union num_lit dummy = {.u64 = 0};
 
@@ -657,7 +658,12 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 	case T_INT_LIT:
 		next(cur_token);
 		union num_lit n = {.u64 = 0};
-		n.i32 = strvec_toi(cur->text);
+		n.i64 = strvec_tol(cur->text);
+		if (errno != 0) {
+			printf("Could not parse int literal ");
+			strvec_print(cur->text);
+			puts("");
+		}
 		return expr_init(E_INT_LIT, 0, 0, 0, 0, n, 0);
 	case T_STR_LIT:
 		txt = cur->text;

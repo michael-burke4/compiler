@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <errno.h>
 
 static void *_reallocarray(void *ptr, size_t nmemb, size_t size)
 {
@@ -112,16 +113,15 @@ int strvec_equals_str(strvec *vec, const char *string)
 	return !memcmp(vec->text, string, vec->size);
 }
 
-// atoi returns 0 on fail, so you can detect under/overflows in parse.c by
-// only accepting 0 parse results if the srvec's len is 1.
-int strvec_toi(strvec *vec)
+// Check errno at calling code!
+long strvec_tol(strvec *vec)
 {
-	int ret;
+	long ret = 0;
 	char *tmp = smalloc(vec->size + 1);
+	errno = 0;
 	memcpy(tmp, vec->text, vec->size);
 	tmp[vec->size] = '\0';
-
-	ret = atoi(tmp);
+	ret = strtol(tmp, 0, 10);
 	free(tmp);
 	return ret;
 }

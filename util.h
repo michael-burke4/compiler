@@ -33,7 +33,7 @@ int strvec_equals(strvec *a, strvec *b);
 void strvec_print(strvec *vec);
 void strvec_destroy(strvec *vec);
 int strvec_equals_str(strvec *vec, const char *string);
-int strvec_toi(strvec *vec);
+long strvec_tol(strvec *vec);
 void strvec_tostatic(strvec *vec, char buff[BUFFER_MAX_LEN]);
 
 vect *vect_init(size_t capacity);
