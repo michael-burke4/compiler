@@ -238,7 +238,9 @@ static ast_type *derive_assign(ast_expr *expr) {
 	printf("Attempted to assign expression of type ");
 	type_print(right);
 	printf(" to a variable of type ");
+	had_error = 1;
 	type_print(left);
+	puts("");
 	type_destroy(right);
 	return 0;
 }
@@ -405,6 +407,13 @@ ast_type *derive_expr_type(ast_expr *expr)
 		return typecheck_syscall(expr);
 	case E_IDENTIFIER:
 		ts = scope_lookup(expr->name);
+		if (ts->type->kind == Y_STRUCT && strvec_equals(ts->symbol, expr->name)) {
+			printf("Can't use struct type \"");
+			strvec_print(ts->symbol);
+			puts("\" in this expression");
+			had_error = 1;
+			return 0;
+		}
 		if (ts) {
 			return type_copy(ts->type);
 		}
