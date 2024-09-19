@@ -366,7 +366,7 @@ ast_type *derive_expr_type(ast_expr *expr)
 			return left;
 		}
 		had_error = 1;
-		printf("Typecheck failed at expresion \"");
+		printf("Typecheck failed at expression \"");
 		expr_print(expr);
 		puts("\"");
 		type_destroy(left);
@@ -382,7 +382,7 @@ ast_type *derive_expr_type(ast_expr *expr)
 			return type_init(Y_BOOL, 0);
 		}
 		had_error = 1;
-		printf("Typecheck failed at expresion \"");
+		printf("Typecheck failed at expression \"");
 		expr_print(expr);
 		puts("\"");
 		type_destroy(left);
