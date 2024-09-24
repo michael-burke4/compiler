@@ -170,9 +170,6 @@ void type_print(ast_type *type)
 		printf(" -> ");
 		type_print(type->subtype);
 		break;
-	case Y_IDENTIFIER:
-		strvec_print(type->name);
-		break;
 	case Y_POINTER:
 		type_print(type->subtype);
 		printf("*");
