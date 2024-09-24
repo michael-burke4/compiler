@@ -13,6 +13,8 @@
 #include <llvm-c/Core.h>
 #include <string.h>
 #include <libgen.h>
+#include <assert.h>
+#include <limits.h>
 
 int had_error = 0;
 extern struct stack *sym_tab;
@@ -37,6 +39,11 @@ int main(int argc, const char *argv[])
 	char path[4096];
 	char modname[4096];
 	char outname[4096];
+
+	// Hey, who knows.
+	assert(CHAR_BIT == 8);
+	assert(sizeof(float) * CHAR_BIT == 32);
+	assert(sizeof(double) * CHAR_BIT == 64);
 
 	if (argc != 2) {
 		printf("Invalid # of arguments: invoke like `./main [file]`\n");

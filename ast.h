@@ -3,6 +3,7 @@
 
 #include "token.h"
 #include "util.h"
+#include <stdint.h>
 
 #define arglist_get(list, i) ((ast_typed_symbol *)vect_get(list, i))
 
@@ -61,12 +62,23 @@ typedef enum {
 	E_MEMBER,
 } expr_t;
 
-// TODO: cross platform compatability stuff ?!
+typedef enum {
+	NS_0  = 0,
+	NS_8  = 8,
+	NS_16 = 16,
+	NS_32 = 32,
+	NS_64 = 64,
+} num_size_t;
+
 union num_lit {
-	int i32;
-	long int i64;
-	unsigned u32;
-	unsigned long u64;
+	int8_t i8;
+	int16_t i16;
+	int32_t i32;
+	int64_t i64;
+	int8_t u8;
+	int16_t u16;
+	uint32_t u32;
+	uint64_t u64;
 	float f32;
 	double f64;
 };
@@ -81,6 +93,7 @@ typedef struct ast_expr {
 	strvec *string_literal;
 	vect *sub_exprs;
 	int is_lvalue;
+	num_size_t size;
 } ast_expr;
 
 void expr_add_sub_expr(ast_expr *e, ast_expr *sub);
