@@ -16,10 +16,10 @@ typedef struct ast_decl {
 } ast_decl;
 
 typedef enum {
-	Y_I32,
-	Y_I64,
-	Y_U32,
-	Y_U64,
+	Y_U32 = 0x08,
+	Y_U64 = 0x09,
+	Y_I32 = 0x18,
+	Y_I64 = 0x19,
 	Y_CHAR,
 	Y_STRING,
 	Y_BOOL,
@@ -59,15 +59,8 @@ typedef enum {
 	E_FNCALL,
 	E_SYSCALL,
 	E_MEMBER,
+	E_CAST,
 } expr_t;
-
-typedef enum {
-	NS_0  = 0,
-	NS_8  = 8,
-	NS_16 = 16,
-	NS_32 = 32,
-	NS_64 = 64,
-} num_size_t;
 
 union num_lit {
 	int8_t i8;
@@ -92,7 +85,7 @@ typedef struct ast_expr {
 	strvec *string_literal;
 	vect *sub_exprs;
 	int is_lvalue;
-	num_size_t size;
+	type_t cast_to;
 } ast_expr;
 
 void expr_add_sub_expr(ast_expr *e, ast_expr *sub);

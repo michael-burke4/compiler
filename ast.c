@@ -42,7 +42,6 @@ ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, st
 	ret->sub_exprs = 0;
 	ret->is_lvalue = 0;
 	ret->string_literal = str_lit;
-	ret->size = NS_0;
 	return ret;
 }
 

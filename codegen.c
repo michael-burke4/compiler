@@ -28,6 +28,19 @@ static LLVMValueRef codegen_syscall3(LLVMBuilderRef builder, LLVMValueRef args[4
 	return LLVMBuildCall(builder, asmcall, args, 4, "");
 }
 
+static LLVMTypeRef int_kind_to_llvm_type(LLVMModuleRef mod, type_t kind) {
+	LLVMContextRef ctxt = CTXT(mod);
+	switch (kind) {
+	case Y_I32:
+		return LLVMInt32TypeInContext(ctxt);
+	case Y_I64:
+		return LLVMInt64TypeInContext(ctxt);
+	default:
+		printf("couldn't convert type\n");
+		abort();
+	}
+}
+
 static LLVMTypeRef to_llvm_type(LLVMModuleRef mod, ast_type *tp)
 {
 	char buffer[BUFFER_MAX_LEN];
@@ -35,6 +48,8 @@ static LLVMTypeRef to_llvm_type(LLVMModuleRef mod, ast_type *tp)
 	switch (tp->kind) {
 	case Y_I32:
 		return LLVMInt32TypeInContext(ctxt);
+	case Y_I64:
+		return LLVMInt64TypeInContext(ctxt);
 	case Y_STRING:
 		return LLVMPointerType(LLVMInt8TypeInContext(ctxt), 0);
 	case Y_VOID:
@@ -408,6 +423,12 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 			puts("can't codegen this post unary expr type yet");
 			exit(1);
 		}
+	case E_CAST:
+		// TODO: ZExt for unsigneds
+		// TODO: cast down (truncate)
+		return LLVMBuildSExt(builder, expr_codegen(mod,
+				builder, expr->left, store_ctxt),
+				int_kind_to_llvm_type(mod, expr->cast_to), "");
 	case E_PRE_UNARY:
 		if (expr->op == T_STAR) {
 			v = expr_codegen(mod, builder, expr->left, 0);
@@ -454,7 +475,6 @@ static void alloca_params_as_local_vars(LLVMBuilderRef builder, LLVMValueRef fn,
 		scope_bind(v, arglist_get(arglist,i)->symbol);
 		//vect_append(vc, (void *)v);
 	}
-	
 }
 
 

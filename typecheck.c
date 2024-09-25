@@ -190,7 +190,8 @@ static ast_type *typecheck_syscall(ast_expr *expr)
 	}
 	return type_init(Y_VOID, 0);
 }
-static int is_numeric_type(ast_type *t)
+
+static int is_int_type(ast_type *t)
 {
 	if (!t)
 		return 0;
@@ -203,6 +204,13 @@ static int is_numeric_type(ast_type *t)
 	default:
 		return 0;
 	}
+}
+
+ast_expr *build_cast(ast_expr *ex, type_t kind) {
+	union num_lit dummy = {.u64 = 0};
+	ast_expr *ret = expr_init(E_CAST, ex, 0, 0, 0, dummy, 0);
+	ret->cast_to = kind;
+	return ret;
 }
 
 static ast_type *derive_assign(ast_expr *expr) {
@@ -234,6 +242,18 @@ static ast_type *derive_assign(ast_expr *expr) {
 		if (derived)
 			type_destroy(left);
 		return right;
+	}
+	if (is_int_type(left) && is_int_type(right)) {
+		int size_mask = 0x0F;
+		if ((left->kind & size_mask) > (right->kind & size_mask)) {
+			expr->right = build_cast(expr->right, left->kind);
+			if (derived) {
+				type_destroy(right);
+				return left;
+			}
+			type_destroy(right);
+			return type_copy(left);
+		}
 	}
 	printf("Attempted to assign expression of type ");
 	type_print(right);
@@ -361,7 +381,7 @@ ast_type *derive_expr_type(ast_expr *expr)
 	case E_MULDIV:
 		left = derive_expr_type(expr->left);
 		right = derive_expr_type(expr->right);
-		if (type_equals(left, right) && is_numeric_type(left)) {
+		if (type_equals(left, right) && is_int_type(left)) {
 			type_destroy(right);
 			return left;
 		}
@@ -376,7 +396,7 @@ ast_type *derive_expr_type(ast_expr *expr)
 	case E_INEQUALITY:
 		left = derive_expr_type(expr->left);
 		right = derive_expr_type(expr->right);
-		if (type_equals(left, right) && is_numeric_type(left)) {
+		if (type_equals(left, right) && is_int_type(left)) {
 			type_destroy(left);
 			type_destroy(right);
 			return type_init(Y_BOOL, 0);
