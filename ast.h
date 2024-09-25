@@ -61,20 +61,7 @@ typedef enum {
 	E_CAST,
 } expr_t;
 
-union num_lit {
-	int8_t i8;
-	int16_t i16;
-	int32_t i32;
-	int64_t i64;
-	int8_t u8;
-	int16_t u16;
-	uint32_t u32;
-	uint64_t u64;
-	float f32;
-	double f64;
-};
-
-type_t smallest_fit(union num_lit);
+type_t smallest_fit(uint64_t num);
 
 typedef struct ast_expr {
 	expr_t kind;
@@ -82,7 +69,7 @@ typedef struct ast_expr {
 	struct ast_expr *right;
 	token_t op;
 	strvec *name;
-	union num_lit num;
+	uint64_t num;
 	strvec *string_literal;
 	vect *sub_exprs;
 	int is_lvalue;
@@ -109,7 +96,7 @@ ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt, a
 ast_type *type_init(type_t kind, strvec *name);
 ast_typed_symbol *ast_typed_symbol_init(ast_type *type, strvec *symbol);
 ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, strvec *name,
-		    union num_lit num, strvec *str_lit);
+		    uint64_t num, strvec *str_lit);
 ast_stmt *stmt_init(stmt_t kind, ast_decl *decl, ast_expr *expr, ast_stmt *body,
 		    ast_stmt *else_body);
 void ast_free(ast_decl *program);

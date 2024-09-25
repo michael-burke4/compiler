@@ -43,7 +43,7 @@ static void typecheck_fnbody(ast_decl *decl)
 	scope_enter();
 	scope_bind_return_type(decl->typesym->type->subtype);
 	scope_bind_args(decl);
-	typecheck_stmt(decl->body->body);
+	typecheck_stmt(decl->body->body, 1);
 	scope_exit();
 }
 
@@ -87,13 +87,12 @@ static int is_int_type(ast_type *t)
 	}
 }
 
-// Returns zero if lhs and rhs are the same integer type!
+// Returns zero if lhs and rhs are the same bit width!
 static int assignment_rhs_promotable(ast_type *lhs, ast_type *rhs)
 {
 	if (is_int_type(lhs) && is_int_type(rhs) &&
-		(lhs->kind & SIZE_MASK) > (rhs->kind & SIZE_MASK)) {
+			(lhs->kind & 0x0F) > (rhs->kind & 0x0F))
 		return 1;
-	}
 	return 0;
 }
 
@@ -460,16 +459,22 @@ ast_type *derive_expr_type(ast_expr *expr)
 	}
 }
 
-void typecheck_stmt(ast_stmt *stmt)
+void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 {
 	ast_type *typ;
+	if (!stmt && at_fn_top_level && 
+			scope_get_return_type()->kind != Y_VOID) {
+		had_error = 1;
+		puts("Non-void functions must end in valid return statements");
+		return;
+	}
 	if (!stmt)
 		return;
 	switch (stmt->kind) {
 	case S_ERROR:
 		had_error = 1;
 		puts("WARNING typechecking a bad stmt. Big problem?!");
-		typecheck_stmt(stmt->next);
+		typecheck_stmt(stmt->next, at_fn_top_level);
 		break;
 	case S_IFELSE:
 		if (!stmt->expr) {
@@ -484,13 +489,13 @@ void typecheck_stmt(ast_stmt *stmt)
 		type_destroy(typ);
 		scope_enter();
 		if (stmt->body != 0)
-			typecheck_stmt(stmt->body);
+			typecheck_stmt(stmt->body, 0);
 		scope_exit();
 		scope_enter();
 		if (stmt->else_body != 0)
-			typecheck_stmt(stmt->else_body);
+			typecheck_stmt(stmt->else_body, 0);
 		scope_exit();
-		typecheck_stmt(stmt->next);
+		typecheck_stmt(stmt->next, at_fn_top_level);
 		break;
 	case S_WHILE:
 		if (!stmt->expr) {
@@ -504,8 +509,8 @@ void typecheck_stmt(ast_stmt *stmt)
 		}
 		type_destroy(typ);
 		if (stmt->body != 0)
-			typecheck_stmt(stmt->body->body);
-		typecheck_stmt(stmt->next);
+			typecheck_stmt(stmt->body->body, 0);
+		typecheck_stmt(stmt->next, at_fn_top_level);
 		break;
 	case S_BLOCK:
 		// DO NOT DESTROY TYP HERE!
@@ -513,16 +518,16 @@ void typecheck_stmt(ast_stmt *stmt)
 		typ = scope_get_return_type();
 		scope_enter();
 		scope_bind_return_type(typ);
-		typecheck_stmt(stmt->next);
+		typecheck_stmt(stmt->next, 0);
 		scope_exit();
 		break;
 	case S_DECL:
 		typecheck_decl(stmt->decl);
-		typecheck_stmt(stmt->next);
+		typecheck_stmt(stmt->next, at_fn_top_level);
 		break;
 	case S_EXPR:
 		type_destroy(derive_expr_type(stmt->expr));
-		typecheck_stmt(stmt->next);
+		typecheck_stmt(stmt->next, at_fn_top_level);
 		break;
 	case S_RETURN:
 		// See above warning about typ ownership
@@ -548,7 +553,6 @@ void typecheck_stmt(ast_stmt *stmt)
 			}
 			type_destroy(typ);
 		}
-		typecheck_stmt(stmt->next);
 		break;
 	}
 }

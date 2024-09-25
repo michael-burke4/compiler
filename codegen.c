@@ -227,25 +227,24 @@ static LLVMValueRef assign_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, as
 	LLVMValueRef ret;
 	LLVMValueRef tempval;
 	ast_expr *temp;
-	union num_lit dummy = {.u64=0};
 	if (expr->op == T_ASSIGN)
 		return LLVMBuildStore(builder, expr_codegen(mod, builder, expr->right, 0), loc);
 
 	switch (expr->op) {
 	case T_MUL_ASSIGN:
-		temp = expr_init(E_MULDIV, expr->left, expr->right, T_STAR, 0, dummy, 0);
+		temp = expr_init(E_MULDIV, expr->left, expr->right, T_STAR, 0, 0, 0);
 		break;
 	case T_DIV_ASSIGN:
-		temp = expr_init(E_MULDIV, expr->left, expr->right, T_FSLASH, 0, dummy, 0);
+		temp = expr_init(E_MULDIV, expr->left, expr->right, T_FSLASH, 0, 0, 0);
 		break;
 	case T_MOD_ASSIGN:
-		temp = expr_init(E_MULDIV, expr->left, expr->right, T_PERCENT, 0, dummy, 0);
+		temp = expr_init(E_MULDIV, expr->left, expr->right, T_PERCENT, 0, 0, 0);
 		break;
 	case T_ADD_ASSIGN:
-		temp = expr_init(E_ADDSUB, expr->left, expr->right, T_PLUS, 0, dummy, 0);
+		temp = expr_init(E_ADDSUB, expr->left, expr->right, T_PLUS, 0, 0, 0);
 		break;
 	case T_SUB_ASSIGN:
-		temp = expr_init(E_ADDSUB, expr->left, expr->right, T_MINUS, 0, dummy, 0);
+		temp = expr_init(E_ADDSUB, expr->left, expr->right, T_MINUS, 0, 0, 0);
 		break;
 	default:
 		expr_print(expr);
@@ -318,7 +317,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	switch (expr->kind) {
 	case E_INT_LIT:
 		t = int_kind_to_llvm_type(mod, expr->int_size);
-		return LLVMConstInt(t, (unsigned long long)expr->num.u64, 0);
+		return LLVMConstInt(t, (unsigned long long)expr->num, 0);
 	case E_MULDIV:
 		if (expr->op == T_STAR)
 			return LLVMBuildMul(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");

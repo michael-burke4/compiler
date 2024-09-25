@@ -82,9 +82,11 @@ void expr_print(ast_expr *expr)
 	case E_INT_LIT:
 		switch (smallest_fit(expr->num)) {
 		case Y_I32:
-			printf("%d", expr->num.i32);
+			printf("%d", (int32_t)expr->num);
+			break;
 		default:
-			printf("%ld", expr->num.i64);
+			printf("%ld", (int64_t)expr->num);
+			break;
 		}
 		break;
 	case E_CHAR_LIT:
