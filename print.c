@@ -80,7 +80,12 @@ void expr_print(ast_expr *expr)
 		printf(")");
 		break;
 	case E_INT_LIT:
-		printf("%d", expr->num.i32);
+		switch (smallest_fit(expr->num)) {
+		case Y_I32:
+			printf("%d", expr->num.i32);
+		default:
+			printf("%ld", expr->num.i64);
+		}
 		break;
 	case E_CHAR_LIT:
 		printf("'");

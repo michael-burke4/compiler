@@ -312,11 +312,13 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	LLVMValueRef args[MAX_ARGS];
 	LLVMValueRef ret;
 	LLVMValueRef syscall_args[4];
+	LLVMTypeRef t;
 	buffer[0] = '\0';
 	unsigned argno;
 	switch (expr->kind) {
 	case E_INT_LIT:
-		return LLVMConstInt(LLVMInt32TypeInContext(CTXT(mod)), (unsigned long long)expr->num.u64, 0);
+		t = int_kind_to_llvm_type(mod, expr->int_size);
+		return LLVMConstInt(t, (unsigned long long)expr->num.u64, 0);
 	case E_MULDIV:
 		if (expr->op == T_STAR)
 			return LLVMBuildMul(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");

@@ -3,7 +3,6 @@
 
 #include "token.h"
 #include "util.h"
-#include <stdint.h>
 
 #define arglist_get(list, i) ((ast_typed_symbol *)vect_get(list, i))
 
@@ -75,6 +74,8 @@ union num_lit {
 	double f64;
 };
 
+type_t smallest_fit(union num_lit);
+
 typedef struct ast_expr {
 	expr_t kind;
 	struct ast_expr *left;
@@ -86,6 +87,7 @@ typedef struct ast_expr {
 	vect *sub_exprs;
 	int is_lvalue;
 	type_t cast_to;
+	type_t int_size;
 } ast_expr;
 
 void expr_add_sub_expr(ast_expr *e, ast_expr *sub);
@@ -120,5 +122,4 @@ ast_type *type_copy(ast_type *t);
 vect *arglist_copy(vect *arglist);
 
 void arglist_destroy(vect *arglist);
-
 #endif

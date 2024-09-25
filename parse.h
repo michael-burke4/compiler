@@ -18,5 +18,6 @@ ast_expr *parse_expr_assign(token_s **cur_token);
 ast_stmt *parse_stmt(token_s **cur_token);
 ast_stmt *parse_stmt_block(token_s **cur_token);
 ast_typed_symbol *parse_typed_symbol(token_s **cur_token);
+ast_expr *build_cast(ast_expr *ex, type_t kind);
 
 #endif

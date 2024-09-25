@@ -664,7 +664,9 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 			strvec_print(cur->text);
 			puts("");
 		}
-		return expr_init(E_INT_LIT, 0, 0, 0, 0, n, 0);
+		ex = expr_init(E_INT_LIT, 0, 0, 0, 0, n, 0);
+		ex->int_size = smallest_fit(n);
+		return ex;
 	case T_STR_LIT:
 		txt = cur->text;
 		cur->text = 0;
@@ -712,4 +714,11 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 		sync_to(cur_token, T_EOF, 1);
 		return 0;
 	}
+}
+
+ast_expr *build_cast(ast_expr *ex, type_t kind) {
+	union num_lit dummy = {.u64 = 0};
+	ast_expr *ret = expr_init(E_CAST, ex, 0, 0, 0, dummy, 0);
+	ret->cast_to = kind;
+	return ret;
 }

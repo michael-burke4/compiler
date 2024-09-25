@@ -42,6 +42,7 @@ ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, st
 	ret->sub_exprs = 0;
 	ret->is_lvalue = 0;
 	ret->string_literal = str_lit;
+	ret->int_size = Y_VOID;
 	return ret;
 }
 
@@ -178,4 +179,11 @@ void arglist_destroy(vect *arglist)
 	for (size_t i = 0 ; i < arglist->size ; ++i)
 		ast_typed_symbol_destroy(arglist_get(arglist, i));
 	vect_destroy(arglist);
+}
+
+type_t smallest_fit(union num_lit num)
+{
+	if (num.i64 > INT32_MIN && num.i64 < INT32_MAX)
+		return Y_I32;
+	return Y_I64;
 }

@@ -174,3 +174,15 @@ void strvec_tostatic(strvec *vec, char buff[BUFFER_MAX_LEN])
 		buff[i] = vec->text[i];
 	buff[i] = '\0';
 }
+
+void print_bits(uint64_t x)
+{
+	uint64_t top_bit = 1l << 63l;
+	for (int i = 64 ; i > 0 ; --i) {
+		printf("%d", (x & top_bit) != 0);
+		x <<= 1;
+		if ((i-1) % 4 == 0)
+			printf(" ");
+	}
+	puts("");
+}

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <err.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #define BUFFER_MAX_LEN 128
 
@@ -40,5 +41,7 @@ vect *vect_init(size_t capacity);
 void vect_append(vect *vect, void *e);
 void vect_destroy(vect *vect);
 void *vect_get(vect *v, size_t i);
+
+void print_bits(uint64_t x);
 
 #endif

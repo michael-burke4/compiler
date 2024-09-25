@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "symbol_table.h"
 #include "util.h"
+#include "parse.h"
 
 #include "print.h"
 
@@ -71,6 +72,32 @@ static void typecheck_array_initializer(ast_decl *decl)
 }
 
 
+static int is_int_type(ast_type *t)
+{
+	if (!t)
+		return 0;
+	switch (t->kind) {
+	case Y_I32:
+	case Y_I64:
+	case Y_U32:
+	case Y_U64:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
+// Returns zero if lhs and rhs are the same integer type!
+static int assignment_rhs_promotable(ast_type *lhs, ast_type *rhs)
+{
+	if (is_int_type(lhs) && is_int_type(rhs) &&
+		(lhs->kind & SIZE_MASK) > (rhs->kind & SIZE_MASK)) {
+		return 1;
+	}
+	return 0;
+}
+
+
 void typecheck_decl(ast_decl *decl)
 {
 	ast_type *typ;
@@ -97,7 +124,9 @@ void typecheck_decl(ast_decl *decl)
 		scope_bind_ts(decl->typesym);
 	} else if (decl->expr) {
 		typ = derive_expr_type(decl->expr);
-		if (!(type_equals(decl->typesym->type, typ))) {
+		if (assignment_rhs_promotable(decl->typesym->type, typ)) {
+			decl->expr = build_cast(decl->expr, decl->typesym->type->kind);
+		} else if (!(type_equals(decl->typesym->type, typ))) {
 			had_error = 1;
 			puts("Failed typecheck TODO: good error messages.");
 		}
@@ -189,28 +218,6 @@ static ast_type *typecheck_syscall(ast_expr *expr)
 		type_destroy(derived);
 	}
 	return type_init(Y_VOID, 0);
-}
-
-static int is_int_type(ast_type *t)
-{
-	if (!t)
-		return 0;
-	switch (t->kind) {
-	case Y_I32:
-	case Y_I64:
-	case Y_U32:
-	case Y_U64:
-		return 1;
-	default:
-		return 0;
-	}
-}
-
-ast_expr *build_cast(ast_expr *ex, type_t kind) {
-	union num_lit dummy = {.u64 = 0};
-	ast_expr *ret = expr_init(E_CAST, ex, 0, 0, 0, dummy, 0);
-	ret->cast_to = kind;
-	return ret;
 }
 
 static ast_type *derive_assign(ast_expr *expr) {
@@ -419,8 +426,8 @@ ast_type *derive_expr_type(ast_expr *expr)
 	case E_TRUE_LIT:
 	case E_FALSE_LIT:
 		return type_init(Y_BOOL, 0);
-	case E_INT_LIT: // TODO: worry about i32, i64, u32, u64
-		return type_init(Y_I32, 0);
+	case E_INT_LIT:
+		return type_init(expr->int_size, 0);
 	case E_FNCALL:
 		return typecheck_fncall(expr);
 	case E_SYSCALL:
