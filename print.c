@@ -183,7 +183,7 @@ void type_print(ast_type *type)
 		break;
 	case Y_STRUCT:
 		printf("struct");
-		if (type->name != 0) {
+		if (type->name != NULL) {
 			printf(" ");
 			strvec_print(type->name);
 		}
@@ -198,7 +198,7 @@ void decl_print(ast_decl *decl)
 	// Struct definitions don't have type names in their typesyms:
 	// the type of a struct definition is just `struct`
 	// while it is `struct (struct_name_here)` in instantiation.
-	if (decl->typesym->type->kind == Y_STRUCT && decl->typesym->type->name == 0) {
+	if (decl->typesym->type->kind == Y_STRUCT && decl->typesym->type->name == NULL) {
 		printf("struct ");
 		strvec_print(decl->typesym->symbol);
 		puts(" {");
@@ -211,13 +211,13 @@ void decl_print(ast_decl *decl)
 	}
 	printf("let ");
 	typed_sym_print(decl->typesym);
-	if (decl->expr != 0) {
+	if (decl->expr != NULL) {
 		printf(" = ");
 		expr_print(decl->expr);
-	} else if (decl->body != 0) {
+	} else if (decl->body != NULL) {
 		printf(" = ");
 		stmt_print(decl->body);
-	} else if (decl->initializer != 0) {
+	} else if (decl->initializer != NULL) {
 		printf(" = ");
 		printf("[");
 		print_expr_list(decl->initializer);
@@ -237,7 +237,7 @@ void stmt_print(ast_stmt *stmt)
 	case S_BLOCK:
 		stmt = stmt->body;
 		printf("{\n");
-		while (stmt != 0) {
+		while (stmt != NULL) {
 			stmt_print(stmt);
 			stmt = stmt->next;
 			printf("\n");

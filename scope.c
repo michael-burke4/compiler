@@ -5,7 +5,7 @@ static void destroyer(void *element) {
 	// We don't actually want to free any elements
 	// The elements are ast_typed_symbols
 	// that are owned by the AST.
-	if (!element)
+	if (element == NULL)
 		return;
 	return;
 }

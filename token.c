@@ -9,7 +9,7 @@
  */
 token_s *tok_init_nl(token_t type, size_t line, size_t col, strvec *text)
 {
-	return tok_init(type, line, col, 0, 0, text);
+	return tok_init(type, line, col, NULL, NULL, text);
 }
 
 token_s *tok_init(token_t type, size_t line, size_t col, token_s *prev, token_s *next, strvec *text)
@@ -46,7 +46,7 @@ void tok_setnext(token_s *cur, token_s *next)
 
 void tok_print(token_s *t)
 {
-	if (!t)
+	if (t == NULL)
 		return;
 	tok_t_print(t->type);
 	printf(" ");

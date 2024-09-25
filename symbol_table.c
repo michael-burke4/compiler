@@ -17,7 +17,7 @@ void st_destroy(void)
 	}
 
 	free(sym_tab);
-	sym_tab = 0;
+	sym_tab = NULL;
 }
 
 void st_init(void)
@@ -58,13 +58,13 @@ void *scope_lookup(strvec *name)
 	int i = 0;
 	void *found;
 	scope *current = (scope *)stack_item_from_top(sym_tab, 0);
-	while (current != 0) {
+	while (current != NULL) {
 		if ((found = scope_get(current, name)))
 			return found;
 		i++;
 		current = (scope *)stack_item_from_top(sym_tab, i);
 	}
-	return 0;
+	return NULL;
 }
 
 void *scope_lookup_current(strvec *name)

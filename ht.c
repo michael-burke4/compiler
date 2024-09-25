@@ -29,7 +29,7 @@ struct ht *ht_init(size_t capacity, void (*destroyer)(void *))
 static int insert(struct kv **data, size_t cap, uint64_t key_hash, void *value)
 {
 	size_t index = key_hash % cap;
-	while (data[index] != 0) {
+	while (data[index] != NULL) {
 		if (data[index]->key == key_hash)
 			return 0;
 		index = (index + 1) % cap;
@@ -53,7 +53,7 @@ int ht_insert(struct ht *tab, strvec *key, void *value)
 
 static void ht_data_destroy(struct ht *tab) {
 	for (size_t i = 0 ; i < tab->capacity ; ++i) {
-		if (tab->data[i])
+		if (tab->data[i] != NULL)
 			tab->element_destroyer(tab->data[i]);
 		free(tab->data[i]);
 	}
@@ -68,7 +68,7 @@ int ht_resize(struct ht *tab, size_t new_cap)
 	new_data = scalloc(new_cap, sizeof(*new_data));
 	for (size_t i = 0; i < tab->capacity; ++i) {
 		struct kv *entry = tab->data[i];
-		if (tab->data[i] == 0)
+		if (tab->data[i] == NULL)
 			continue;
 		insert(new_data, new_cap, entry->key, entry->val);
 	}
@@ -89,8 +89,8 @@ void *ht_get(struct ht *tab, strvec *key)
 	size_t i = 0;
 	while (i < tab->capacity) {
 		struct kv *entry = tab->data[index];
-		if (entry == 0)
-			return 0;
+		if (entry == NULL)
+			return NULL;
 		if (entry->key == key_hash)
 			return entry->val;
 		++index;
@@ -98,11 +98,11 @@ void *ht_get(struct ht *tab, strvec *key)
 		++i;
 	}
 	// failsafe tab->capacity limit SHOULD be unnecessary!
-	return 0;
+	return NULL;
 }
 void ht_destroy(struct ht *tab)
 {
-	if (!tab)
+	if (tab == NULL)
 		return;
 	ht_data_destroy(tab);
 	free(tab);

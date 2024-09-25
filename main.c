@@ -51,7 +51,7 @@ int main(int argc, const char *argv[])
 	}
 
 	f = fopen(argv[1], "r");
-	if (!f)
+	if (f == NULL)
 		err(1, "Could not open specified file \"%s\"", argv[1]);
 
 	head = scan(f);

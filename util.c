@@ -8,11 +8,11 @@
 static void *_reallocarray(void *ptr, size_t nmemb, size_t size)
 {
 	if (nmemb > 0 && SIZE_MAX / nmemb < size)
-    		return 0;
+    		return NULL;
 
 	size_t total_size = nmemb * size;
 	if (size != 0 && total_size / size != nmemb)
-		return 0;
+		return NULL;
 	return realloc(ptr, total_size);
 }
 
@@ -37,7 +37,7 @@ void vect_append(vect *v, void *e)
 
 // user must free/destroy each internal element themselves!
 void vect_destroy(vect *v) {
-	if (!v)
+	if (v == NULL)
 		return;
 	free(v->elements);
 	v->capacity = 0;
@@ -91,7 +91,7 @@ void strvec_print(strvec *vec)
 
 void strvec_destroy(strvec *vec)
 {
-	if (!vec)
+	if (vec == NULL)
 		return;
 	free(vec->text);
 	vec->capacity = 0;
@@ -129,7 +129,7 @@ long strvec_tol(strvec *vec)
 strvec *strvec_copy(strvec *s)
 {
 	strvec *ret;
-	if (!s)
+	if (s == NULL)
 		return 0;
 	ret = strvec_init(s->capacity);
 	ret->size = s->size;
@@ -142,7 +142,7 @@ strvec *strvec_copy(strvec *s)
 void *smalloc(size_t size)
 {
 	void *ret = malloc(size);
-	if (!ret)
+	if (ret == NULL)
 		err(1, "malloc failed");
 	return ret;
 }
@@ -150,7 +150,7 @@ void *smalloc(size_t size)
 void *scalloc(size_t nmemb, size_t size)
 {
 	void *ret = calloc(nmemb, size);
-	if (!ret)
+	if (ret == NULL)
 		err(1, "calloc failed");
 	return ret;
 }
@@ -158,7 +158,7 @@ void *scalloc(size_t nmemb, size_t size)
 void *srealloc(void *ptr, size_t size)
 {
 	void *ret = realloc(ptr, size);
-	if (!ret)
+	if (ret == NULL)
 		err(1, "realloc failed");
 	return ret;
 }

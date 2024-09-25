@@ -6,50 +6,50 @@
 static token_s *check_if_keyword(strvec *word, size_t line, size_t col)
 {
 	// this approach feels slow but oh well.
-	token_s *ret = 0;
+	token_s *ret = NULL;
 	if (strvec_equals_str(word, "i32"))
-		ret = tok_init_nl(T_I32, line, col, 0);
+		ret = tok_init_nl(T_I32, line, col, NULL);
 	else if (strvec_equals_str(word, "let"))
-		ret = tok_init_nl(T_LET, line, col, 0);
+		ret = tok_init_nl(T_LET, line, col, NULL);
 	else if (strvec_equals_str(word, "if"))
-		ret = tok_init_nl(T_IF, line, col, 0);
+		ret = tok_init_nl(T_IF, line, col, NULL);
 	else if (strvec_equals_str(word, "true"))
-		ret = tok_init_nl(T_TRUE, line, col, 0);
+		ret = tok_init_nl(T_TRUE, line, col, NULL);
 	else if (strvec_equals_str(word, "false"))
-		ret = tok_init_nl(T_FALSE, line, col, 0);
+		ret = tok_init_nl(T_FALSE, line, col, NULL);
 	else if (strvec_equals_str(word, "i64"))
-		ret = tok_init_nl(T_I64, line, col, 0);
+		ret = tok_init_nl(T_I64, line, col, NULL);
 	else if (strvec_equals_str(word, "u32"))
-		ret = tok_init_nl(T_U32, line, col, 0);
+		ret = tok_init_nl(T_U32, line, col, NULL);
 	else if (strvec_equals_str(word, "u64"))
-		ret = tok_init_nl(T_U64, line, col, 0);
+		ret = tok_init_nl(T_U64, line, col, NULL);
 	else if (strvec_equals_str(word, "string"))
-		ret = tok_init_nl(T_STRING, line, col, 0);
+		ret = tok_init_nl(T_STRING, line, col, NULL);
 	else if (strvec_equals_str(word, "const"))
-		ret = tok_init_nl(T_CONST, line, col, 0);
+		ret = tok_init_nl(T_CONST, line, col, NULL);
 	else if (strvec_equals_str(word, "break"))
-		ret = tok_init_nl(T_BREAK, line, col, 0);
+		ret = tok_init_nl(T_BREAK, line, col, NULL);
 	else if (strvec_equals_str(word, "continue"))
-		ret = tok_init_nl(T_CONTINUE, line, col, 0);
+		ret = tok_init_nl(T_CONTINUE, line, col, NULL);
 	else if (strvec_equals_str(word, "else"))
-		ret = tok_init_nl(T_ELSE, line, col, 0);
+		ret = tok_init_nl(T_ELSE, line, col, NULL);
 	else if (strvec_equals_str(word, "for"))
-		ret = tok_init_nl(T_FOR, line, col, 0);
+		ret = tok_init_nl(T_FOR, line, col, NULL);
 	else if (strvec_equals_str(word, "void"))
-		ret = tok_init_nl(T_VOID, line, col, 0);
+		ret = tok_init_nl(T_VOID, line, col, NULL);
 	else if (strvec_equals_str(word, "char"))
-		ret = tok_init_nl(T_CHAR, line, col, 0);
+		ret = tok_init_nl(T_CHAR, line, col, NULL);
 	else if (strvec_equals_str(word, "return"))
-		ret = tok_init_nl(T_RETURN, line, col, 0);
+		ret = tok_init_nl(T_RETURN, line, col, NULL);
 	else if (strvec_equals_str(word, "while"))
-		ret = tok_init_nl(T_WHILE, line, col, 0);
+		ret = tok_init_nl(T_WHILE, line, col, NULL);
 	else if (strvec_equals_str(word, "bool"))
-		ret = tok_init_nl(T_BOOL, line, col, 0);
+		ret = tok_init_nl(T_BOOL, line, col, NULL);
 	else if (strvec_equals_str(word, "syscall"))
-		ret = tok_init_nl(T_SYSCALL, line, col, 0);
+		ret = tok_init_nl(T_SYSCALL, line, col, NULL);
 	else if (strvec_equals_str(word, "struct"))
-		ret = tok_init_nl(T_STRUCT, line, col, 0);
-	if (ret != 0)
+		ret = tok_init_nl(T_STRUCT, line, col, NULL);
+	if (ret != NULL)
 		strvec_destroy(word);
 	else
 		ret = tok_init_nl(T_IDENTIFIER, line, col, word);
@@ -94,14 +94,14 @@ static token_s *scan_char_literal(FILE *f, size_t *line, size_t *col)
 {
 	int c;
 	int c2;
-	strvec *character = 0;
+	strvec *character = NULL;
 	size_t old_col = *col;
 	(*col)++;
 	c = fgetc(f);
 	if (c == '\n') {
 		ungetc(c, f);
 		report_error("Bad char literal. Missing close quote?", *line, old_col);
-		return tok_init_nl(T_ERROR, *line, old_col, 0);
+		return tok_init_nl(T_ERROR, *line, old_col, NULL);
 	} else if (c == '\\') {
 		(*col)++;
 		c = fgetc(f);
@@ -111,7 +111,7 @@ static token_s *scan_char_literal(FILE *f, size_t *line, size_t *col)
 	if (c2 != '\'') {
 		ungetc(c2, f);
 		report_error("Bad char literal. Missing close quote?", *line, old_col);
-		return tok_init_nl(T_ERROR, *line, old_col, 0);
+		return tok_init_nl(T_ERROR, *line, old_col, NULL);
 	}
 	character = strvec_init(1);
 	strvec_append(character, c);
@@ -132,7 +132,7 @@ static token_s *scan_string_literal(FILE *f, size_t *line, size_t *col)
 			(*col)--;
 			strvec_destroy(str);
 			report_error("Unterminated string literal.", *line, old_col);
-			return tok_init_nl(T_ERROR, *line, old_col, 0);
+			return tok_init_nl(T_ERROR, *line, old_col, NULL);
 		}
 		if (c == '\\') {
 			c = fgetc(f);
@@ -145,7 +145,7 @@ static token_s *scan_string_literal(FILE *f, size_t *line, size_t *col)
 				(*col)--;
 				strvec_destroy(str);
 				report_error("Unsupported escape sequence.", *line, old_col);
-				return tok_init_nl(T_ERROR, *line, old_col, 0);
+				return tok_init_nl(T_ERROR, *line, old_col, NULL);
 			}
 		} else
 			strvec_append(str, c);
@@ -176,7 +176,7 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 	}
 	switch (c) {
 	case EOF:
-		return tok_init_nl(T_EOF, *line, *col, 0);
+		return tok_init_nl(T_EOF, *line, *col, NULL);
 	case '\'':
 		return scan_char_literal(f, line, col);
 	case '"':
@@ -185,150 +185,150 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		c = fgetc(f);
 		if (c == '+') {
 			*col += 2;
-			return tok_init_nl(T_DPLUS, *line, temp_col, 0);
+			return tok_init_nl(T_DPLUS, *line, temp_col, NULL);
 		} else if (c == '=') {
 			*col += 2;
-			return tok_init_nl(T_ADD_ASSIGN, *line, temp_col, 0);
+			return tok_init_nl(T_ADD_ASSIGN, *line, temp_col, NULL);
 		}
 		ungetc(c, f);
-		return tok_init_nl(T_PLUS, *line, (*col)++, 0);
+		return tok_init_nl(T_PLUS, *line, (*col)++, NULL);
 	case '-':
 		c = fgetc(f);
 		if (c == '-') {
 			*col += 2;
-			return tok_init_nl(T_DMINUS, *line, temp_col, 0);
+			return tok_init_nl(T_DMINUS, *line, temp_col, NULL);
 		} else if (c == '=') {
 			*col += 2;
-			return tok_init_nl(T_SUB_ASSIGN, *line, temp_col, 0);
+			return tok_init_nl(T_SUB_ASSIGN, *line, temp_col, NULL);
 		} else if (c == '>') {
 			*col += 2;
-			return tok_init_nl(T_ARROW, *line, temp_col, 0);
+			return tok_init_nl(T_ARROW, *line, temp_col, NULL);
 		} else if (isdigit(c)) {
 			*col += 1;
 			ungetc(c, f);
 			return scan_number(1, f, line, col);
 		}
 		ungetc(c, f);
-		return tok_init_nl(T_MINUS, *line, (*col)++, 0);
+		return tok_init_nl(T_MINUS, *line, (*col)++, NULL);
 	case '*':
 		c = fgetc(f);
 		if (c == '=') {
 			*col += 2;
-			return tok_init_nl(T_MUL_ASSIGN, *line, temp_col, 0);
+			return tok_init_nl(T_MUL_ASSIGN, *line, temp_col, NULL);
 		}
 		ungetc(c, f);
-		return tok_init_nl(T_STAR, *line, (*col)++, 0);
+		return tok_init_nl(T_STAR, *line, (*col)++, NULL);
 	case '/':
 		c = fgetc(f);
 		if (c == '=') {
 			*col += 2;
-			return tok_init_nl(T_DIV_ASSIGN, *line, temp_col, 0);
+			return tok_init_nl(T_DIV_ASSIGN, *line, temp_col, NULL);
 		}
 		ungetc(c, f);
-		return tok_init_nl(T_FSLASH, *line, (*col)++, 0);
+		return tok_init_nl(T_FSLASH, *line, (*col)++, NULL);
 	case '%':
 		c = fgetc(f);
 		if (c == '=') {
 			*col += 2;
-			return tok_init_nl(T_MOD_ASSIGN, *line, temp_col, 0);
+			return tok_init_nl(T_MOD_ASSIGN, *line, temp_col, NULL);
 		}
 		ungetc(c, f);
-		return tok_init_nl(T_PERCENT, *line, (*col)++, 0);
+		return tok_init_nl(T_PERCENT, *line, (*col)++, NULL);
 	case '<':
 		c = fgetc(f);
 		if (c == '=') {
 			*col += 2;
-			return tok_init_nl(T_LTE, *line, temp_col, 0);
+			return tok_init_nl(T_LTE, *line, temp_col, NULL);
 		} else if (c == '<') {
 			*col += 2;
-			return tok_init_nl(T_LSHIFT, *line, temp_col, 0);
+			return tok_init_nl(T_LSHIFT, *line, temp_col, NULL);
 		}
 		ungetc(c, f);
-		return tok_init_nl(T_LT, *line, (*col)++, 0);
+		return tok_init_nl(T_LT, *line, (*col)++, NULL);
 	case '>':
 		c = fgetc(f);
 		if (c == '=') {
 			*col += 2;
-			return tok_init_nl(T_GTE, *line, temp_col, 0);
+			return tok_init_nl(T_GTE, *line, temp_col, NULL);
 		} else if (c == '>') {
 			*col += 2;
-			return tok_init_nl(T_RSHIFT, *line, temp_col, 0);
+			return tok_init_nl(T_RSHIFT, *line, temp_col, NULL);
 		}
 		ungetc(c, f);
-		return tok_init_nl(T_GT, *line, (*col)++, 0);
+		return tok_init_nl(T_GT, *line, (*col)++, NULL);
 	case '=':
 		c = fgetc(f);
 		if (c == '=') {
 			*col += 2;
-			return tok_init_nl(T_EQ, *line, temp_col, 0);
+			return tok_init_nl(T_EQ, *line, temp_col, NULL);
 		}
 		ungetc(c, f);
-		return tok_init_nl(T_ASSIGN, *line, (*col)++, 0);
+		return tok_init_nl(T_ASSIGN, *line, (*col)++, NULL);
 	case '!':
 		c = fgetc(f);
 		if (c == '=') {
 			*col += 2;
-			return tok_init_nl(T_NEQ, *line, temp_col, 0);
+			return tok_init_nl(T_NEQ, *line, temp_col, NULL);
 		}
 		ungetc(c, f);
-		return tok_init_nl(T_NOT, *line, (*col)++, 0);
+		return tok_init_nl(T_NOT, *line, (*col)++, NULL);
 	case '&':
 		c = fgetc(f);
 		if (c == '&') {
 			*col += 2;
-			return tok_init_nl(T_AND, *line, temp_col, 0);
+			return tok_init_nl(T_AND, *line, temp_col, NULL);
 		} else if (c == '=') {
 			*col += 2;
-			return tok_init_nl(T_BW_AND_ASSIGN, *line, temp_col, 0);
+			return tok_init_nl(T_BW_AND_ASSIGN, *line, temp_col, NULL);
 		}
 		ungetc(c, f);
-		return tok_init_nl(T_AMPERSAND, *line, (*col)++, 0);
+		return tok_init_nl(T_AMPERSAND, *line, (*col)++, NULL);
 	case '|':
 		c = fgetc(f);
 		if (c == '|') {
 			*col += 2;
-			return tok_init_nl(T_OR, *line, temp_col, 0);
+			return tok_init_nl(T_OR, *line, temp_col, NULL);
 		} else if (c == '=') {
 			*col += 2;
-			return tok_init_nl(T_BW_OR_ASSIGN, *line, temp_col, 0);
+			return tok_init_nl(T_BW_OR_ASSIGN, *line, temp_col, NULL);
 		}
 		ungetc(c, f);
-		return tok_init_nl(T_BW_OR, *line, (*col)++, 0);
+		return tok_init_nl(T_BW_OR, *line, (*col)++, NULL);
 	case '.': // TODO: support floating pt literals like .5
-		return tok_init_nl(T_PERIOD, *line, (*col)++, 0);
+		return tok_init_nl(T_PERIOD, *line, (*col)++, NULL);
 	case '~':
-		return tok_init_nl(T_BW_NOT, *line, (*col)++, 0);
+		return tok_init_nl(T_BW_NOT, *line, (*col)++, NULL);
 	case '?':
-		return tok_init_nl(T_QMARK, *line, (*col)++, 0);
+		return tok_init_nl(T_QMARK, *line, (*col)++, NULL);
 	case ':':
-		return tok_init_nl(T_COLON, *line, (*col)++, 0);
+		return tok_init_nl(T_COLON, *line, (*col)++, NULL);
 	case ';':
-		return tok_init_nl(T_SEMICO, *line, (*col)++, 0);
+		return tok_init_nl(T_SEMICO, *line, (*col)++, NULL);
 	case ',':
-		return tok_init_nl(T_COMMA, *line, (*col)++, 0);
+		return tok_init_nl(T_COMMA, *line, (*col)++, NULL);
 	case '(':
-		return tok_init_nl(T_LPAREN, *line, (*col)++, 0);
+		return tok_init_nl(T_LPAREN, *line, (*col)++, NULL);
 	case ')':
-		return tok_init_nl(T_RPAREN, *line, (*col)++, 0);
+		return tok_init_nl(T_RPAREN, *line, (*col)++, NULL);
 	case '{':
-		return tok_init_nl(T_LCURLY, *line, (*col)++, 0);
+		return tok_init_nl(T_LCURLY, *line, (*col)++, NULL);
 	case '}':
-		return tok_init_nl(T_RCURLY, *line, (*col)++, 0);
+		return tok_init_nl(T_RCURLY, *line, (*col)++, NULL);
 	case '[':
-		return tok_init_nl(T_LBRACKET, *line, (*col)++, 0);
+		return tok_init_nl(T_LBRACKET, *line, (*col)++, NULL);
 	case ']':
-		return tok_init_nl(T_RBRACKET, *line, (*col)++, 0);
+		return tok_init_nl(T_RBRACKET, *line, (*col)++, NULL);
 	default:
 		report_error("Unrecognized token.", *line, *col);
-		return tok_init_nl(T_ERROR, *line, (*col)++, 0);
+		return tok_init_nl(T_ERROR, *line, (*col)++, NULL);
 	}
 }
 
 token_s *scan(FILE *f)
 {
-	token_s *head = 0;
-	token_s *cur = 0;
-	token_s *prev = 0;
+	token_s *head = NULL;
+	token_s *cur = NULL;
+	token_s *prev = NULL;
 	size_t line = 1;
 	size_t col = 1;
 	while (1) {

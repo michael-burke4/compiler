@@ -10,15 +10,15 @@ ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt, a
 	ret->body = stmt;
 	ret->expr = expr;
 	ret->next = next;
-	ret->initializer = 0;
+	ret->initializer = NULL;
 	return ret;
 }
 
 ast_type *type_init(type_t kind, strvec *name)
 {
 	ast_type *ret = smalloc(sizeof(*ret));
-	ret->subtype = 0;
-	ret->arglist = 0;
+	ret->subtype = NULL;
+	ret->arglist = NULL;
 	ret->kind = kind;
 	ret->name = name;
 	return ret;
@@ -39,7 +39,7 @@ ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, st
 	ret->op = op;
 	ret->name = name;
 	ret->num = num;
-	ret->sub_exprs = 0;
+	ret->sub_exprs = NULL;
 	ret->is_lvalue = 0;
 	ret->string_literal = str_lit;
 	ret->int_size = Y_VOID;
@@ -63,7 +63,7 @@ ast_stmt *stmt_init(stmt_t kind, ast_decl *decl, ast_expr *expr, ast_stmt *body,
 	ret->expr = expr;
 	ret->body = body;
 	ret->else_body = else_body;
-	ret->next = 0;
+	ret->next = NULL;
 
 	return ret;
 }
@@ -71,7 +71,7 @@ ast_stmt *stmt_init(stmt_t kind, ast_decl *decl, ast_expr *expr, ast_stmt *body,
 void stmt_destroy(ast_stmt *stmt)
 {
 	ast_stmt *next;
-	if (!stmt)
+	if (stmt == NULL)
 		return;
 	next = stmt->next;
 	decl_destroy(stmt->decl);
@@ -84,7 +84,7 @@ void stmt_destroy(ast_stmt *stmt)
 
 void type_destroy(ast_type *type)
 {
-	if (!type)
+	if (type == NULL)
 		return;
 	arglist_destroy(type->arglist);
 	type_destroy(type->subtype);
@@ -94,7 +94,7 @@ void type_destroy(ast_type *type)
 
 void destroy_expr_vect(vect *expr_vect)
 {
-	if (!expr_vect)
+	if (expr_vect == NULL)
 		return;
 	for (size_t i = 0 ; i < expr_vect->size ; ++i)
 		expr_destroy((ast_expr *)expr_vect->elements[i]);
@@ -103,7 +103,7 @@ void destroy_expr_vect(vect *expr_vect)
 
 void expr_destroy(ast_expr *expr)
 {
-	if (!expr)
+	if (expr == NULL)
 		return;
 	expr_destroy(expr->right);
 	expr_destroy(expr->left);
@@ -116,9 +116,9 @@ void expr_destroy(ast_expr *expr)
 
 void decl_destroy(ast_decl *decl)
 {
-	if (!decl)
+	if (decl == NULL)
 		return;
-	if (decl->initializer) {
+	if (decl->initializer != NULL) {
 		for (size_t i = 0 ; i < decl->initializer->size ; ++i)
 			expr_destroy(decl->initializer->elements[i]);
 		free(decl->initializer->elements);
@@ -132,7 +132,7 @@ void decl_destroy(ast_decl *decl)
 
 void ast_typed_symbol_destroy(ast_typed_symbol *typesym)
 {
-	if (!typesym)
+	if (typesym == NULL)
 		return;
 	type_destroy(typesym->type);
 	strvec_destroy(typesym->symbol);
@@ -141,7 +141,7 @@ void ast_typed_symbol_destroy(ast_typed_symbol *typesym)
 
 void ast_free(ast_decl *program)
 {
-	if (!program)
+	if (program == NULL)
 		return;
 	ast_decl *next = program->next;
 	decl_destroy(program);
@@ -151,8 +151,8 @@ void ast_free(ast_decl *program)
 ast_type *type_copy(ast_type *t)
 {
 	ast_type *ret;
-	if (!t)
-		return 0;
+	if (t == NULL)
+		return NULL;
 	ret = type_init(t->kind, strvec_copy(t->name));
 	ret->subtype = type_copy(t->subtype);
 	ret->arglist = arglist_copy(t->arglist);
@@ -161,8 +161,8 @@ ast_type *type_copy(ast_type *t)
 
 vect *arglist_copy(vect *arglist)
 {
-	vect *ret = 0;
-	if (!arglist)
+	vect *ret = NULL;
+	if (arglist == NULL)
 		return ret;
 	ret = vect_init(arglist->size);
 	for (size_t i = 0 ; i < arglist->size ; ++i) {
@@ -174,7 +174,7 @@ vect *arglist_copy(vect *arglist)
 
 void arglist_destroy(vect *arglist)
 {
-	if (!arglist)
+	if (arglist == NULL)
 		return;
 	for (size_t i = 0 ; i < arglist->size ; ++i)
 		ast_typed_symbol_destroy(arglist_get(arglist, i));
