@@ -1,7 +1,8 @@
 #ifndef SCOPE_H
 #define SCOPE_H
-#include "ht.h"
+
 #include "ast.h"
+#include "ht.h"
 
 typedef struct scope {
 	struct ht *table;

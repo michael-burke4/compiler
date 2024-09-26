@@ -1,10 +1,10 @@
-#include "typecheck.h"
-#include <stdio.h>
-#include "symbol_table.h"
-#include "util.h"
 #include "parse.h"
-
 #include "print.h"
+#include "symbol_table.h"
+#include "typecheck.h"
+#include "util.h"
+
+#include <stdio.h>
 
 extern int had_error;
 

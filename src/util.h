@@ -1,10 +1,10 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-#include <stdlib.h>
 #include <err.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #define BUFFER_MAX_LEN 128
 

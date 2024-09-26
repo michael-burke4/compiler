@@ -1,4 +1,5 @@
 #include "error.h"
+
 #include <stdio.h>
 
 extern int had_error;

@@ -1,8 +1,8 @@
-#include "symbol_table.h"
 #include "ast.h"
-#include "util.h"
-#include "stack.h"
 #include "scope.h"
+#include "stack.h"
+#include "symbol_table.h"
+#include "util.h"
 
 struct stack *sym_tab;
 

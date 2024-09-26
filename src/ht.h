@@ -1,8 +1,10 @@
 #ifndef HT_H
 #define HT_H
+
+#include "util.h"
+
 #include <stddef.h>
 #include <stdint.h>
-#include "util.h"
 
 uint64_t hash(strvec *str);
 

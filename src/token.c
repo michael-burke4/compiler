@@ -1,7 +1,8 @@
+#include "token.h"
+#include "util.h"
+
 #include <stdio.h>
 #include <stdlib.h>
-#include "util.h"
-#include "token.h"
 
 /**
  *	Like tok_init, but with no provided links to next/prev tokens.

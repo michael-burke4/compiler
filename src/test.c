@@ -1,9 +1,10 @@
-#include <stdio.h>
-#include "symbol_table.h"
 #include "ast.h"
-#include "token.h"
 #include "print.h"
 #include "stack.h"
+#include "symbol_table.h"
+#include "token.h"
+
+#include <stdio.h>
 
 int had_error = 0;
 extern struct stack *sym_tab;

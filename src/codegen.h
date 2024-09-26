@@ -1,11 +1,13 @@
 #ifndef CODEGEN_H
 #define CODEGEN_H
+
+#include "ast.h"
+
+#include <llvm-c/Analysis.h>
+#include <llvm-c/BitWriter.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/ExecutionEngine.h>
 #include <llvm-c/Target.h>
-#include <llvm-c/Analysis.h>
-#include <llvm-c/BitWriter.h>
-#include "ast.h"
 
 LLVMModuleRef module_codegen(LLVMContextRef ctxt, ast_decl *start, char *module_name);
 void decl_codegen(LLVMModuleRef *mod, ast_decl *decl);

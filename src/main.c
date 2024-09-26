@@ -1,20 +1,22 @@
-#include <err.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include "codegen.h"
-#include "util.h"
-#include "token.h"
-#include "scan.h"
 #include "ast.h"
+#include "codegen.h"
 #include "parse.h"
 #include "print.h"
+#include "scan.h"
 #include "symbol_table.h"
+#include "token.h"
 #include "typecheck.h"
-#include <llvm-c/Core.h>
-#include <string.h>
-#include <libgen.h>
+#include "util.h"
+
 #include <assert.h>
+#include <err.h>
+#include <libgen.h>
 #include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <llvm-c/Core.h>
 
 int had_error = 0;
 extern struct stack *sym_tab;

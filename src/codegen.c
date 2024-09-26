@@ -1,10 +1,11 @@
 #include "codegen.h"
+#include "ht.h"
+#include "print.h"
+#include "symbol_table.h"
 #include "util.h"
+
 #include <stdio.h>
 #include <stdlib.h>
-#include "print.h"
-#include "ht.h"
-#include "symbol_table.h"
 #include <string.h>
 
 #define CTXT(mod) (LLVMGetModuleContext(mod))

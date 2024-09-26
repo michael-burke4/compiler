@@ -1,7 +1,8 @@
 #include "ast.h"
 #include "util.h"
-#include <stdlib.h>
+
 #include <stdio.h>
+#include <stdlib.h>
 
 ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt, ast_decl *next)
 {

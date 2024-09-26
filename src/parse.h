@@ -1,5 +1,6 @@
 #ifndef PARSE_H
 #define PARSE_H
+
 #include "ast.h"
 
 //TODO: consistent noun_verb or verb_noun

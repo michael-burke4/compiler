@@ -1,5 +1,5 @@
-#include "util.h"
 #include "stack.h"
+#include "util.h"
 
 stack *stack_init(void)
 {

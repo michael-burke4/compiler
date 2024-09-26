@@ -1,6 +1,7 @@
-#include <stdio.h>
 #include "print.h"
 #include "token.h"
+
+#include <stdio.h>
 
 void print_op(ast_expr *expr)
 {

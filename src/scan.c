@@ -1,6 +1,7 @@
-#include <ctype.h>
 #include "error.h"
 #include "scan.h"
+
+#include <ctype.h>
 #include <stdio.h>
 
 static token_s *check_if_keyword(strvec *word, size_t line, size_t col)
