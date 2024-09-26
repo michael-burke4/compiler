@@ -15,23 +15,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <llvm-c/Core.h>
 
 int had_error = 0;
 extern struct stack *sym_tab;
 
-static void remove_extension(char *buf)
-{
-	for (int i = strlen(buf) ; i > 0 ; i--) {
-		if (buf[i] == '.') {
-			buf[i] = '\0';
-			break;
-		}
-	}
+char *cmd = NULL;
+
+void usage() {
+	printf("Usage: %s input_file [-o output file]\n", cmd);
+	exit(1);
 }
 
-int main(int argc, const char *argv[])
+int main(int argc, char *argv[])
 {
 	FILE *f;
 	token_s *t;
@@ -39,22 +37,48 @@ int main(int argc, const char *argv[])
 	ast_decl *program;
 	int retcode = 0;
 	char path[4096];
-	char modname[4096];
-	char outname[4096];
+	char *modname;
+
+	char *infile = NULL;
+	char *outfile = NULL;
+	int option;
+
+	cmd = argv[0];
 
 	// Hey, who knows.
 	assert(CHAR_BIT == 8);
 	assert(sizeof(float) * CHAR_BIT == 32);
 	assert(sizeof(double) * CHAR_BIT == 64);
 
-	if (argc != 2) {
-		printf("Invalid # of arguments: invoke like `./main [file]`\n");
-		return 1;
+
+	while (optind < argc) {
+		// This check if cur arg starts with dash should be unnecessary
+		// but it doesn't work if I remove it?
+		if (argv[optind][0] == '-' && (option = getopt(argc, argv, "o:")) != -1) {
+			switch (option) {
+			case 'o':
+				outfile = optarg;
+				break;
+			default:
+				usage();
+			}
+		} else {
+			if (infile != NULL) {
+				printf("%s: Only expecting one positional argument\n", cmd);
+				usage();
+			}
+			infile = argv[optind++];
+		}
 	}
 
-	f = fopen(argv[1], "r");
+	if (infile == NULL) {
+		printf("%s: Missing input file\n", cmd);
+		usage();
+	}
+
+	f = fopen(infile, "r");
 	if (f == NULL)
-		err(1, "Could not open specified file \"%s\"", argv[1]);
+		err(1, "Could not open specified file \"%s\"", infile);
 
 	head = scan(f);
 	t = head;
@@ -81,8 +105,10 @@ int main(int argc, const char *argv[])
 
 	st_destroy();
 	st_init();
-	strcpy(path, argv[1]);
-	strcpy(modname, basename(path));
+
+	// TODO: check path can fit infile?
+	strcpy(path, infile);
+	modname = basename(path);
 
 	LLVMContextRef ctxt = LLVMContextCreate();
 	LLVMModuleRef mod = module_codegen(ctxt, program, modname);
@@ -95,9 +121,9 @@ int main(int argc, const char *argv[])
 	LLVMInitializeNativeTarget();
 	LLVMInitializeNativeAsmPrinter();
 
-	remove_extension(modname);
-	sprintf(outname, "%s.bc", modname);
-	if (LLVMWriteBitcodeToFile(mod, outname) != 0) {
+	if (!outfile)
+		outfile = "a.bc";
+	if (LLVMWriteBitcodeToFile(mod, outfile) != 0) {
 		fprintf(stderr, "Could not write bitcode to file!");
 	}
 
