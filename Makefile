@@ -1,38 +1,57 @@
+SRCDIR=src
+OBJDIR=obj
+BINDIR=bin
+
 CC=clang
 CFLAGS=-std=c99 -Wall -Wextra -Wpedantic -Werror -Og `llvm-config --cflags` -Wno-deprecated
 LD=clang
 LDFLAGS=`llvm-config --cxxflags --ldflags --libs core executionengine mcjit interpreter analysis native bitwriter --system-libs` -std=c99
-DEPS=typecheck.h symbol_table.h ht.h stack.h util.h token.h scan.h parse.h ast.h error.h print.h codegen.h scope.h
-OBJ=typecheck.o symbol_table.o ht.o stack.o util.o token.o scan.o parse.o ast.o error.o print.o codegen.o scope.o
 
-.PHONY: clean compile
+CSRC=$(wildcard $(SRCDIR)/*.c)
+DEPS=$(wildcard $(SRCDIR)/*.h)
 
-main: $(OBJ) main.o
+OBJ_PRE1=$(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(CSRC))
+
+OBJ_PRE2=$(filter-out $(OBJDIR)/main.o, $(OBJ_PRE1))
+OBJ=$(filter-out $(OBJDIR)/test.o, $(OBJ_PRE2))
+
+.PHONY: clean compile dis
+
+ifdef SRC
+SRC_BASE=$(basename $(notdir $(SRC)))
+endif
+
+$(BINDIR)/main: $(OBJ) $(OBJDIR)/main.o
 	$(LD) -o $@ $^ $(LDFLAGS)
 
-test: $(OBJ) test.o
+$(BINDIR)/test: $(OBJ) $(OBJDIR)/test.o
 	$(CC) -o $@ $^ $(CFLAGS)
 
-%.o: %.c $(DEPS)
+$(OBJDIR)/%.o: $(SRCDIR)/%.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-compile: main
+$(OBJDIR):
+	-mkdir $@
+$(BINDIR):
+	-mkdir $@
+
+compile: $(BINDIR)/main
 ifdef SRC
-	./main $(SRC)
-	llc --filetype=obj $(subst .txt,.bc,$(notdir $(SRC)))
-	$(CC) $(subst .txt,.o,$(notdir $(SRC))) -o $(subst .txt,,$(notdir $(SRC)))
+	$(BINDIR)/main $(SRC)
+	llc --filetype=obj $(SRC_BASE).bc
+	$(LD) $(SRC_BASE).o -o $(BINDIR)/$(SRC_BASE)
 else
 	$(error no SRC supplied. Please specify SRC=srcfile)
 endif
 
-dis: main
+dis: $(BINDIR)/main
 ifdef SRC
-	./main $(SRC)
-	llvm-dis $(subst .txt,.bc,$(notdir $(SRC)))
-	cat $(subst .txt,.ll,$(notdir $(SRC)))
+	$(BINDIR)/main $(SRC)
+	llvm-dis $(basename $(SRC)).bc
+	cat $(basename $(SRC)).ll
 else
 	$(error no SRC supplied. Please specify SRC=srcfile)
 endif
 
 clean:
-	-rm *.o *.bc *.ll
+	-rm $(OBJDIR)/*
