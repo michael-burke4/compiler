@@ -452,7 +452,7 @@ ast_type *derive_expr_type(ast_expr *expr)
 		return typecheck_syscall(expr);
 	case E_IDENTIFIER:
 		ts = scope_lookup(expr->name);
-		if (ts->type->kind == Y_STRUCT && strvec_equals(ts->symbol, expr->name)) {
+		if (ts->type->kind == Y_STRUCT && strvec_equals(ts->type->name, expr->name)) {
 			printf("Can't use struct type \"");
 			strvec_print(ts->symbol);
 			puts("\" in this expression");
