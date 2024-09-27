@@ -186,7 +186,7 @@ type_t smallest_fit(int64_t num)
 {
 	int64_t max_32 = 2147483647;
 	int64_t min_32 = -2147483648;
-	if (num < max_32 && num > min_32)
+	if (num <= max_32 && num >= min_32)
 		return Y_I32;
 	return Y_I64;
 }
