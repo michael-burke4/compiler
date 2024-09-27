@@ -31,7 +31,7 @@ void expr_append_sub_expr(ast_expr *e, ast_expr *sub)
 }
 
 ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, strvec *name,
-		    uint64_t num, strvec *str_lit)
+		    int64_t num, strvec *str_lit)
 {
 	ast_expr *ret = smalloc(sizeof(*ret));
 	ret->kind = kind;
@@ -182,10 +182,11 @@ void arglist_destroy(vect *arglist)
 	vect_destroy(arglist);
 }
 
-type_t smallest_fit(uint64_t num)
+type_t smallest_fit(int64_t num)
 {
-	uint64_t mask_32bit = 0xFFFFFFFF00000000;
-	if ((num & mask_32bit) == 0)
+	int64_t max_32 = 2147483647;
+	int64_t min_32 = -2147483648;
+	if (num < max_32 && num > min_32)
 		return Y_I32;
 	return Y_I64;
 }
