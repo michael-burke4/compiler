@@ -37,7 +37,7 @@ static LLVMTypeRef int_kind_to_llvm_type(LLVMModuleRef mod, type_t kind) {
 	case Y_I64:
 		return LLVMInt64TypeInContext(ctxt);
 	default:
-		printf("couldn't convert type\n");
+		printf("couldn't convert type a\n");
 		abort();
 	}
 }
@@ -51,6 +51,8 @@ static LLVMTypeRef to_llvm_type(LLVMModuleRef mod, ast_type *tp)
 		return LLVMInt32TypeInContext(ctxt);
 	case Y_I64:
 		return LLVMInt64TypeInContext(ctxt);
+	case Y_BOOL:
+		return LLVMInt1TypeInContext(ctxt);
 	case Y_STRING:
 		return LLVMPointerType(LLVMInt8TypeInContext(ctxt), 0);
 	case Y_VOID:
@@ -66,6 +68,11 @@ static LLVMTypeRef to_llvm_type(LLVMModuleRef mod, ast_type *tp)
 		printf("couldn't convert type\n");
 		abort();
 	}
+}
+
+// If LLVMBuildRef2 is so good, why is there no LLVMBuildRef3??
+static LLVMValueRef LLVMBuildLoad3(LLVMBuilderRef b, LLVMValueRef pointer_val, const char *name) {
+	return LLVMBuildLoad2(b, LLVMGetElementType(LLVMTypeOf(pointer_val)), pointer_val, name);
 }
 
 LLVMModuleRef module_codegen(LLVMContextRef ctxt, ast_decl *start, char *module_name)
@@ -347,7 +354,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		ret = get_param_by_name(v, buffer);
 		if (ret == NULL) {
 			ret = scope_lookup(expr->name);
-			ret = LLVMBuildLoad(builder, ret, "");
+			ret = LLVMBuildLoad3(builder, ret, "");
 		}
 		return ret;
 	case E_ASSIGN:
@@ -392,7 +399,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 			v2 = expr_codegen(mod, builder, expr->right, 0);
 			v = LLVMBuildGEP(builder, v, &v2, 1, "");
 			if (!store_ctxt)
-				v = LLVMBuildLoad(builder, v, "");
+				v = LLVMBuildLoad3(builder, v, "");
 			return v;
 		} else if (expr->op == T_PERIOD) {
 			if (expr->left->kind == E_IDENTIFIER) {
@@ -418,7 +425,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 			size_t ind = get_member_position(struct_decl, expr->right->name);
 			v2 = LLVMBuildStructGEP(builder, v, ind, "");
 			if (!store_ctxt) {
-				return LLVMBuildLoad(builder, v2, "");
+				return LLVMBuildLoad3(builder, v2, "");
 			}
 			return v2;
 		} else {
@@ -434,7 +441,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	case E_PRE_UNARY:
 		if (expr->op == T_STAR) {
 			v = expr_codegen(mod, builder, expr->left, 0);
-			return LLVMBuildLoad(builder, v, "");
+			return LLVMBuildLoad3(builder, v, "");
 		} else if (expr->op == T_AMPERSAND) {
 			return scope_lookup(expr->left->name);
 		}
