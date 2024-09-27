@@ -170,6 +170,12 @@ static ast_type *typecheck_fncall(ast_expr *expr)
 		puts("\"");
 		had_error = 1;
 		return NULL;
+	} else if (fn_ts->type->kind != Y_FUNCTION) {
+		printf("Identifier \"");
+		strvec_print(expr->name);
+		puts("\" does not refer to a function.");
+		had_error = 1;
+		return NULL;
 	}
 	if (decl_arglist == NULL && expr_arglist == NULL)
 		return type_copy(fn_ts->type->subtype);
