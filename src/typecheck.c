@@ -375,6 +375,23 @@ static ast_type *derive_post_unary(ast_expr *expr)
 	}
 }
 
+
+static void cast_up_if_necessary(ast_expr *expr, ast_type **left, ast_type **right)
+{
+	ast_type *l = *left;
+	ast_type *r = *right;
+	// TODO: worry about signed vs unsigned
+	if (is_int_type(l) && is_int_type(r) && !type_equals(l, r)) {
+		if (l->kind > r->kind) {
+			expr->right = build_cast(expr->right, l->kind);
+			r->kind = l->kind;
+			return;
+		}
+		expr->right = build_cast(expr->right, l->kind);
+		r->kind = l->kind;
+	}
+}
+
 ast_type *derive_expr_type(ast_expr *expr)
 {
 	ast_typed_symbol *ts = NULL;
@@ -387,6 +404,7 @@ ast_type *derive_expr_type(ast_expr *expr)
 	case E_MULDIV:
 		left = derive_expr_type(expr->left);
 		right = derive_expr_type(expr->right);
+		cast_up_if_necessary(expr, &left, &right);
 		if (type_equals(left, right) && is_int_type(left)) {
 			type_destroy(right);
 			return left;
@@ -402,6 +420,7 @@ ast_type *derive_expr_type(ast_expr *expr)
 	case E_INEQUALITY:
 		left = derive_expr_type(expr->left);
 		right = derive_expr_type(expr->right);
+		cast_up_if_necessary(expr, &left, &right);
 		if (type_equals(left, right) && is_int_type(left)) {
 			type_destroy(left);
 			type_destroy(right);
@@ -477,7 +496,7 @@ void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 		typecheck_stmt(stmt->next, at_fn_top_level);
 		break;
 	case S_IFELSE:
-		if (stmt->expr != NULL) {
+		if (stmt->expr == NULL) {
 			had_error = 1;
 			puts("if statement condition must be non-empty");
 		}
