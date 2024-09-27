@@ -106,6 +106,10 @@ static token_s *scan_char_literal(FILE *f, size_t *line, size_t *col)
 	} else if (c == '\\') {
 		(*col)++;
 		c = fgetc(f);
+	} else if (c == '\'') {
+		(*col)++;
+		report_error("Empty char literal.", *line, old_col);
+		return tok_init_nl(T_ERROR, *line, old_col, NULL);
 	}
 	(*col)++;
 	c2 = fgetc(f);
