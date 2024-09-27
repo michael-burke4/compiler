@@ -657,7 +657,7 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 	case T_INT_LIT:
 		next(cur_token);
 		int64_t n;
-		n= strvec_tol(cur->text);
+		n = strvec_tol(cur->text);
 		if (errno != 0) {
 			printf("Could not parse int literal ");
 			strvec_print(cur->text);
