@@ -13,10 +13,9 @@ DEPS=$(wildcard $(SRCDIR)/*.h)
 
 OBJ_PRE1=$(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(CSRC))
 
-OBJ_PRE2=$(filter-out $(OBJDIR)/main.o, $(OBJ_PRE1))
-OBJ=$(filter-out $(OBJDIR)/test.o, $(OBJ_PRE2))
+OBJ=$(filter-out $(OBJDIR)/main.o, $(OBJ_PRE1))
 
-.PHONY: clean compile dis main test valgrind
+.PHONY: clean compile dis main valgrind
 
 ifdef SRC
 SRC_BASE=$(basename $(notdir $(SRC)))
@@ -24,13 +23,8 @@ endif
 
 main: $(OBJDIR) $(BINDIR) $(BINDIR)/main
 
-test: $(OBJDIR) $(BINDIR) $(BINDIR)/test
-
 $(BINDIR)/main: $(OBJ) $(OBJDIR)/main.o
 	$(LD) -o $@ $^ $(LDFLAGS)
-
-$(BINDIR)/test: $(OBJ) $(OBJDIR)/test.o
-	$(CC) -o $@ $^ $(CFLAGS)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
