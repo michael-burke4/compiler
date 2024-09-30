@@ -1,6 +1,4 @@
 *.swp
-*.o
-*.bc
-*.ll
-main
-test
+bin
+obj
+target
