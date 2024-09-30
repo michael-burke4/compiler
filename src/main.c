@@ -19,7 +19,7 @@
 
 #include <llvm-c/Core.h>
 
-int had_error = 0;
+extern int had_error;
 extern struct stack *sym_tab;
 
 char *cmd = NULL;
@@ -92,6 +92,7 @@ int main(int argc, char *argv[])
 		retcode = 1;
 		goto error_ast;
 	}
+
 
 	program_print(program);
 

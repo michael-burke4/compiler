@@ -5,7 +5,7 @@
 
 #include <stddef.h>
 
-void report_error(const char *msg, size_t line, size_t col);
-void report_error_tok(const char *msg, token_s *t);
+void report_error(size_t line, size_t col, const char *fmt, ...);
+void report_error_tok(token_s *t, const char *fmt, ...);
 
 #endif

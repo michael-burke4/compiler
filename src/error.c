@@ -1,16 +1,27 @@
 #include "error.h"
 
+#include <stdarg.h>
 #include <stdio.h>
+#include <unistd.h>
 
-extern int had_error;
+int had_error = 0;
 
-void report_error(const char *msg, size_t line, size_t col)
+
+void report_error_tok(token_s *t, const char *fmt, ...)
 {
-	had_error = 1;
-	printf("[line %lu col %lu] %s\n", line, col, msg);
+	va_list args;
+	va_start(args, fmt);
+	report_error(t->line, t->col, fmt, args);
+	va_end(args);
 }
 
-void report_error_tok(const char *msg, token_s *t)
+void report_error(size_t line, size_t col, const char *fmt, ...)
 {
-	report_error(msg, t->line, t->col);
+	va_list args;
+	had_error = 1;
+	va_start(args, fmt);
+	fprintf(stderr, "[line %lu col %lu] ", line, col);
+	fprintf(stderr, fmt, args);
+	fprintf(stderr, "\n");
+	va_end(args);
 }

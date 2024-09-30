@@ -66,7 +66,7 @@ static vect *parse_comma_separated_exprs(token_s **cur_token, token_t closer) {
 		}
 	} while (expect(cur_token, T_COMMA));
 	if (!expect(cur_token, closer)) {
-		report_error_tok("Expression list is missing closing token", *cur_token);
+		report_error_tok(*cur_token, "Expression list is missing closing token");
 		destroy_expr_vect(ret);
 		ret = NULL;
 	}
@@ -159,14 +159,14 @@ static vect *parse_struct_def(token_s **cur_token)
 	ast_typed_symbol *cur;
 	vect *def_vect = vect_init(3);
 	if (!expect(cur_token, T_LCURLY)) {
-		report_error_tok("missing opening brace in struct definition", *cur_token);
+		report_error_tok(*cur_token, "missing opening brace in struct definition");
 		sync_to(cur_token, T_SEMICO, 0);
 		destroy_def_vect(def_vect);
 		return NULL;
 	}
 	next(cur_token);
 	if (expect(cur_token, T_RCURLY)) {
-		report_error_tok("struct definition can't be empty", *cur_token);
+		report_error_tok(*cur_token, "struct definition can't be empty");
 		sync_to(cur_token, T_SEMICO, 0);
 		next(cur_token);
 		destroy_def_vect(def_vect);
@@ -175,10 +175,10 @@ static vect *parse_struct_def(token_s **cur_token)
 	while (!expect(cur_token, T_RCURLY)) {
 		cur = parse_typed_symbol(cur_token);
 		if (cur != NULL && !expect(cur_token, T_SEMICO)) {
-			report_error_tok("missing semicolon in struct field definition", *cur_token);
+			report_error_tok(*cur_token, "missing semicolon in struct field definition");
 			sync_to(cur_token, T_EOF, 1);
 		} else if (cur == NULL) {
-			report_error_tok("Couldn't parse typed symbol", *cur_token);
+			report_error_tok(*cur_token, "Couldn't parse typed symbol");
 			sync_to(cur_token, T_SEMICO, 1);
 		} else
 			next(cur_token);
@@ -186,7 +186,7 @@ static vect *parse_struct_def(token_s **cur_token)
 	}
 	next(cur_token);
 	if (!expect(cur_token, T_SEMICO)) {
-		report_error_tok("missing semicolon after struct definition", *cur_token);
+		report_error_tok(*cur_token, "missing semicolon after struct definition");
 		sync_to(cur_token, T_EOF, 1);
 		vect_destroy(def_vect);
 		return NULL;
@@ -208,7 +208,7 @@ ast_decl *parse_decl(token_s **cur_token)
 	if (expect(cur_token, T_STRUCT)) {
 		next(cur_token);
 		if (!expect(cur_token, T_IDENTIFIER)) {
-			report_error_tok("Expected struct name after struct keyword", *cur_token);
+			report_error_tok(*cur_token, "Expected struct name after struct keyword");
 			sync_to(cur_token, T_LCURLY, 0);
 		} else {
 			type = type_init(Y_STRUCT, NULL);
@@ -223,7 +223,7 @@ ast_decl *parse_decl(token_s **cur_token)
 		ret = decl_init(typed_symbol, NULL, NULL, NULL);
 		return ret;
 	} else if (!expect(cur_token, T_LET)) {
-		report_error_tok("Missing 'let' keyword in declaration.", *cur_token);
+		report_error_tok(*cur_token, "Missing 'let' keyword in declaration.");
 		sync_to(cur_token, T_EOF,
 			1); // maybe this should be in the goto
 		goto decl_parse_err;
@@ -231,7 +231,7 @@ ast_decl *parse_decl(token_s **cur_token)
 	next(cur_token);
 	typed_symbol = parse_typed_symbol(cur_token);
 	if (typed_symbol == NULL) {
-		report_error_tok("Missing/invalid type specifier or name.", *cur_token);
+		report_error_tok(*cur_token, "Missing/invalid type specifier or name.");
 		sync_to(cur_token, T_EOF, 1);
 		goto decl_parse_err;
 	}
@@ -247,15 +247,14 @@ ast_decl *parse_decl(token_s **cur_token)
 		else
 			expr = parse_expr(cur_token);
 		if (!expect(cur_token, T_SEMICO)) {
-			report_error_tok("Missing semicolon (possibly missing from previous line)",
-					 *cur_token);
+			report_error_tok(*cur_token, "Missing semicolon (possibly missing from previous line)");
 			sync_to(cur_token, T_EOF, 1);
 			goto decl_parse_err;
 		} else {
 			next(cur_token);
 		}
 	} else {
-		report_error_tok("Missing semicolon (maybe missing on previous line)", *cur_token);
+		report_error_tok(*cur_token, "Missing semicolon (maybe missing on previous line)");
 		goto decl_parse_err;
 	}
 	ret = decl_init(typed_symbol, expr, stmt, NULL);
@@ -309,13 +308,13 @@ ast_stmt *parse_stmt(token_s **cur_token)
 		kind = S_IFELSE;
 		next(cur_token);
 		if (!expect(cur_token, T_LPAREN)) {
-			report_error_tok("Missing left paren in `if` condition.", *cur_token);
+			report_error_tok(*cur_token, "Missing left paren in `if` condition.");
 			goto stmt_err;
 		}
 		next(cur_token);
 		expr = parse_expr(cur_token);
 		if (!expect(cur_token, T_RPAREN)) {
-			report_error_tok("Missing right paren in `if` condition.", *cur_token);
+			report_error_tok(*cur_token, "Missing right paren in `if` condition.");
 			goto stmt_err;
 		}
 		next(cur_token);
@@ -329,13 +328,13 @@ ast_stmt *parse_stmt(token_s **cur_token)
 		kind = S_WHILE;
 		next(cur_token);
 		if (!expect(cur_token, T_LPAREN)) {
-			report_error_tok("Missing left paren in `while` condition.", *cur_token);
+			report_error_tok(*cur_token, "Missing left paren in `while` condition.");
 			goto stmt_err;
 		}
 		next(cur_token);
 		expr = parse_expr(cur_token);
 		if (!expect(cur_token, T_RPAREN)) {
-			report_error_tok("Missing right paren in `while` condition.", *cur_token);
+			report_error_tok(*cur_token, "Missing right paren in `while` condition.");
 			goto stmt_err;
 		}
 		next(cur_token);
@@ -347,13 +346,11 @@ ast_stmt *parse_stmt(token_s **cur_token)
 		if (!expect(cur_token, T_SEMICO)) {
 			expr = parse_expr(cur_token);
 			if (expr == NULL) {
-				report_error_tok("Could not parse expression in return statement.",
-						 *cur_token);
+				report_error_tok(*cur_token, "Could not parse expression in return statement.");
 				goto stmt_err;
 			}
 			if (!expect(cur_token, T_SEMICO)) {
-				report_error_tok("Statement missing terminating semicolon a.",
-						 *cur_token);
+				report_error_tok(*cur_token, "Statement missing terminating semicolon a.");
 				goto stmt_err;
 			}
 			next(cur_token);
@@ -365,11 +362,11 @@ ast_stmt *parse_stmt(token_s **cur_token)
 		kind = S_EXPR;
 		expr = parse_expr(cur_token);
 		if (expr == NULL) {
-			report_error_tok("could not parse statement", *cur_token);
+			report_error_tok(*cur_token, "could not parse statement");
 			goto stmt_err;
 		}
 		if (!expect(cur_token, T_SEMICO)) {
-			report_error_tok("Statement missing terminating semicolon b.", *cur_token);
+			report_error_tok(*cur_token, "Statement missing terminating semicolon b.");
 			goto stmt_err;
 		}
 		next(cur_token);
@@ -430,7 +427,7 @@ ast_type *parse_type(token_s **cur_token)
 		ret = type_init(Y_STRUCT, NULL);
 		next(cur_token);
 		if (!expect(cur_token, T_IDENTIFIER)) {
-			report_error_tok("struct instances require names after the `struct` keyword", *cur_token);
+			report_error_tok(*cur_token, "struct instances require names after the `struct` keyword");
 			sync_to(cur_token, T_ASSIGN, 1);
 			type_destroy(ret);
 			return NULL;
@@ -443,20 +440,18 @@ ast_type *parse_type(token_s **cur_token)
 		next(cur_token);
 		arglist = parse_arglist(cur_token, &had_arglist_err);
 		if (had_arglist_err) {
-			report_error_tok("Failed parsing argument list in function declaration.",
-					 *cur_token);
+			report_error_tok(*cur_token, "Failed parsing argument list in function declaration.");
 			sync_to(cur_token, T_ASSIGN, 1);
 		}
 		if (!expect(cur_token, T_ARROW)) {
-			report_error_tok("Missing arrow in function declaration.", *cur_token);
+			report_error_tok(*cur_token, "Missing arrow in function declaration.");
 			sync_to(cur_token, T_EOF, 1);
 			break;
 		}
 		next(cur_token);
 		subtype = parse_type(cur_token);
 		if (subtype == NULL) {
-			report_error_tok("Missing/invalid return type in function declaration.",
-					 *cur_token);
+			report_error_tok(*cur_token, "Missing/invalid return type in function declaration.");
 			sync_to(cur_token, T_ASSIGN, 1);
 		}
 		ret = type_init(Y_FUNCTION, NULL);
@@ -464,7 +459,7 @@ ast_type *parse_type(token_s **cur_token)
 		ret->arglist = arglist;
 		break;
 	default:
-		report_error_tok("Could not use the following token as a type:", *cur_token);
+		report_error_tok(*cur_token, "Could not use the following token as a type:");
 		printf("\t");
 		tok_print(*cur_token);
 		sync_to(cur_token, T_EOF, 1);
@@ -607,14 +602,14 @@ ast_expr *parse_expr_post_unary(token_s **cur_token)
 		if (typ == T_LBRACKET) {
 			e = parse_expr(cur_token);
 			if (!expect(cur_token, T_RBRACKET)) {
-				report_error_tok("Missing closing bracket", *cur_token);
+				report_error_tok(*cur_token, "Missing closing bracket");
 				expr_destroy(e);
 				return NULL;
 			}
 			next(cur_token);
 		} else if (typ == T_PERIOD) {
 			if (!expect(cur_token, T_IDENTIFIER)) {
-				report_error_tok("Member operator right side must be an identifier", *cur_token);
+				report_error_tok(*cur_token, "Member operator right side must be an identifier");
 				return NULL;
 			}
 			e = parse_expr_unit(cur_token); // This can only be an expr unit: we know it's an identifier.
@@ -643,9 +638,7 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 		if (get_type(cur_token) != T_RPAREN) {
 			// TODO leave error handling to fns like parse_stmt and parse_decl.
 			// Just bubble the error up by returning zero.
-			report_error_tok(
-				"Expression is missing a closing paren", 
-				*cur_token);
+			report_error_tok(*cur_token, "Expression is missing a closing paren");
 			sync_to(cur_token, T_EOF, 1);
 			expr_destroy(ex);
 			return NULL;
@@ -659,9 +652,9 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 		int64_t n;
 		n = strvec_tol(cur->text);
 		if (errno != 0) {
-			printf("Could not parse int literal ");
+			report_error_tok(*cur_token, "Could not parse int literal \"");
 			strvec_print(cur->text);
-			puts("");
+			puts("\"");
 		}
 		ex = expr_init(E_INT_LIT, NULL, NULL, 0, NULL, n, NULL);
 		ex->int_size = smallest_fit(n);
@@ -674,7 +667,7 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 	case T_SYSCALL:
 		next(cur_token);
 		if (!expect(cur_token, T_LPAREN)) {
-			report_error_tok("Missing open paren after `syscall`", *cur_token);
+			report_error_tok(*cur_token, "Missing open paren after `syscall`");
 			sync_to(cur_token, T_EOF, 1);
 			return expr_init(E_SYSCALL, NULL, NULL, 0, NULL, 0, NULL);
 		}
@@ -706,8 +699,7 @@ ast_expr *parse_expr_unit(token_s **cur_token)
 		next(cur_token);
 		return expr_init(E_CHAR_LIT, NULL, NULL, 0, NULL, 0, txt);
 	default:
-		report_error_tok("Could not parse expr unit. The offending token in question:",
-				 *cur_token);
+		report_error_tok(*cur_token, "Could not parse expr unit. The offending token in question:");
 		printf("\t");
 		tok_print(*cur_token);
 		sync_to(cur_token, T_EOF, 1);
