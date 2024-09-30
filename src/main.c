@@ -32,7 +32,6 @@ void usage() {
 int main(int argc, char *argv[])
 {
 	FILE *f;
-	token_s *t;
 	token_s *head;
 	ast_decl *program;
 	int retcode = 0;
@@ -81,13 +80,11 @@ int main(int argc, char *argv[])
 		err(1, "Could not open specified file \"%s\"", infile);
 
 	head = scan(f);
-	t = head;
 	if (had_error) {
 		retcode = 1;
 		goto error_noast;
 	}
-
-	program = parse_program(&t);
+	program = parse_program(head);
 	if (had_error) {
 		retcode = 1;
 		goto error_ast;
