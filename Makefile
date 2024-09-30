@@ -16,7 +16,7 @@ OBJ_PRE1=$(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(CSRC))
 OBJ_PRE2=$(filter-out $(OBJDIR)/main.o, $(OBJ_PRE1))
 OBJ=$(filter-out $(OBJDIR)/test.o, $(OBJ_PRE2))
 
-.PHONY: clean compile dis main test
+.PHONY: clean compile dis main test valgrind
 
 ifdef SRC
 SRC_BASE=$(basename $(notdir $(SRC)))
@@ -49,6 +49,17 @@ ifdef SRC
 	$(BINDIR)/main $(SRC) -o $(OBJDIR)/$(SRC_BASE).bc
 	llc --filetype=obj $(OBJDIR)/$(SRC_BASE).bc -o $(OBJDIR)/$(SRC_BASE).o
 	$(LD) $(OBJDIR)/$(SRC_BASE).o -o $(TGTDIR)/$(SRC_BASE)
+else
+	$(error no SRC supplied. Please specify SRC=srcfile)
+endif
+
+valgrind: $(TGTDIR) $(BINDIR)/main
+ifdef SRC
+ifdef LCF # annoying, but if you want full leak check + list, set LCF to something like LCF=1 when calling make valgrind
+	valgrind --leak-check=full --show-leak-kinds=all $(BINDIR)/main $(SRC) -o $(OBJDIR)/$(SRC_BASE).bc
+else
+	valgrind $(BINDIR)/main $(SRC) -o $(OBJDIR)/$(SRC_BASE).bc
+endif
 else
 	$(error no SRC supplied. Please specify SRC=srcfile)
 endif
