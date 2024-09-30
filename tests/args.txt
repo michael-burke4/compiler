@@ -1,3 +1,0 @@
-let x: (a: i32, b: char, c: bool) -> i32 = {
-	return x(a + 2, 'd', false);
-};

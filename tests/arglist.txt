@@ -1,9 +1,0 @@
-let x: (a: i32, b: u32, c: i64, b: u64) -> u32 = {
-	if (x == 3) {
-		return 5;
-	}
-	else {
-		return 30;
-	}
-	return 200;
-};

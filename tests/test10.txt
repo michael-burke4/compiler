@@ -1,2 +1,0 @@
-let x: bool = false;
-let y: i32 = (x = true);
