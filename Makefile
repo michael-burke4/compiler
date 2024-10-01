@@ -29,13 +29,7 @@ $(BINDIR)/main: $(OBJ) $(OBJDIR)/main.o
 $(OBJDIR)/%.o: $(SRCDIR)/%.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-$(OBJDIR):
-	-mkdir $@
-
-$(BINDIR):
-	-mkdir $@
-
-$(TGTDIR):
+$(OBJDIR) $(BINDIR) $(TGTDIR):
 	-mkdir $@
 
 compile: $(TGTDIR) $(BINDIR)/main
