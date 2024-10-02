@@ -11,9 +11,7 @@ LDFLAGS=`llvm-config --cxxflags --ldflags --libs core executionengine mcjit inte
 CSRC=$(wildcard $(SRCDIR)/*.c)
 DEPS=$(wildcard $(SRCDIR)/*.h)
 
-OBJ_PRE1=$(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(CSRC))
-
-OBJ=$(filter-out $(OBJDIR)/main.o, $(OBJ_PRE1))
+OBJ=$(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(CSRC))
 
 .PHONY: clean compile dis main valgrind
 
@@ -23,7 +21,7 @@ endif
 
 main: $(OBJDIR) $(BINDIR) $(BINDIR)/main
 
-$(BINDIR)/main: $(OBJ) $(OBJDIR)/main.o
+$(BINDIR)/main: $(OBJ)
 	$(LD) -o $@ $^ $(LDFLAGS)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c $(DEPS)
