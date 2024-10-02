@@ -24,7 +24,7 @@ extern struct stack *sym_tab;
 
 char *cmd = NULL;
 
-void usage() {
+void usage(void) {
 	printf("Usage: %s input_file [-o output file]\n", cmd);
 	exit(1);
 }

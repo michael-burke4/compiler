@@ -9,12 +9,12 @@
 
 token_s *cur_token = NULL;
 
-static inline void next()
+static inline void next(void)
 {
 	cur_token = cur_token->next;
 }
 
-static inline token_t cur_tok_type()
+static inline token_t cur_tok_type(void)
 {
 	return cur_token->type;
 }
@@ -24,7 +24,7 @@ static inline int expect(token_t expected)
 	return cur_tok_type() == expected;
 }
 
-static inline size_t cur_tok_line()
+static inline size_t cur_tok_line(void)
 {
 	return cur_token->line;
 }
@@ -135,7 +135,7 @@ static vect *parse_arglist(int *had_arglist_error)
 	}
 }
 
-ast_typed_symbol *parse_typed_symbol()
+ast_typed_symbol *parse_typed_symbol(void)
 {
 	ast_type *type = NULL;
 	strvec *name = NULL;
@@ -171,7 +171,7 @@ static void destroy_def_vect(vect *def_vect)
 	vect_destroy(def_vect);
 }
 
-static vect *parse_struct_def()
+static vect *parse_struct_def(void)
 {
 	ast_typed_symbol *cur;
 	vect *def_vect = vect_init(3);
@@ -213,7 +213,7 @@ static vect *parse_struct_def()
 }
 
 //TODO: error reporting for function declarations is REALLY bad right now.
-ast_decl *parse_decl()
+ast_decl *parse_decl(void)
 {
 	ast_typed_symbol *typed_symbol = NULL;
 	ast_expr *expr = NULL;
@@ -284,7 +284,7 @@ decl_parse_err:
 	return decl_init(NULL, NULL, NULL, NULL);
 }
 
-ast_stmt *parse_stmt_block()
+ast_stmt *parse_stmt_block(void)
 {
 	ast_stmt *block = NULL;
 	ast_stmt *current = NULL;
@@ -307,7 +307,7 @@ ast_stmt *parse_stmt_block()
 	next();
 	return block;
 }
-ast_stmt *parse_stmt()
+ast_stmt *parse_stmt(void)
 {
 	stmt_t kind;
 	ast_decl *decl = NULL;
@@ -399,7 +399,7 @@ stmt_err:
 //ast_stmt *stmt_init(stmt_t kind, ast_decl *decl, ast_expr *expr, ast_stmt *body,
 //ast_stmt *else_body);
 
-ast_type *parse_type()
+ast_type *parse_type(void)
 {
 	ast_type *ret = NULL;
 	ast_type *subtype = NULL;
@@ -491,12 +491,12 @@ ast_type *parse_type()
 
 // Shoutouts to https://www.engr.mun.ca/~theo/Misc/exp_parsing.htm#classic
 // for info on parsing binary expressions with recursive descent parsers :)
-ast_expr *parse_expr()
+ast_expr *parse_expr(void)
 {
 	return parse_expr_assign();
 }
 
-ast_expr *parse_expr_assign()
+ast_expr *parse_expr_assign(void)
 {
 	ast_expr *this = parse_expr_equality();
 	ast_expr *that;
@@ -514,7 +514,7 @@ ast_expr *parse_expr_assign()
 	return this;
 }
 
-ast_expr *parse_expr_equality()
+ast_expr *parse_expr_equality(void)
 {
 	ast_expr *this = parse_expr_inequality();
 	ast_expr *that;
@@ -530,7 +530,7 @@ ast_expr *parse_expr_equality()
 	return this;
 }
 
-ast_expr *parse_expr_inequality()
+ast_expr *parse_expr_inequality(void)
 {
 	ast_expr *this = parse_expr_addsub();
 	ast_expr *that;
@@ -546,7 +546,7 @@ ast_expr *parse_expr_inequality()
 	return this;
 }
 
-ast_expr *parse_expr_addsub()
+ast_expr *parse_expr_addsub(void)
 {
 	ast_expr *this = parse_expr_muldiv();
 	ast_expr *that;
@@ -562,7 +562,7 @@ ast_expr *parse_expr_addsub()
 	return this;
 }
 
-ast_expr *parse_expr_muldiv()
+ast_expr *parse_expr_muldiv(void)
 {
 	ast_expr *this = parse_expr_pre_unary();
 	ast_expr *that;
@@ -578,7 +578,7 @@ ast_expr *parse_expr_muldiv()
 	return this;
 }
 
-ast_expr *parse_expr_pre_unary()
+ast_expr *parse_expr_pre_unary(void)
 {
 	ast_expr *inner = NULL;
 	token_t typ = cur_tok_type();
@@ -606,7 +606,7 @@ ast_expr *parse_expr_pre_unary()
 }
 
 // Now with member operator this isn't actually unary but w/e.
-ast_expr *parse_expr_post_unary()
+ast_expr *parse_expr_post_unary(void)
 {
 	ast_expr *inner = parse_expr_unit();
 	ast_expr *e = NULL;
@@ -639,7 +639,7 @@ ast_expr *parse_expr_post_unary()
 }
 
 
-ast_expr *parse_expr_unit()
+ast_expr *parse_expr_unit(void)
 {
 	token_t typ = cur_tok_type();
 	token_s *cur = cur_token;
