@@ -34,7 +34,6 @@ int main(int argc, char *argv[])
 	FILE *f;
 	token_s *head;
 	ast_decl *program;
-	int retcode = 0;
 	char path[4096];
 	char *modname;
 
@@ -49,6 +48,9 @@ int main(int argc, char *argv[])
 	assert(sizeof(float) * CHAR_BIT == 32);
 	assert(sizeof(double) * CHAR_BIT == 64);
 
+	#ifdef DEBUG
+	puts("Debug mode enabled");
+	#endif
 
 	while (optind < argc) {
 		// This check if cur arg starts with dash should be unnecessary
@@ -81,23 +83,22 @@ int main(int argc, char *argv[])
 
 	head = scan(f);
 	if (had_error) {
-		retcode = 1;
+		#ifdef DEBUG
+		puts("scan error");
+		#endif
 		goto error_noast;
 	}
 	program = parse_program(head);
 	if (had_error) {
-		retcode = 1;
+		#ifdef DEBUG
+		puts("parse error");
+		#endif
 		goto error_ast;
 	}
 
-
-	program_print(program);
-
 	st_init();
 	typecheck_program(program);
-	if (!had_error)
-		puts("typecheck passed!");
-	else {
+	if (had_error) {
 		goto error_typecheck;
 	}
 
@@ -113,7 +114,6 @@ int main(int argc, char *argv[])
 	char *error = 0;
 	LLVMVerifyModule(mod, LLVMAbortProcessAction, &error);
 	LLVMDisposeMessage(error);
-	LLVMDumpModule(mod);
 
 	error = 0;
 	LLVMInitializeNativeTarget();
@@ -122,6 +122,7 @@ int main(int argc, char *argv[])
 	if (!outfile)
 		outfile = "a.bc";
 	if (LLVMWriteBitcodeToFile(mod, outfile) != 0) {
+		had_error = 1;
 		fprintf(stderr, "Could not write bitcode to file!");
 	}
 
@@ -133,7 +134,7 @@ int main(int argc, char *argv[])
 	LLVMShutdown();
 
 	fclose(f);
-	return 0;
+	return had_error;
 
 error_typecheck:
 	st_destroy();
@@ -143,5 +144,5 @@ error_noast:
 	tok_list_destroy(head);
 	fclose(f);
 	LLVMShutdown();
-	return retcode;
+	return had_error;
 }
