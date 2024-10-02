@@ -49,9 +49,9 @@ int main(int argc, char *argv[])
 	assert(sizeof(float) * CHAR_BIT == 32);
 	assert(sizeof(double) * CHAR_BIT == 64);
 
-	#ifdef DEBUG
+#ifdef DEBUG
 	puts("Debug mode enabled");
-	#endif
+#endif
 
 	while (optind < argc) {
 		// This check if cur arg starts with dash should be unnecessary
@@ -84,16 +84,16 @@ int main(int argc, char *argv[])
 
 	head = scan(f);
 	if (had_error) {
-		#ifdef DEBUG
+#ifdef DEBUG
 		puts("scan error");
-		#endif
+#endif
 		goto error_noast;
 	}
 	program = parse_program(head);
 	if (had_error) {
-		#ifdef DEBUG
+#ifdef DEBUG
 		puts("parse error");
-		#endif
+#endif
 		goto error_ast;
 	}
 
