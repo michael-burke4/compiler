@@ -1,4 +1,6 @@
 SRCDIR=src
+TESTDIR=tests
+
 OBJDIR=obj
 BINDIR=bin
 TGTDIR=target
@@ -16,7 +18,7 @@ DEPS=$(wildcard $(SRCDIR)/*.h)
 OBJ=$(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(CSRC))
 DBG_OBJ=$(patsubst $(SRCDIR)/%.c,$(DBGDIR)/%.o,$(CSRC))
 
-.PHONY: clean compile dis main valgrind debug
+.PHONY: clean compile dis main valgrind debug test
 
 ifdef SRC
 SRC_BASE=$(basename $(notdir $(SRC)))
@@ -66,6 +68,10 @@ ifdef SRC
 else
 	$(error no SRC supplied. Please specify SRC=srcfile)
 endif
+
+test: debug
+test:
+	$(SRCDIR)/test.py $(DBGDIR)/main $(TESTDIR)
 
 clean:
 	-rm $(OBJDIR)/*
