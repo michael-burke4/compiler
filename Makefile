@@ -2,18 +2,21 @@ SRCDIR=src
 OBJDIR=obj
 BINDIR=bin
 TGTDIR=target
+DBGDIR=dbg
 
 CC=clang
-CFLAGS=-std=c99 -Wall -Wextra -Wpedantic -Werror -Og `llvm-config --cflags` -Wno-deprecated
+CFLAGS=-std=c99 -Wall -Wextra -Wpedantic -Werror -O2 `llvm-config --cflags` -Wno-deprecated
 LD=clang
 LDFLAGS=`llvm-config --cxxflags --ldflags --libs core executionengine mcjit interpreter analysis native bitwriter --system-libs` -std=c99
+DBGFLAGS=-DDEBUG -g
 
 CSRC=$(wildcard $(SRCDIR)/*.c)
 DEPS=$(wildcard $(SRCDIR)/*.h)
 
 OBJ=$(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(CSRC))
+DBG_OBJ=$(patsubst $(SRCDIR)/%.c,$(DBGDIR)/%.o,$(CSRC))
 
-.PHONY: clean compile dis main valgrind
+.PHONY: clean compile dis main valgrind debug
 
 ifdef SRC
 SRC_BASE=$(basename $(notdir $(SRC)))
@@ -24,8 +27,13 @@ main: $(OBJDIR) $(BINDIR) $(BINDIR)/main
 $(BINDIR)/main: $(OBJ)
 	$(LD) -o $@ $^ $(LDFLAGS)
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.c $(DEPS)
+$(OBJDIR)/%.o $(DBGDIR)/%.o: $(SRCDIR)/%.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
+
+debug: CFLAGS+=$(DBGFLAGS)
+debug: $(DBGDIR) $(DBG_OBJ) $(DBGDIR)/main
+$(DBGDIR)/main: $(DBG_OBJ)
+	$(LD) -o $@ $^ $(LDFLAGS)
 
 $(OBJDIR) $(BINDIR) $(TGTDIR):
 	-mkdir $@
@@ -63,3 +71,4 @@ clean:
 	-rm $(OBJDIR)/*
 	-rm $(BINDIR)/*
 	-rm $(TGTDIR)/*
+	-rm $(DBGDIR)/*
