@@ -608,5 +608,5 @@ int type_equals(ast_type *a, ast_type *b)
 	if (a == NULL || b == NULL)
 		return 0;
 	return type_equals(a->subtype, b->subtype) && arglist_equals(a->arglist, b->arglist) &&
-	       a->kind == b->kind;
+		a->kind == b->kind;
 }

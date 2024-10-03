@@ -9,7 +9,7 @@
 static void *_reallocarray(void *ptr, size_t nmemb, size_t size)
 {
 	if (nmemb > 0 && SIZE_MAX / nmemb < size)
-    		return NULL;
+		return NULL;
 
 	size_t total_size = nmemb * size;
 	if (size != 0 && total_size / size != nmemb)

@@ -503,8 +503,8 @@ ast_expr *parse_expr_assign(void)
 	token_t typ = cur_tok_type();
 	token_t op;
 	while (typ == T_ASSIGN || typ == T_ADD_ASSIGN || typ == T_SUB_ASSIGN ||
-	       typ == T_MUL_ASSIGN || typ == T_DIV_ASSIGN || typ == T_MOD_ASSIGN ||
-	       typ == T_BW_AND_ASSIGN || typ == T_BW_OR_ASSIGN) {
+			typ == T_MUL_ASSIGN || typ == T_DIV_ASSIGN || typ == T_MOD_ASSIGN ||
+			typ == T_BW_AND_ASSIGN || typ == T_BW_OR_ASSIGN) {
 		op = typ;
 		next();
 		that = parse_expr_inequality();

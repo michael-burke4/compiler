@@ -285,7 +285,7 @@ LLVMValueRef define_string_literal(LLVMModuleRef mod, LLVMBuilderRef builder, co
 
 static size_t get_member_position(ast_decl *decl, strvec *name) {
 	vect *arglist = decl->typesym->type->arglist;
-	for (size_t i = 0  ; i < arglist->size ; ++i) {
+	for (size_t i = 0 ; i < arglist->size ; ++i) {
 		if (strvec_equals(arglist_get(arglist, i)->symbol, name)) {
 			return i;
 		}

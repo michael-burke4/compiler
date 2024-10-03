@@ -31,7 +31,7 @@ void expr_append_sub_expr(ast_expr *e, ast_expr *sub)
 }
 
 ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, strvec *name,
-		    int64_t num, strvec *str_lit)
+			int64_t num, strvec *str_lit)
 {
 	ast_expr *ret = smalloc(sizeof(*ret));
 	ret->kind = kind;
@@ -56,7 +56,7 @@ ast_typed_symbol *ast_typed_symbol_init(ast_type *type, strvec *symbol)
 }
 
 ast_stmt *stmt_init(stmt_t kind, ast_decl *decl, ast_expr *expr, ast_stmt *body,
-		    ast_stmt *else_body)
+		 	ast_stmt *else_body)
 {
 	ast_stmt *ret = smalloc(sizeof(*ret));
 	ret->kind = kind;
