@@ -1,3 +1,4 @@
+#include "error.h"
 #include "parse.h"
 #include "print.h"
 #include "symbol_table.h"
@@ -21,7 +22,7 @@ static void scope_bind_args(ast_decl *decl)
 	size_t i;
 	vect *arglist;
 	if (decl == NULL) {
-		printf("NULL FN IN BINDING ARGS?!");
+		fprintf(stderr, "NULL FN IN BINDING ARGS?!");
 		had_error = 1;
 		return;
 	}
@@ -36,7 +37,7 @@ static void typecheck_fnbody(ast_decl *decl)
 {
 	if (decl == NULL || decl->body == NULL) {
 		//TODO: Look at this.
-		printf("Currently not allowing empty fn declarations. Provide an fn body.");
+		fprintf(stderr, "Currently not allowing empty fn declarations. Provide an fn body.");
 		had_error = 1;
 		return;
 	}
@@ -54,14 +55,14 @@ static void typecheck_array_initializer(ast_decl *decl)
 	if (decl->initializer == NULL)
 		return;
 	if (decl->typesym->type->kind != Y_POINTER) {
-		puts("Can only use initializers with pointers and structs.");
+		eputs("Can only use initializers with pointers and structs.");
 		had_error = 1;
 		return;
 	}
 	for (size_t i = 0 ; i < decl->initializer->size ; ++i) {
 		t = derive_expr_type(decl->initializer->elements[i]);
 		if (!type_equals(t, decl->typesym->type->subtype)) {
-			puts("Type mismatch in array initializer");
+			eputs("Type mismatch in array initializer");
 			had_error = 1;
 			type_destroy(t);
 			return;
@@ -101,14 +102,14 @@ void typecheck_decl(ast_decl *decl)
 {
 	ast_type *typ;
 	if (decl == NULL) {
-		printf("Typechecking empty decl!?!?!");
+		fprintf(stderr, "Typechecking empty decl!?!?!");
 		had_error = 1;
 		return;
 	}
 	if (scope_lookup_current(decl->typesym->symbol)) {
-		printf("Duplicate declaration of symbol \"");
-		strvec_print(decl->typesym->symbol);
-		printf("\"\n");
+		fprintf(stderr, "Duplicate declaration of symbol \"");
+		fstrvec_print(stderr, decl->typesym->symbol);
+		fprintf(stderr, "\"\n");
 		had_error = 1;
 		return;
 	}
@@ -127,14 +128,14 @@ void typecheck_decl(ast_decl *decl)
 			decl->expr = build_cast(decl->expr, decl->typesym->type->kind);
 		} else if (!(type_equals(decl->typesym->type, typ))) {
 			had_error = 1;
-			puts("Failed typecheck TODO: good error messages.");
+			eputs("Failed typecheck TODO: good error messages.");
 		}
 		type_destroy(typ);
 		scope_bind_ts(decl->typesym);
 	} else if (decl->initializer) {
 		if (decl->typesym->type->kind != Y_POINTER) {
 			had_error = 1;
-			puts("Only pointers can use array initializers");
+			eputs("Only pointers can use array initializers");
 			return;
 		}
 		typecheck_array_initializer(decl);
@@ -165,35 +166,35 @@ static ast_type *typecheck_fncall(ast_expr *expr)
 	size_t i;
 	int flag = 0;
 	if (fn_ts == NULL) {
-		printf("Call to undeclared function \"");
-		strvec_print(expr->name);
-		puts("\"");
+		fprintf(stderr, "Call to undeclared function \"");
+		fstrvec_print(stderr, expr->name);
+		eputs("\"");
 		had_error = 1;
 		return NULL;
 	} else if (fn_ts->type->kind != Y_FUNCTION) {
-		printf("Identifier \"");
-		strvec_print(expr->name);
-		puts("\" does not refer to a function.");
+		fprintf(stderr, "Identifier \"");
+		fstrvec_print(stderr, expr->name);
+		eputs("\" does not refer to a function.");
 		had_error = 1;
 		return NULL;
 	}
 	if (decl_arglist == NULL && expr_arglist == NULL)
 		return type_copy(fn_ts->type->subtype);
 	if ((decl_arglist == NULL || expr_arglist == NULL) || (decl_arglist->size != expr_arglist->size)) {
-		printf("Argument count mismatch");
+		fprintf(stderr, "Argument count mismatch");
 		return NULL;
 	}
 
 	for (i = 0 ; i < decl_arglist->size ; ++i) {
 		derived = derive_expr_type(expr_arglist->elements[i]);
 		if (!type_equals(arglist_get(decl_arglist, i)->type, derived)) {
-			printf("Type mismatch in call to function ");
-			strvec_print(expr->name);
-			printf(": expression ");
-			expr_print(expr_arglist->elements[i]);
-			printf(" does not resolve to positional argument's expected type (");
-			type_print(arglist_get(decl_arglist, i)->type);
-			puts(")");
+			fprintf(stderr, "Type mismatch in call to function ");
+			fstrvec_print(stderr, expr->name);
+			fprintf(stderr, ": expression ");
+			e_expr_print(expr_arglist->elements[i]);
+			fprintf(stderr, " does not resolve to positional argument's expected type (");
+			e_type_print(arglist_get(decl_arglist, i)->type);
+			eputs(")");
 			had_error = 1;
 			flag = 1;
 		}
@@ -210,13 +211,13 @@ static ast_type *typecheck_syscall(ast_expr *expr)
 	vect *expr_arglist = expr->sub_exprs;
 	ast_type *derived;
 	if (expr_arglist->size != 4) {
-		puts("CURRENTLY CAN ONLY SYSCALL IF THERE ARE 4 ARGS. SORRY");
+		eputs("CURRENTLY CAN ONLY SYSCALL IF THERE ARE 4 ARGS. SORRY");
 		return NULL;
 	}
 	for (size_t i = 0 ; i < expr_arglist->size ; ++i) {
 		derived = derive_expr_type(expr_arglist->elements[i]);
 		if (derived->kind != Y_I32 && derived->kind != Y_STRING) {
-			puts("syscall args can only be i32s and strings right now!");
+			eputs("syscall args can only be i32s and strings right now!");
 			type_destroy(derived);
 			return NULL;
 		}
@@ -231,16 +232,16 @@ static ast_type *derive_assign(ast_expr *expr) {
 	ast_type *right = NULL;
 	int derived = 0;
 	if (!expr->left->is_lvalue) {
-		puts("Assignment expression's left side must be an lvalue!");
+		eputs("Assignment expression's left side must be an lvalue!");
 		had_error = 1;
 		return NULL;
 	}
 	if (expr->left->kind == E_IDENTIFIER) {
 		ts = scope_lookup(expr->left->name);
 		if (ts == NULL) {
-			printf("Use of undeclared identifier ");
-			strvec_print(expr->left->name);
-			puts("");
+			fprintf(stderr, "Use of undeclared identifier ");
+			fstrvec_print(stderr, expr->left->name);
+			eputs("");
 			had_error = 1;
 			return NULL;
 		}
@@ -267,12 +268,12 @@ static ast_type *derive_assign(ast_expr *expr) {
 			return type_copy(left);
 		}
 	}
-	printf("Attempted to assign expression of type ");
-	type_print(right);
-	printf(" to a variable of type ");
+	fprintf(stderr, "Attempted to assign expression of type ");
+	e_type_print(right);
+	fprintf(stderr, " to a variable of type ");
 	had_error = 1;
-	type_print(left);
-	puts("");
+	e_type_print(left);
+	eputs("");
 	type_destroy(right);
 	return NULL;
 }
@@ -285,7 +286,7 @@ static ast_type *derive_pre_unary(ast_expr *expr)
 	case T_AMPERSAND:
 		left = derive_expr_type(expr->left);
 		if (left == NULL || !expr->left->is_lvalue) {
-			puts("Cannot find address of non-lvalue expr");
+			eputs("Cannot find address of non-lvalue expr");
 			type_destroy(left);
 			return NULL;
 		}
@@ -295,7 +296,7 @@ static ast_type *derive_pre_unary(ast_expr *expr)
 	case T_STAR:
 		left = derive_expr_type(expr->left);
 		if (left == NULL || left->kind != Y_POINTER) {
-			puts("Cannot dereference non-pointer expression");
+			eputs("Cannot dereference non-pointer expression");
 			type_destroy(left);
 			return NULL;
 		}
@@ -303,7 +304,7 @@ static ast_type *derive_pre_unary(ast_expr *expr)
 		type_destroy(left);
 		return right;
 	default:
-		puts("unsupported expr kind while typechecking!");
+		eputs("unsupported expr kind while typechecking!");
 		had_error = 1;
 		return NULL;
 	}
@@ -329,14 +330,14 @@ static ast_type *derive_post_unary(ast_expr *expr)
 	case T_LBRACKET:
 		left = derive_expr_type(expr->left);
 		if (left == NULL || left->kind != Y_POINTER) {
-			puts("can only use index operator on pointers");
+			eputs("can only use index operator on pointers");
 			type_destroy(left);
 			had_error = 1;
 			return NULL;
 		}
 		right = derive_expr_type(expr->right);
 		if (right == NULL || right->kind != Y_I32) {
-			puts("can only index pointers with integers");
+			eputs("can only index pointers with integers");
 			type_destroy(left);
 			type_destroy(right);
 			had_error = 1;
@@ -349,13 +350,13 @@ static ast_type *derive_post_unary(ast_expr *expr)
 	case T_PERIOD:
 		left = derive_expr_type(expr->left);
 		if (left == NULL || left->kind != Y_STRUCT || !expr->left->is_lvalue) {
-			puts("Member operator left side must be a struct");
+			eputs("Member operator left side must be a struct");
 			type_destroy(left);
 			had_error = 1;
 			return NULL;
 		}
 		if (expr->right->kind != E_IDENTIFIER) {
-			puts("Member operator right side must be an identifier");
+			eputs("Member operator right side must be an identifier");
 			type_destroy(left);
 			had_error = 1;
 			return NULL;
@@ -363,11 +364,11 @@ static ast_type *derive_post_unary(ast_expr *expr)
 		ts = scope_lookup(left->name);
 		ret = struct_field_type(ts, expr->right->name);
 		if (ret == NULL) {
-			printf("struct `");
-			strvec_print(left->name);
-			printf("` has no member `");
-			strvec_print(expr->right->name);
-			puts("`");
+			fprintf(stderr, "struct `");
+			fstrvec_print(stderr, left->name);
+			fprintf(stderr, "` has no member `");
+			fstrvec_print(stderr, expr->right->name);
+			eputs("`");
 			type_destroy(left);
 			had_error = 1;
 			return NULL;
@@ -375,7 +376,7 @@ static ast_type *derive_post_unary(ast_expr *expr)
 		type_destroy(left);
 		return ret;
 	default:
-		puts("unsupported post unary expr while typechecking");
+		eputs("unsupported post unary expr while typechecking");
 		had_error = 1;
 		return NULL;
 	}
@@ -416,9 +417,9 @@ ast_type *derive_expr_type(ast_expr *expr)
 			return left;
 		}
 		had_error = 1;
-		printf("Typecheck failed at expression \"");
-		expr_print(expr);
-		puts("\"");
+		fprintf(stderr, "Typecheck failed at expression \"");
+		e_expr_print(expr);
+		eputs("\"");
 		type_destroy(left);
 		type_destroy(right);
 		return NULL;
@@ -433,9 +434,9 @@ ast_type *derive_expr_type(ast_expr *expr)
 			return type_init(Y_BOOL, NULL);
 		}
 		had_error = 1;
-		printf("Typecheck failed at expression \"");
-		expr_print(expr);
-		puts("\"");
+		fprintf(stderr, "Typecheck failed at expression \"");
+		e_expr_print(expr);
+		eputs("\"");
 		type_destroy(left);
 		type_destroy(right);
 		return NULL;
@@ -459,18 +460,18 @@ ast_type *derive_expr_type(ast_expr *expr)
 	case E_IDENTIFIER:
 		ts = scope_lookup(expr->name);
 		if (ts->type->kind == Y_STRUCT && strvec_equals(ts->type->name, expr->name)) {
-			printf("Can't use struct type \"");
-			strvec_print(ts->symbol);
-			puts("\" in this expression");
+			fprintf(stderr, "Can't use struct type \"");
+			fstrvec_print(stderr, ts->symbol);
+			eputs("\" in this expression");
 			had_error = 1;
 			return NULL;
 		}
 		if (ts) {
 			return type_copy(ts->type);
 		}
-		printf("Use of undeclared identifier \"");
-		strvec_print(expr->name);
-		puts("\"");
+		fprintf(stderr, "Use of undeclared identifier \"");
+		fstrvec_print(stderr, expr->name);
+		eputs("\"");
 		had_error = 1;
 		return NULL;
 	case E_PRE_UNARY:
@@ -478,7 +479,7 @@ ast_type *derive_expr_type(ast_expr *expr)
 	case E_POST_UNARY:
 		return derive_post_unary(expr);
 	default:
-		puts("unsupported expr kind while typechecking!");
+		eputs("unsupported expr kind while typechecking!");
 		had_error = 1;
 		return NULL;
 	}
@@ -490,7 +491,7 @@ void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 	if (stmt == NULL && at_fn_top_level && 
 			scope_get_return_type()->kind != Y_VOID) {
 		had_error = 1;
-		puts("Non-void functions must end in valid return statements");
+		eputs("Non-void functions must end in valid return statements");
 		return;
 	}
 	if (stmt == NULL)
@@ -498,18 +499,18 @@ void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 	switch (stmt->kind) {
 	case S_ERROR:
 		had_error = 1;
-		puts("WARNING typechecking a bad stmt. Big problem?!");
+		eputs("WARNING typechecking a bad stmt. Big problem?!");
 		typecheck_stmt(stmt->next, at_fn_top_level);
 		break;
 	case S_IFELSE:
 		if (stmt->expr == NULL) {
 			had_error = 1;
-			puts("if statement condition must be non-empty");
+			eputs("if statement condition must be non-empty");
 		}
 		typ = derive_expr_type(stmt->expr);
 		if (typ == NULL || typ->kind != Y_BOOL) {
 			had_error = 1;
-			puts("if statement condition must be a boolean");
+			eputs("if statement condition must be a boolean");
 		}
 		type_destroy(typ);
 		scope_enter();
@@ -525,12 +526,12 @@ void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 	case S_WHILE:
 		if (stmt->expr == NULL) {
 			had_error = 1;
-			puts("if statement condition must be non-empty");
+			eputs("if statement condition must be non-empty");
 		}
 		typ = derive_expr_type(stmt->expr);
 		if (typ == NULL || typ->kind != Y_BOOL) {
 			had_error = 1;
-			puts("if statement condition must be a boolean");
+			eputs("if statement condition must be a boolean");
 		}
 		type_destroy(typ);
 		if (stmt->body != NULL)
@@ -558,23 +559,23 @@ void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 		// See above warning about typ ownership
 		if (stmt->next != NULL) {
 			had_error = 1;
-			puts("Return statements must be at the end of statement blocks.");
+			eputs("Return statements must be at the end of statement blocks.");
 		}
 		typ = scope_get_return_type();
 		if (typ == NULL) {
 			had_error = 1;
-			puts("Cannot use a return statement outside of a function");
+			eputs("Cannot use a return statement outside of a function");
 		} else if (stmt->expr == NULL) {
 			if (typ->kind != Y_VOID) {
 				had_error = 1;
-				puts("Non-void function has empty return statement.");
+				eputs("Non-void function has empty return statement.");
 			}
 		} else {
 			// Dangerous reuse of typ: now 'owns' what is points to.
 			typ = derive_expr_type(stmt->expr);
 			if (!type_equals(typ, scope_get_return_type())) {
 				had_error = 1;
-				puts("Return value does not match function signature");
+				eputs("Return value does not match function signature");
 			}
 			type_destroy(typ);
 		}

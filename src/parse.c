@@ -8,14 +8,19 @@
 #include <stdlib.h>
 
 token_s *cur_token = NULL;
+token_s *prev_token = NULL;
 
 static inline void next(void)
 {
+	prev_token = cur_token;
 	cur_token = cur_token->next;
 }
 
 static inline token_t cur_tok_type(void)
 {
+	if (cur_token == NULL) {
+		return T_EOF;
+	}
 	return cur_token->type;
 }
 
@@ -33,7 +38,10 @@ static void report_error_cur_tok(const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	report_error(cur_token->line, cur_token->col, fmt, args);
+	if (!cur_token)
+		report_error(prev_token->line, prev_token->col, fmt, args);
+	else
+		report_error(cur_token->line, cur_token->col, fmt, args);
 	va_end(args);
 }
 
@@ -51,6 +59,8 @@ static void report_error_cur_tok(const char *fmt, ...)
 // Parser is also considered synced at EOF, no matter the target.
 static void sync_to(token_t target, int or_newline)
 {
+	if (cur_token == NULL)
+		return;
 	size_t prevline = cur_tok_line();
 	while (!expect(target)) {
 		if (or_newline && prevline != cur_tok_line())
@@ -156,7 +166,7 @@ ast_typed_symbol *parse_typed_symbol(void)
 	return ast_typed_symbol_init(type, name);
 
 parse_typsym_err:
-	tok_print(cur_token);
+	fprint_tok(stderr, cur_token);
 	type_destroy(type);
 	strvec_destroy(name);
 	return NULL;
@@ -256,12 +266,13 @@ ast_decl *parse_decl(void)
 		next();
 	else if (expect(T_ASSIGN)) {
 		next();
-		if (expect(T_LCURLY))
+		if (expect(T_LCURLY)) {
 			stmt = parse_stmt_block();
-		else if (expect(T_LBRACKET))
+		} else if (expect(T_LBRACKET)) {
 			initializer = parse_comma_separated_exprs(T_RBRACKET);
-		else
+		} else {
 			expr = parse_expr();
+		}
 		if (!expect(T_SEMICO)) {
 			report_error_cur_tok("Missing semicolon (possibly missing from previous line)");
 			sync_to(T_EOF, 1);
@@ -476,8 +487,8 @@ ast_type *parse_type(void)
 		break;
 	default:
 		report_error_cur_tok("Could not use the following token as a type:");
-		printf("\t");
-		tok_print(cur_token);
+		fprintf(stderr, "\t");
+		fprint_tok(stderr, cur_token);
 		sync_to(T_EOF, 1);
 	}
 	while (cur_tok_type() == T_STAR) {
@@ -670,7 +681,7 @@ ast_expr *parse_expr_unit(void)
 		if (errno != 0) {
 			report_error_cur_tok("Could not parse int literal \"");
 			strvec_print(cur->text);
-			puts("\"");
+			eputs("\"");
 		}
 		ex = expr_init(E_INT_LIT, NULL, NULL, 0, NULL, n, NULL);
 		ex->int_size = smallest_fit(n);
@@ -716,8 +727,8 @@ ast_expr *parse_expr_unit(void)
 		return expr_init(E_CHAR_LIT, NULL, NULL, 0, NULL, 0, txt);
 	default:
 		report_error_cur_tok("Could not parse expr unit. The offending token in question:");
-		printf("\t");
-		tok_print(cur_token);
+		fprintf(stderr, "\t");
+		fprint_tok(stderr, cur_token);
 		sync_to(T_EOF, 1);
 		return NULL;
 	}

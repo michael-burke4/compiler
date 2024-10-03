@@ -25,3 +25,8 @@ void report_error(size_t line, size_t col, const char *fmt, ...)
 	fprintf(stderr, "\n");
 	va_end(args);
 }
+
+void eputs(const char *s)
+{
+        fputs(s, stderr);
+}

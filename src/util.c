@@ -48,7 +48,7 @@ void vect_destroy(vect *v) {
 
 void *vect_get(vect *v, size_t i) {
 	if (i > v->size) {
-		printf("Vec index out of bounds [%lu not within bound %lu]\n", i, v->size-1);
+		fprintf(stderr, "Vec index out of bounds [%lu not within bound %lu]\n", i, v->size-1);
 		exit(1);
 	}
 	return v->elements[i];
@@ -84,10 +84,15 @@ void strvec_append(strvec *vec, char c)
 	vec->size++;
 }
 
+void fstrvec_print(FILE *f, strvec *vec)
+{
+	fprintf(f, "%.*s", (int)vec->size, vec->text);
+}
+
 void strvec_print(strvec *vec)
 {
 	// stupid int cast do something better (eventually)
-	printf("%.*s", (int)vec->size, vec->text);
+	fstrvec_print(stdout, vec);
 }
 
 void strvec_destroy(strvec *vec)

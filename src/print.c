@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-void print_op(ast_expr *expr)
+static void fprint_op(FILE *f, ast_expr *expr)
 {
 	if (!expr)
 		return;
@@ -14,127 +14,127 @@ void print_op(ast_expr *expr)
 	case E_INEQUALITY:
 	case E_EQUALITY:
 	case E_ASSIGN:
-		printf(" ");
-		tok_t_print(expr->op);
-		printf(" ");
+		fprintf(f, " ");
+		fprint_tok_t(f, expr->op);
+		fprintf(f, " ");
 		break;
 	default:
-		tok_t_print(expr->op);
+		fprint_tok_t(f, expr->op);
 	}
 }
 
-static void print_expr_list(vect *list) {
+static void fprint_expr_list(FILE *f, vect *list) {
 	size_t i;
 
 	if (!list)
 		return;
 	for (i = 0 ; i < list->size - 1 ; ++i) {
-		expr_print(list->elements[i]);
-		printf(", ");
+		fexpr_print(f, list->elements[i]);
+		fprintf(f, ", ");
 	}
-	expr_print(list->elements[i]);
+	fexpr_print(f, list->elements[i]);
 }
 
-static void print_sub_exprs(ast_expr *expr)
+void fprint_sub_exprs(FILE *f, ast_expr *expr)
 {
 	if (!expr || !expr->sub_exprs)
 		return;
-	print_expr_list(expr->sub_exprs);
+	fprint_expr_list(f, expr->sub_exprs);
 }
 
-void expr_print(ast_expr *expr)
+void fexpr_print(FILE *f, ast_expr *expr)
 {
 	if (!expr)
 		return;
 	switch (expr->kind) {
 	case E_POST_UNARY:
 		if (expr->op == T_LBRACKET) {
-			expr_print(expr->left);
-			printf("[");
-			expr_print(expr->right);
-			printf("]");
+			fexpr_print(f, expr->left);
+			fprintf(f, "[");
+			fexpr_print(f, expr->right);
+			fprintf(f, "]");
 		} else if (expr->op == T_PERIOD) {
-			expr_print(expr->left);
-			printf(".");
-			expr_print(expr->right);
+			fexpr_print(f, expr->left);
+			fprintf(f, ".");
+			fexpr_print(f, expr->right);
 		} else {
-			expr_print(expr->left);
-			print_op(expr);
+			fexpr_print(f, expr->left);
+			fprint_op(f, expr);
 		}
 		break;
 	case E_PRE_UNARY:
-		print_op(expr);
-		expr_print(expr->left);
+		fprint_op(f, expr);
+		fexpr_print(f, expr->left);
 		break;
 	case E_ASSIGN:
 	case E_INEQUALITY:
 	case E_EQUALITY:
 	case E_MULDIV:
 	case E_ADDSUB:
-		expr_print(expr->left);
-		print_op(expr);
-		expr_print(expr->right);
+		fexpr_print(f, expr->left);
+		fprint_op(f, expr);
+		fexpr_print(f, expr->right);
 		break;
 	case E_PAREN:
-		printf("(");
-		expr_print(expr->left);
-		printf(")");
+		fprintf(f, "(");
+		fexpr_print(f, expr->left);
+		fprintf(f, ")");
 		break;
 	case E_INT_LIT:
 		switch (smallest_fit(expr->num)) {
 		case Y_I32:
-			printf("%d", (int32_t)expr->num);
+			fprintf(f, "%d", (int32_t)expr->num);
 			break;
 		default:
-			printf("%ld", (int64_t)expr->num);
+			fprintf(f, "%ld", (int64_t)expr->num);
 			break;
 		}
 		break;
 	case E_CHAR_LIT:
-		printf("'");
-		strvec_print(expr->string_literal);
-		printf("'");
+		fprintf(f, "'");
+		fstrvec_print(f, expr->string_literal);
+		fprintf(f, "'");
 		break;
 	case E_STR_LIT:
-		printf("\"");
-		strvec_print(expr->string_literal);
-		printf("\"");
+		fprintf(f, "\"");
+		fstrvec_print(f, expr->string_literal);
+		fprintf(f, "\"");
 		break;
 	case E_IDENTIFIER:
-		strvec_print(expr->name);
+		fstrvec_print(f, expr->name);
 		break;
 	case E_FNCALL:
-		strvec_print(expr->name);
-		printf("(");
-		print_sub_exprs(expr);
-		printf(")");
+		fstrvec_print(f, expr->name);
+		fprintf(f, "(");
+		fprint_sub_exprs(f, expr);
+		fprintf(f, ")");
 		break;
 	case E_SYSCALL:
-		printf("syscall(");
-		print_sub_exprs(expr);
-		printf(")");
+		fprintf(f, "syscall(");
+		fprint_sub_exprs(f, expr);
+		fprintf(f, ")");
 		break;
 	case E_FALSE_LIT:
-		printf("false");
+		fprintf(f, "false");
 		break;
 	case E_TRUE_LIT:
-		printf("true");
+		fprintf(f, "true");
 		break;
 	default:
-		printf("(unsupported expr)");
+		fprintf(f, "(unsupported expr)");
 	}
 }
 
-void typed_sym_print(ast_typed_symbol *typesym)
+void ftyped_sym_print(FILE *f, ast_typed_symbol *typesym)
 {
 	if (!typesym)
 		return;
-	strvec_print(typesym->symbol);
-	printf(": ");
-	type_print(typesym->type);
+	fstrvec_print(f, typesym->symbol);
+	fprintf(f, ": ");
+	ftype_print(f, typesym->type);
 }
 
-void type_print(ast_type *type)
+void ftype_print(FILE *f, ast_type *type)
 {
 	if (!type)
 		return;
@@ -142,147 +142,196 @@ void type_print(ast_type *type)
 	ssize_t i;
 	switch (type->kind) {
 	case Y_I32:
-		printf("i32");
+		fprintf(f, "i32");
 		break;
 	case Y_U32:
-		printf("u32");
+		fprintf(f, "u32");
 		break;
 	case Y_I64:
-		printf("i64");
+		fprintf(f, "i64");
 		break;
 	case Y_U64:
-		printf("u64");
+		fprintf(f, "u64");
 		break;
 	case Y_VOID:
-		printf("void");
+		fprintf(f, "void");
 		break;
 	case Y_BOOL:
-		printf("bool");
+		fprintf(f, "bool");
 		break;
 	case Y_STRING:
-		printf("string");
+		fprintf(f, "string");
 		break;
 	case Y_CHAR:
-		printf("char");
+		fprintf(f, "char");
 		break;
 	case Y_FUNCTION:
-		printf("(");
+		fprintf(f, "(");
 		for (i = 0 ; arglist && i < ((ssize_t)arglist->size) - 1 ; ++i) {
-			typed_sym_print(arglist_get(arglist, i));
-			printf(", ");
+			ftyped_sym_print(f, arglist_get(arglist, i));
+			fprintf(f, ", ");
 		}
 		if (arglist && arglist->size != 0) {
-			typed_sym_print(arglist_get(arglist, i));
+			ftyped_sym_print(f, arglist_get(arglist, i));
 		}
-		printf(")");
-		printf(" -> ");
-		type_print(type->subtype);
+		fprintf(f, ")");
+		fprintf(f, " -> ");
+		ftype_print(f, type->subtype);
 		break;
 	case Y_POINTER:
-		type_print(type->subtype);
-		printf("*");
+		ftype_print(f, type->subtype);
+		fprintf(f, "*");
 		break;
 	case Y_STRUCT:
-		printf("struct");
+		fprintf(f, "struct");
 		if (type->name != NULL) {
-			printf(" ");
-			strvec_print(type->name);
+			fprintf(f, " ");
+			fstrvec_print(f, type->name);
 		}
 		break;
 	default:
-		printf("UNSUPPORTED TYPE! (type %d)", type->kind);
+		fprintf(f, "UNSUPPORTED TYPE! (type %d)", type->kind);
 	}
 }
 
-void decl_print(ast_decl *decl)
+void fdecl_print(FILE *f, ast_decl *decl)
 {
 	// Struct definitions don't have type names in their typesyms:
 	// the type of a struct definition is just `struct`
 	// while it is `struct (struct_name_here)` in instantiation.
 	if (decl->typesym->type->kind == Y_STRUCT && decl->typesym->type->name == NULL) {
-		printf("struct ");
-		strvec_print(decl->typesym->symbol);
-		puts(" {");
+		fprintf(f, "struct ");
+		fstrvec_print(f, decl->typesym->symbol);
+		fputs(" {", f);
 		for (size_t i = 0 ; i < decl->typesym->type->arglist->size; ++i) {
-			typed_sym_print(decl->typesym->type->arglist->elements[i]);
-			puts(";");
+			ftyped_sym_print(f, decl->typesym->type->arglist->elements[i]);
+			fputs(";", f);
 		}
-		puts("};");
+		fputs("};", f);
 		return;
 	}
-	printf("let ");
-	typed_sym_print(decl->typesym);
+	fprintf(f, "let ");
+	ftyped_sym_print(f, decl->typesym);
 	if (decl->expr != NULL) {
-		printf(" = ");
-		expr_print(decl->expr);
+		fprintf(f, " = ");
+		fexpr_print(f, decl->expr);
 	} else if (decl->body != NULL) {
-		printf(" = ");
-		stmt_print(decl->body);
+		fprintf(f, " = ");
+		fstmt_print(f, decl->body);
 	} else if (decl->initializer != NULL) {
-		printf(" = ");
-		printf("[");
-		print_expr_list(decl->initializer);
-		printf("]");
+		fprintf(f, " = ");
+		fprintf(f, "[");
+		fprint_expr_list(f, decl->initializer);
+		fprintf(f, "]");
 	}
-	printf(";");
+	fprintf(f, ";");
 }
 
-void stmt_print(ast_stmt *stmt)
+void fstmt_print(FILE *f, ast_stmt *stmt)
 {
 	if (!stmt)
 		return;
 	switch (stmt->kind) {
 	case S_DECL:
-		decl_print(stmt->decl);
+		fdecl_print(f, stmt->decl);
 		break;
 	case S_BLOCK:
 		stmt = stmt->body;
-		printf("{\n");
+		fprintf(f, "{\n");
 		while (stmt != NULL) {
-			stmt_print(stmt);
+			fstmt_print(f, stmt);
 			stmt = stmt->next;
-			printf("\n");
+			fprintf(f, "\n");
 		}
-		printf("}");
+		fprintf(f, "}");
 		break;
 	case S_RETURN:
-		printf("return");
+		fprintf(f, "return");
 		if (!stmt->expr) {
-			printf(";");
+			fprintf(f, ";");
 			break;
 		}
-		printf(" ");
+		fprintf(f, " ");
 		// fall through
 	case S_EXPR:
-		expr_print(stmt->expr);
-		printf(";");
+		fexpr_print(f, stmt->expr);
+		fprintf(f, ";");
 		break;
 	case S_IFELSE:
-		printf("if (");
-		expr_print(stmt->expr);
-		printf(") ");
-		stmt_print(stmt->body);
+		fprintf(f, "if (");
+		fexpr_print(f, stmt->expr);
+		fprintf(f, ") ");
+		fstmt_print(f, stmt->body);
 		if (stmt->else_body) {
-			printf(" else ");
-			stmt_print(stmt->else_body);
+			fprintf(f, " else ");
+			fstmt_print(f, stmt->else_body);
 		}
 		break;
 	case S_WHILE:
-		printf("while (");
-		expr_print(stmt->expr);
-		printf(") ");
-		stmt_print(stmt->body);
+		fprintf(f, "while (");
+		fexpr_print(f, stmt->expr);
+		fprintf(f, ") ");
+		fstmt_print(f, stmt->body);
 		break;
 	default:
-		printf("Somehow reached error/unkown statement printing case?\n");
+		fprintf(f, "Somehow reached error/unkown statement printing case?\n");
 	}
+}
+
+void fprogram_print(FILE *f, ast_decl *program)
+{
+	if (!program)
+		return;
+	fdecl_print(f, program);
+	fprintf(f, "\n");
+	program_print(program->next);
 }
 
 void program_print(ast_decl *program)
 {
-	if (!program)
-		return;
-	decl_print(program);
-	printf("\n");
-	program_print(program->next);
+	fprogram_print(stdout, program);
+}
+void expr_print(ast_expr *expr)
+{
+	fexpr_print(stdout, expr);
+}
+void stmt_print(ast_stmt *stmt)
+{
+	fstmt_print(stdout, stmt);
+}
+void type_print(ast_type *type)
+{
+	ftype_print(stdout, type);
+}
+void decl_print(ast_decl *decl)
+{
+	fdecl_print(stdout, decl);
+}
+void typed_sym_print(ast_typed_symbol *typesym)
+{
+	ftyped_sym_print(stdout, typesym);
+}
+void e_program_print(ast_decl *program)
+{
+	fprogram_print(stderr, program);
+}
+void e_expr_print(ast_expr *expr)
+{
+	fexpr_print(stderr, expr);
+}
+void e_stmt_print(ast_stmt *stmt)
+{
+	fstmt_print(stderr, stmt);
+}
+void e_type_print(ast_type *type)
+{
+	ftype_print(stderr, type);
+}
+void e_decl_print(ast_decl *decl)
+{
+	fdecl_print(stderr, decl);
+}
+void e_typed_sym_print(ast_typed_symbol *typesym)
+{
+	ftyped_sym_print(stderr, typesym);
 }

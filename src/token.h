@@ -4,6 +4,7 @@
 #include "util.h"
 
 #include <stddef.h>
+#include <stdio.h>
 
 typedef enum {
 	T_ERROR = 0,
@@ -103,6 +104,6 @@ token_s *tok_init_nl(token_t type, size_t line, size_t col, strvec *text);
 void tok_list_destroy(token_s *head);
 void tok_destroy(token_s *tok);
 void tok_setnext(token_s *cur, token_s *next);
-void tok_print(token_s *token);
-void tok_t_print(token_t t);
+void fprint_tok(FILE *f, token_s *token);
+void fprint_tok_t(FILE *f, token_t t);
 #endif

@@ -1,4 +1,5 @@
 #include "codegen.h"
+#include "error.h"
 #include "ht.h"
 #include "print.h"
 #include "symbol_table.h"
@@ -37,7 +38,7 @@ static LLVMTypeRef int_kind_to_llvm_type(LLVMModuleRef mod, type_t kind) {
 	case Y_I64:
 		return LLVMInt64TypeInContext(ctxt);
 	default:
-		printf("couldn't convert type a\n");
+		fprintf(stderr, "couldn't convert type a\n");
 		abort();
 	}
 }
@@ -65,7 +66,7 @@ static LLVMTypeRef to_llvm_type(LLVMModuleRef mod, ast_type *tp)
 		strvec_tostatic(tp->name, buffer);
 		return LLVMGetTypeByName(mod, buffer);
 	default:
-		printf("couldn't convert type\n");
+		fprintf(stderr, "couldn't convert type\n");
 		abort();
 	}
 }
@@ -204,7 +205,7 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, int
 		LLVMPositionBuilderAtEnd(builder, b2);
 		break;
 	default:
-		printf("can't codegen that stmt kind right now. (%d)\n", stmt->kind);
+		fprintf(stderr, "can't codegen that stmt kind right now. (%d)\n", stmt->kind);
 		exit(1);
 	}
 }
@@ -255,9 +256,7 @@ static LLVMValueRef assign_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, as
 		temp = expr_init(E_ADDSUB, expr->left, expr->right, T_MINUS, NULL, 0, NULL);
 		break;
 	default:
-		expr_print(expr);
-		printf("\nCan't codegen assignment type with operation token %d\n", expr->op);
-		printf("%d\n", T_MUL_ASSIGN);
+		fprintf(stderr, "\nCan't codegen assignment type with operation token %d\n", expr->op);
 		abort();
 	}
 	tempval = expr_codegen(mod, builder, temp, 0);
@@ -290,7 +289,7 @@ static size_t get_member_position(ast_decl *decl, strvec *name) {
 			return i;
 		}
 	}
-	puts("DIDN'T FIND REQUESTED STRUCT MEMBER. FATAL ERROR.");
+	eputs("DIDN'T FIND REQUESTED STRUCT MEMBER. FATAL ERROR.");
 	exit(1);
 }
 
@@ -300,9 +299,9 @@ static char *shorten_struct_string(char *string) {
 	tmp = string;
 	while (*tmp != '*' && *tmp != ' ') {
 		if (*tmp == '\0') {
-			printf("original at point of failure: %s\n", string);
-			printf("tmp right now: %s\n", tmp);
-			puts("BIG PROBLEM IN CODEGEN. NO SPACE IN STRUCT NAME!");
+			fprintf(stderr, "original at point of failure: %s\n", string);
+			fprintf(stderr, "tmp right now: %s\n", tmp);
+			eputs("BIG PROBLEM IN CODEGEN. NO SPACE IN STRUCT NAME!");
 			exit(1);
 		}
 		tmp += 1;
@@ -370,7 +369,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		} else if (expr->left->kind == E_POST_UNARY && (expr->left->op == T_LBRACKET || expr->left->op == T_PERIOD)) {
 			v = expr_codegen(mod, builder, expr->left, 1);
 		} else {
-			puts("Can't assign to this expr type right now.");
+			eputs("Can't assign to this expr type right now.");
 			exit(1);
 		}
 		return assign_codegen(mod, builder, expr, v);
@@ -429,7 +428,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 			}
 			return v2;
 		} else {
-			puts("can't codegen this post unary expr type yet");
+			eputs("can't codegen this post unary expr type yet");
 			exit(1);
 		}
 	case E_CAST:
@@ -447,7 +446,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		}
 		//fallthrough
 	default:
-		printf("can't codegen that expr kind right now.\n");
+		fprintf(stderr, "can't codegen that expr kind right now.\n");
 		exit(1);
 	}
 }
@@ -548,7 +547,7 @@ void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 	} else if (decl->typesym->type->kind == Y_STRUCT && decl->typesym->type->name == NULL) {
 		define_struct(*mod, decl);
 	} else {
-		printf("Can't codegen decls of this type yet :(\n");
+		fprintf(stderr, "Can't codegen decls of this type yet :(\n");
 		exit(1);
 	}
 }

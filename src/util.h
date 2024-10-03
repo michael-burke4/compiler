@@ -4,6 +4,7 @@
 #include <err.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #define BUFFER_MAX_LEN 128
@@ -31,6 +32,7 @@ strvec *strvec_copy(strvec *s);
 strvec *strvec_init_str(const char *str);
 void strvec_append(strvec *vec, char c);
 int strvec_equals(strvec *a, strvec *b);
+void fstrvec_print(FILE *f, strvec *vec);
 void strvec_print(strvec *vec);
 void strvec_destroy(strvec *vec);
 int strvec_equals_str(strvec *vec, const char *string);

@@ -1,5 +1,6 @@
 #include "ast.h"
 #include "codegen.h"
+#include "error.h"
 #include "parse.h"
 #include "print.h"
 #include "scan.h"
@@ -26,7 +27,7 @@ char *cmd = NULL;
 
 static void usage(void)
 {
-	printf("Usage: %s input_file [-o output file]\n", cmd);
+	fprintf(stderr, "%s usage: %s input_file [-o output_file]\n", cmd, cmd);
 	exit(1);
 }
 
@@ -66,7 +67,7 @@ int main(int argc, char *argv[])
 			}
 		} else {
 			if (infile != NULL) {
-				printf("%s: Only expecting one positional argument\n", cmd);
+				fprintf(stderr, "%s: Only expecting one positional argument\n", cmd);
 				usage();
 			}
 			infile = argv[optind++];
@@ -74,7 +75,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (infile == NULL) {
-		printf("%s: Missing input file\n", cmd);
+		fprintf(stderr, "%s: Missing input file\n", cmd);
 		usage();
 	}
 
@@ -85,14 +86,14 @@ int main(int argc, char *argv[])
 	head = scan(f);
 	if (had_error) {
 #ifdef DEBUG
-		puts("scan error");
+		eputs("scan error");
 #endif
 		goto error_noast;
 	}
 	program = parse_program(head);
 	if (had_error) {
 #ifdef DEBUG
-		puts("parse error");
+		eputs("parse error");
 #endif
 		goto error_ast;
 	}

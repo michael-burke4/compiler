@@ -45,199 +45,197 @@ void tok_setnext(token_s *cur, token_s *next)
 	cur->next = next;
 }
 
-void tok_print(token_s *t)
+void fprint_tok(FILE *f, token_s *t)
 {
 	if (t == NULL)
 		return;
-	tok_t_print(t->type);
-	printf(" ");
+	fprint_tok_t(f, t->type);
+	fprintf(f, " ");
 	if (t->text)
-		strvec_print(t->text);
-	printf("\tLine %lu Col %lu (type %d)\n", t->line, t->col, t->type);
+		fstrvec_print(f, t->text);
+	fprintf(f, "\tLine %lu Col %lu (type %d)\n", t->line, t->col, t->type);
 }
 
-void tok_t_print(token_t t)
+void fprint_tok_t(FILE *f, token_t t)
 {
 	switch (t) {
 	case T_ERROR:
-		printf("ERROR");
-		return;
 	case T_EOF:
-		printf("EOF");
+		fputs("EOF", f);
 		break;
 	case T_I32:
-		printf("i32");
+		fprintf(f, "i32");
 		break;
 	case T_I64:
-		printf("i64");
+		fprintf(f, "i64");
 		break;
 	case T_U32:
-		printf("u32");
+		fprintf(f, "u32");
 		break;
 	case T_U64:
-		printf("u64");
+		fprintf(f, "u64");
 		break;
 	case T_STRING:
-		printf("string");
+		fprintf(f, "string");
 		break;
 	case T_CONST:
-		printf("const");
+		fprintf(f, "const");
 		break;
 	case T_BREAK:
-		printf("break");
+		fprintf(f, "break");
 		break;
 	case T_CONTINUE:
-		printf("continue");
+		fprintf(f, "continue");
 		break;
 	case T_ELSE:
-		printf("else");
+		fprintf(f, "else");
 		break;
 	case T_FOR:
-		printf("for");
+		fprintf(f, "for");
 		break;
 	case T_VOID:
-		printf("void");
+		fprintf(f, "void");
 		break;
 	case T_CHAR:
-		printf("char");
+		fprintf(f, "char");
 		break;
 	case T_IF:
-		printf("if");
+		fprintf(f, "if");
 		break;
 	case T_RETURN:
-		printf("return");
+		fprintf(f, "return");
 		break;
 	case T_WHILE:
-		printf("while");
+		fprintf(f, "while");
 		break;
 	case T_BOOL:
-		printf("bool");
+		fprintf(f, "bool");
 		break;
 	case T_FALSE:
-		printf("false");
+		fprintf(f, "false");
 		break;
 	case T_TRUE:
-		printf("true");
+		fprintf(f, "true");
 		break;
 	case T_DPLUS:
-		printf("++");
+		fprintf(f, "++");
 		break;
 	case T_DMINUS:
-		printf("--");
+		fprintf(f, "--");
 		break;
 	case T_PLUS:
-		printf("+");
+		fprintf(f, "+");
 		break;
 	case T_MINUS:
-		printf("-");
+		fprintf(f, "-");
 		break;
 	case T_STAR:
-		printf("*");
+		fprintf(f, "*");
 		break;
 	case T_FSLASH:
-		printf("/");
+		fprintf(f, "/");
 		break;
 	case T_PERCENT:
-		printf("%%");
+		fprintf(f, "%%");
 		break;
 	case T_LT:
-		printf("<");
+		fprintf(f, "<");
 		break;
 	case T_LTE:
-		printf("<=");
+		fprintf(f, "<=");
 		break;
 	case T_GT:
-		printf(">");
+		fprintf(f, ">");
 		break;
 	case T_GTE:
-		printf(">=");
+		fprintf(f, ">=");
 		break;
 	case T_EQ:
-		printf("==");
+		fprintf(f, "==");
 		break;
 	case T_NEQ:
-		printf("!=");
+		fprintf(f, "!=");
 		break;
 	case T_AND:
-		printf("&&");
+		fprintf(f, "&&");
 		break;
 	case T_OR:
-		printf("||");
+		fprintf(f, "||");
 		break;
 	case T_NOT:
-		printf("!");
+		fprintf(f, "!");
 		break;
 	case T_AMPERSAND:
-		printf("&");
+		fprintf(f, "&");
 		break;
 	case T_BW_OR:
-		printf("|");
+		fprintf(f, "|");
 		break;
 	case T_LSHIFT:
-		printf("<<");
+		fprintf(f, "<<");
 		break;
 	case T_RSHIFT:
-		printf(">>");
+		fprintf(f, ">>");
 		break;
 	case T_BW_NOT:
-		printf("~");
+		fprintf(f, "~");
 		break;
 	case T_XOR:
-		printf("^");
+		fprintf(f, "^");
 		break;
 	case T_ASSIGN:
-		printf("=");
+		fprintf(f, "=");
 		break;
 	case T_ADD_ASSIGN:
-		printf("+=");
+		fprintf(f, "+=");
 		break;
 	case T_SUB_ASSIGN:
-		printf("-=");
+		fprintf(f, "-=");
 		break;
 	case T_MUL_ASSIGN:
-		printf("*=");
+		fprintf(f, "*=");
 		break;
 	case T_DIV_ASSIGN:
-		printf("/=");
+		fprintf(f, "/=");
 		break;
 	case T_MOD_ASSIGN:
-		printf("%%=");
+		fprintf(f, "%%=");
 		break;
 	case T_QMARK:
-		printf("?");
+		fprintf(f, "?");
 		break;
 	case T_COLON:
-		printf(":");
+		fprintf(f, ":");
 		break;
 	case T_ARROW:
-		printf("->");
+		fprintf(f, "->");
 		break;
 	case T_SEMICO:
-		printf(";");
+		fprintf(f, ";");
 		break;
 	case T_COMMA:
-		printf(",");
+		fprintf(f, ",");
 		break;
 	case T_LPAREN:
-		printf("(");
+		fprintf(f, "(");
 		break;
 	case T_RPAREN:
-		printf(")");
+		fprintf(f, ")");
 		break;
 	case T_LCURLY:
-		printf("{");
+		fprintf(f, "{");
 		break;
 	case T_RCURLY:
-		printf("}");
+		fprintf(f, "}");
 		break;
 	case T_LBRACKET:
-		printf("[");
+		fprintf(f, "[");
 		break;
 	case T_RBRACKET:
-		printf("]");
+		fprintf(f, "]");
 		break;
 	default:
-		printf("%d", t);
+		fprintf(f, "%d", t);
 		break;
 	}
 }
