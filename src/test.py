@@ -23,37 +23,73 @@ def try_remove(file_paths):
         except FileNotFoundError:
             pass
         except PermissionError:
-            print('Inadequate permissions to delete tempfile {p}')
+            print_error(f'Inadequate permissions to delete tempfile {p}')
         except Exception as e:
-            print(f'Unexpected exception when deleting tempfile(s) {p}: {e}')
+            print_error(f'Unexpected exception when deleting tempfile(s) {p}: {e}')
 
 
 class Test:
-    def __init__(self, program, comp_error, ret):
+    def __init__(self, name, program, comp_error, ret):
+        self.name = name
         self.program = program
         self.comp_error = comp_error
         self.ret = ret
 
     def run(self, compiler_bin_path):
-        tf = open("tmpfile", 'w')
+        tf = open('tmpfile', 'w')
         bc = f'{tf.name}.bc'
         obj = f'{tf.name}.o'
         bn = f'{tf.name}-bin'
+        files = [tf.name, bc, obj, bn]
+        def tf_print(msg):
+            print(f'{self.name}: {msg}')
 
         tf.write(self.program)
         tf.close()
         cmd = [compiler_bin_path, tf.name, '-o', bc]
         res = subprocess.run(cmd, capture_output=True, text=True)
         if not res.stdout.startswith('Debug mode enabled'):
-            error_out(1, f'debug mode not enabled in compiler binary {compiler_bin_path}')
+            try_remove(files)
+            error_out(1, f'Debug mode not enabled in compiler binary {compiler_bin_path}')
+        if self.comp_error and self.comp_error in res.stderr:
+            try_remove(files)
+            return 1
+        elif res.returncode != 0:
+            if self.comp_error:
+                tf_print(f'Did not get expected error {self.comp_error}')
+                return 1
+            else:
+                tf_print('Got unexpected error during compilation')
+                try_remove(files)
+                return 0
+
         llc = ['llc', '--filetype=obj', bc, '-o', obj]
         llc_res = subprocess.run(llc, capture_output=True, text=True)
+        if llc_res.stderr != "":
+            tf_print('Unexpected failure during call to llc')
+            try_remove(files)
+            return 0
 
         link = ['clang', obj, '-o', bn]
         link_res = subprocess.run(link, capture_output=True, text=True)
 
+        #quick and dirty check to see if program has a main function
+        if llc_res.stderr != "":
+            if 'let main: () -> i32' not in self.program:
+                return 1
+            tf_print('Unexpected failure while linking')
+            try_remove(files)
+            return 0
+        elif 'let main: () -> i32' not in self.program:
+            tf_print('Missing main function but linking didn\'t fail?')
+            try_remove(files)
+            return 0
+
         bn_res = subprocess.run(f'./{bn}', capture_output=True, text=True)
-        try_remove([tf.name, bc, obj, bn])
+        try_remove(files)
+        if self.ret != bn_res.returncode:
+            tf_print('Return codes did not match.')
+            return 0
         return 1
         
 
@@ -65,9 +101,9 @@ def test_from_testfile(open_file):
         splt = line.split()
         match splt[0]:
             case 'comp_err':
-                if len(splt) != 2:
-                    print(f'in testfile {f.name}: comp_error directive requires exactly one arg. Got {len(splt)-1}', file=sys.stderr)
-                err = splt[1]
+                if len(splt) < 2:
+                    print_error(f'in testfile {f.name}: comp_error directive requires at least one arg.')
+                err = ' '.join(splt[1:])
             case 'ret':
                 if len(splt) != 2:
                     print_error(f'in testfile {f.name}: ret directive requires exactly one arg. Got {len(splt)-1}')
@@ -78,20 +114,24 @@ def test_from_testfile(open_file):
             case '--TEXT--':
                 for remaining in open_file:
                     program += remaining
-                return Test(program, err, ret)
+                return Test(open_file.name, program, err, ret)
             case _:
                 print_error(f'in testfile {f.name}: bad directive "{splt[0]}" in test {f.name}')
     print_error(f'in tesfile {f.name}: missing text section')
 
 
+total = 0
+passed = 0
 for file in os.listdir(sys.argv[2]):
-    total = 0
-    passed = 0
     if not file.endswith('.test'):
         continue
+    total += 1
     with open(f'{sys.argv[2]}/{file}', 'r') as f:
         t = test_from_testfile(f)
         try:
-            t.run(sys.argv[1])
+            if t.run(sys.argv[1]):
+                passed += 1
         except PermissionError:
-            print('Couldn\'t create necessary tempfile in /tmp directory. Fix permissions')
+            print_error('Couldn\'t create necessary tempfile in /tmp directory. Fix permissions')
+
+print(f'{passed}/{total}')
