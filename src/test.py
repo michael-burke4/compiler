@@ -59,7 +59,9 @@ class Test:
                 tf_print(f'Did not get expected error {self.comp_error}')
                 return 1
             else:
-                tf_print('Got unexpected error during compilation')
+                tf_print('Got unexpected error during compilation:')
+                for line in res.stderr.split('\n'):
+                    tf_print(f'\t{line}')
                 try_remove(files)
                 return 0
 
