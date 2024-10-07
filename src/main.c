@@ -101,6 +101,9 @@ int main(int argc, char *argv[])
 	st_init();
 	typecheck_program(program);
 	if (had_error) {
+#ifdef DEBUG
+		eputs("typecheck error");
+#endif
 		goto error_typecheck;
 	}
 
