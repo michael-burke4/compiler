@@ -113,6 +113,9 @@ int main(int argc, char *argv[])
 
 	LLVMContextRef ctxt = LLVMContextCreate();
 	LLVMModuleRef mod = module_codegen(ctxt, program, modname);
+#ifdef DEBUG
+	LLVMDumpModule(mod);
+#endif
 	char *error = 0;
 	LLVMVerifyModule(mod, LLVMAbortProcessAction, &error);
 	LLVMDisposeMessage(error);
