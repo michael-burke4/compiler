@@ -56,14 +56,12 @@ class Test:
             return 1
         elif res.returncode != 0:
             if self.comp_error:
-                tf_print(f'Did not get expected error {self.comp_error}')
-                return 1
-            else:
-                tf_print('Got unexpected error during compilation:')
-                for line in res.stderr.split('\n'):
-                    tf_print(f'\t{line}')
-                try_remove(files)
-                return 0
+                tf_print(f'Did not get expected error "{self.comp_error}"')
+            tf_print('Got unexpected error during compilation:')
+            for line in res.stderr.split('\n'):
+                tf_print(f'\t{line}')
+            try_remove(files)
+            return 0
 
         llc = ['llc', '--filetype=obj', bc, '-o', obj]
         llc_res = subprocess.run(llc, capture_output=True, text=True)
