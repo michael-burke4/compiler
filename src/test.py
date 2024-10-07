@@ -92,6 +92,9 @@ class Test:
         if self.ret != bn_res.returncode:
             tf_print('Return codes did not match.')
             return 0
+        if self.comp_error:
+            tf_print(f'Encountered no errors despite expecting an error "{self.comp_error}"')
+            return 0
         return 1
         
 
