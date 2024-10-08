@@ -50,7 +50,7 @@ class Test:
         res = subprocess.run(cmd, capture_output=True, text=True)
         if not res.stdout.startswith('Debug mode enabled'):
             try_remove(files)
-            error_out(1, f'Debug mode not enabled in compiler binary {compiler_bin_path}')
+            error_out(1, f'{self.name} Debug mode not enabled in compiler binary {compiler_bin_path}')
         if self.comp_error and self.comp_error in res.stderr:
             try_remove(files)
             return 1
