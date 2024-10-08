@@ -126,7 +126,7 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, int
 	LLVMContextRef ctxt = CTXT(mod);
 	ast_stmt *cur;
 	char buffer[BUFFER_MAX_LEN];
-	int need_retvoid = 1;
+	int need_retvoid = scope_get_return_type()->kind == Y_VOID;
 
 	if (stmt == NULL)
 		return;
@@ -136,9 +136,9 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, int
 		scope_enter();
 		cur = stmt->body;
 		while (cur) {
-			if (in_fn == 0 || cur->kind == S_RETURN)
+			if (in_fn == 0 || cur->kind == S_RETURN || (cur->kind == S_IFELSE && cur->next == 0))
 				need_retvoid = 0;
-			stmt_codegen(mod, builder, cur, 0);
+			stmt_codegen(mod, builder, cur, in_fn);
 			cur = cur->next;
 		}
 		if (need_retvoid)
@@ -159,20 +159,35 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, int
 		v1 = expr_codegen(mod, builder, stmt->expr, 0);
 		b1 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "");
 		b2 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "");
-		b3 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "");
+		b3 = NULL;
 
-		LLVMBuildCondBr(builder, v1, b1, b2);
-
+		if (stmt->else_body == NULL) {
+			v1 = LLVMBuildCondBr(builder, v1, b1, b2);
+			LLVMPositionBuilderAtEnd(builder, b1);
+			stmt_codegen(mod, builder, stmt->body, in_fn);
+			v1 = LLVMGetLastInstruction(b1);
+			if (!LLVMIsATerminatorInst(v1))
+				LLVMBuildBr(builder, b2);
+			LLVMPositionBuilderAtEnd(builder, b2);
+			return;
+		}
+		v1 = LLVMBuildCondBr(builder, v1, b1, b2);
 		LLVMPositionBuilderAtEnd(builder, b1);
-		stmt_codegen(mod, builder, stmt->body, 0);
+		stmt_codegen(mod, builder, stmt->body, in_fn);
 		v1 = LLVMGetLastInstruction(b1);
-		if (!LLVMIsATerminatorInst(v1))
+		if (!LLVMIsATerminatorInst(v1)) {
+			b3 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "");
 			LLVMBuildBr(builder, b3);
+		}
 
 		LLVMPositionBuilderAtEnd(builder, b2);
-		stmt_codegen(mod, builder, stmt->else_body, 0);
-		LLVMBuildBr(builder, b3);
-
+		stmt_codegen(mod, builder, stmt->else_body, in_fn);
+		v1 = LLVMGetLastInstruction(b2);
+		if (!LLVMIsATerminatorInst(v1)) {
+			if (b3 == NULL)
+				b3 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "");
+			LLVMBuildBr(builder, b3);
+		}
 		LLVMPositionBuilderAtEnd(builder, b3);
 		break;
 	case S_DECL:
@@ -195,7 +210,7 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, int
 		LLVMBuildCondBr(builder, v1, b1, b2);
 
 		LLVMPositionBuilderAtEnd(builder, b1);
-		stmt_codegen(mod, builder, stmt->body, 0);
+		stmt_codegen(mod, builder, stmt->body, in_fn);
 		v1 = LLVMGetLastInstruction(b1);
 		if (!LLVMIsATerminatorInst(v1)) {
 			v1 = expr_codegen(mod, builder, stmt->expr, 0);
@@ -525,6 +540,7 @@ void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 		return;
 	if (decl->typesym->type->kind == Y_FUNCTION) {
 		scope_enter();
+		scope_bind_return_type(decl->typesym->type->subtype);
 		char buf[BUFFER_MAX_LEN];
 		vect *v = vect_init(4);
 		LLVMTypeRef *param_types = build_param_types(*mod, decl);

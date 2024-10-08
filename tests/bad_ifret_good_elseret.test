@@ -1,0 +1,14 @@
+comp_err typecheck
+--TEXT--
+let f: (a: i32) -> bool = {
+	return a > 10;
+};
+
+let main: () -> i32 = {
+	if (f(5)) {
+		let x: i32 = 4 + 5;
+	}
+	else {
+		return 4;
+	}
+};

@@ -1,0 +1,15 @@
+ret 13
+--TEXT--
+let f: (a: i32*) -> i32 = {
+	if (*a < 10) {
+		*a = 3;
+	} else {
+		*a = 13;
+	}
+	return *a;
+};
+
+let main: () -> i32 = {
+	let x: i32 = 10;
+	return f(&x);
+};

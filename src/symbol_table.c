@@ -29,6 +29,8 @@ void st_init(void)
 void scope_enter(void)
 {
 	scope *new_s = scope_init(8);
+	new_s->return_type = scope_get_return_type();
+
 	stack_push(sym_tab, (void *)new_s);
 }
 

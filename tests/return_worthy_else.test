@@ -1,0 +1,13 @@
+ret 2
+--TEXT--
+let f: (a: i32) -> bool = {
+	return a > 10;
+};
+
+let main: () -> i32 = {
+	if (f(5)) {
+		return 4;
+	} else {
+		return 2;
+	}
+};

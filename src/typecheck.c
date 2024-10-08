@@ -7,6 +7,8 @@
 
 #include <stdio.h>
 
+// TODO: at least line numbers in error messages.
+
 extern int had_error;
 
 void typecheck_program(ast_decl *program)
@@ -485,17 +487,110 @@ ast_type *derive_expr_type(ast_expr *expr)
 	}
 }
 
+static void typecheck_return(ast_stmt *stmt) {
+	ast_type *typ;
+	if (stmt->next != NULL) {
+		had_error = 1;
+		eputs("Return statements must be at the end of statement blocks.");
+	}
+	// typ does not 'own' this - don't free this value.
+	typ = scope_get_return_type();
+	if (typ == NULL) {
+		had_error = 1;
+		eputs("Cannot use a return statement outside of a function");
+	} else if (stmt->expr == NULL) {
+		if (typ->kind != Y_VOID) {
+			had_error = 1;
+			eputs("Non-void function has empty return statement.");
+		}
+	} else {
+		// Dangerous reuse of typ: now 'owns' what is points to. Must free.
+		typ = derive_expr_type(stmt->expr);
+		if (!type_equals(typ, scope_get_return_type())) {
+			had_error = 1;
+			eputs("Return value does not match function signature");
+		}
+		type_destroy(typ);
+	}
+}
+
+static ast_stmt *last(ast_stmt *block) {
+	if (block == NULL)
+		return NULL;
+	for (; block->next != NULL ; block = block->next) {}
+	return block;
+}
+
+// if `if` and `else` branch of a S_IFELSE end with ret and the S_IFELSE has
+// no stmt->next
+// This does have to be done recursively. For example:
+// let fn: () -> i32 = {
+//	if (condition) {
+//		// arbitrary amount
+//		// of code
+//		if (other_condition) {
+//			// more code ...
+//			return 0;
+//		}
+//		else {
+//			// more code ...
+//			return 1;
+//		}
+//	} else {
+//		// more code ...
+//		if (other_condition) {
+//			// more code ...
+//			return 2;
+//		}
+//		else {
+//			// more code ...
+//			return 3;
+//		}
+//	}
+// }
+// PRECONDITIONS:
+// 	stmt must be non-null.
+// 	stmt->next must be null.
+static int is_return_worthy(ast_stmt *stmt) {
+	if (stmt->kind == S_RETURN) {
+		typecheck_return(stmt);
+		// typecheck_return can still set had_error and print an error message:
+		// what matters to is_return_worthy is that this statement is return-worthy!
+		return 1;
+	}
+	if (stmt->kind == S_IFELSE) {
+		if (stmt->else_body == NULL) {
+			return 0;
+		}
+		return is_return_worthy(last(stmt->body->body)) && is_return_worthy(last(stmt->else_body->body));
+	}
+	return 0;
+}
+
 void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 {
 	ast_type *typ;
-	if (stmt == NULL && at_fn_top_level && 
-			scope_get_return_type()->kind != Y_VOID) {
-		had_error = 1;
-		eputs("Non-void functions must end in valid return statements");
+	if (stmt == NULL) {
+		if (at_fn_top_level) {
+			if(scope_get_return_type()->kind == Y_VOID) {
+				return;
+			}
+			had_error = 1;
+			eputs("Non-void functions must end in valid return statements");
+			return;
+		}
 		return;
 	}
-	if (stmt == NULL)
+	if (is_return_worthy(stmt)) {
+		if (stmt->next != NULL) {
+			had_error = 1;
+			eputs("Return-worthy statements must appear at the end of fn blocks."); // TODO: this is a bad error messsage
+			return;
+		}
+		typecheck_stmt(stmt->body, 0);
+		typecheck_stmt(stmt->else_body, 0);
 		return;
+	}
 	switch (stmt->kind) {
 	case S_ERROR:
 		had_error = 1;
@@ -541,10 +636,8 @@ void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 	case S_BLOCK:
 		// DO NOT DESTROY TYP HERE!
 		// YOU DO NOT OWN TYP!!
-		typ = scope_get_return_type();
 		scope_enter();
-		scope_bind_return_type(typ);
-		typecheck_stmt(stmt->next, 0);
+		typecheck_stmt(stmt->body, 0);
 		scope_exit();
 		break;
 	case S_DECL:
@@ -556,29 +649,10 @@ void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 		typecheck_stmt(stmt->next, at_fn_top_level);
 		break;
 	case S_RETURN:
-		// See above warning about typ ownership
-		if (stmt->next != NULL) {
-			had_error = 1;
-			eputs("Return statements must be at the end of statement blocks.");
-		}
-		typ = scope_get_return_type();
-		if (typ == NULL) {
-			had_error = 1;
-			eputs("Cannot use a return statement outside of a function");
-		} else if (stmt->expr == NULL) {
-			if (typ->kind != Y_VOID) {
-				had_error = 1;
-				eputs("Non-void function has empty return statement.");
-			}
-		} else {
-			// Dangerous reuse of typ: now 'owns' what is points to.
-			typ = derive_expr_type(stmt->expr);
-			if (!type_equals(typ, scope_get_return_type())) {
-				had_error = 1;
-				eputs("Return value does not match function signature");
-			}
-			type_destroy(typ);
-		}
+		// If we get here, it means that we are at a return statement and stmt->next is not null.
+		// That is not allowed!
+		had_error = 1;
+		eputs("Return statements must be at the end of statement blocks.");
 		break;
 	}
 }

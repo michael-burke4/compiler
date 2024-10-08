@@ -1,0 +1,23 @@
+ret 1
+--TEXT--
+let f: (a: i32*) -> void = {
+	*a = 0;
+	if (*a < 10) {
+		*a += 1;
+		if (*a < 10) {
+			*a = 1;
+		}
+		else {
+			*a = 2;
+		}
+	}
+	else {
+		*a = 3;
+	}
+};
+
+let main: () -> i32 = {
+	let a: i32 = 10;
+	f(&a);
+	return a;
+};
