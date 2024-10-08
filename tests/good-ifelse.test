@@ -1,0 +1,12 @@
+ret 11
+--TEXT--
+let main: () -> i32 = {
+	let x: i32 = 10;
+	if (x < 11) {
+		x += 1;
+	}
+	else {
+		x += 2;
+	}
+	return x;
+};

@@ -1,0 +1,15 @@
+comp_err typecheck
+--TEXT--
+let f: (a: i32) -> bool = {
+	a <= 10;
+};
+
+let main: () -> i32 = {
+	let x: i32 = 10;
+	if (f(x)) {
+		return false;
+	}
+	else {
+		return true;
+	}
+};

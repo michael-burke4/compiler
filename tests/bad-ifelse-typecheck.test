@@ -1,0 +1,13 @@
+comp_err typecheck
+--TEXT--
+let main: () -> i32 = {
+	let x: i32 = 11;
+	if (x < 11) {
+		x += false;
+		x += 1;
+	}
+	else {
+		x += 2;
+	}
+	return x;
+};
