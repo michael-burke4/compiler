@@ -115,7 +115,10 @@ void typecheck_decl(ast_decl *decl)
 		had_error = 1;
 		return;
 	}
-	if (decl->typesym->type->kind == Y_FUNCTION) {
+	if (decl->typesym->type->kind == Y_VOID) {
+		had_error = 1;
+		eputs("Can't declare variable with type void");
+	} else if (decl->typesym->type->kind == Y_FUNCTION) {
 		scope_bind_ts(decl->typesym);
 		typecheck_fnbody(decl);
 		//typ = scope_get_return_type();

@@ -1,0 +1,6 @@
+comp_err typecheck
+--TEXT--
+let main: () -> i32 = {
+	let a: void;
+	return 10;
+};
