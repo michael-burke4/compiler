@@ -75,7 +75,7 @@ static LLVMTypeRef to_llvm_type(LLVMModuleRef mod, ast_type *tp)
 	}
 }
 
-// If LLVMBuildRef2 is so good, why is there no LLVMBuildRef3??
+// If LLVMBuildLoad2 is so good, why is there no LLVMBuildLoad3??
 static LLVMValueRef LLVMBuildLoad3(LLVMBuilderRef b, LLVMValueRef pointer_val, const char *name) {
 	return LLVMBuildLoad2(b, LLVMGetElementType(LLVMTypeOf(pointer_val)), pointer_val, name);
 }
