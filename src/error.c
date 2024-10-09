@@ -28,5 +28,6 @@ void report_error(size_t line, size_t col, const char *fmt, ...)
 
 void eputs(const char *s)
 {
-        fputs(s, stderr);
+	fputs(s, stderr);
+	fputs("\n", stderr);
 }
