@@ -464,6 +464,13 @@ ast_type *derive_expr_type(ast_expr *expr)
 		return typecheck_syscall(expr);
 	case E_IDENTIFIER:
 		ts = scope_lookup(expr->name);
+		if (ts == NULL) {
+			fprintf(stderr, "Use of undeclared identifier \"");
+			fstrvec_print(stderr, expr->name);
+			eputs("\"");
+			had_error = 1;
+			return NULL;
+		}
 		if (ts->type->kind == Y_STRUCT && strvec_equals(ts->type->name, expr->name)) {
 			fprintf(stderr, "Can't use struct type \"");
 			fstrvec_print(stderr, ts->symbol);
