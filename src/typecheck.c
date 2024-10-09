@@ -439,7 +439,7 @@ ast_type *derive_expr_type(ast_expr *expr)
 		left = derive_expr_type(expr->left);
 		right = derive_expr_type(expr->right);
 		cast_up_if_necessary(expr, &left, &right);
-		if (type_equals(left, right) && is_int_type(left)) {
+		if (type_equals(left, right) && (is_int_type(left) || left->kind == Y_CHAR)) {
 			type_destroy(left);
 			type_destroy(right);
 			return type_init(Y_BOOL, NULL);

@@ -1,0 +1,9 @@
+comp_err typecheck
+--TEXT--
+let main: () -> i32 = {
+	const b: char = 'b';
+	if (b < 10) {
+		return 2;
+	}
+	return 1;
+};

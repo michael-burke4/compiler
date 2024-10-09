@@ -1,0 +1,19 @@
+ret 3
+--TEXT--
+let main: () -> i32 = {
+	const b: char = 'b';
+	let c: char = 'c';
+	if (b < c) {
+		c = 'a';
+		if (b < c) {
+			return 2;
+		}
+		if (b == 'b') {
+			return 3;
+		} else {
+			return 4;
+		}
+	} else {
+		return 1;
+	}
+};
