@@ -297,6 +297,8 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		}
 		ungetc(c, f);
 		return tok_init_nl(T_BW_OR, *line, (*col)++, NULL);
+	case '@':
+		return tok_init_nl(T_AT, *line, (*col)++, NULL);
 	case '.': // TODO: support floating pt literals like .5
 		return tok_init_nl(T_PERIOD, *line, (*col)++, NULL);
 	case '~':

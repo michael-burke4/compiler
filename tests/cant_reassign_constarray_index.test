@@ -1,0 +1,9 @@
+comp_err typecheck
+--TEXT--
+let main: () -> i32 = {
+	const i: i32 = 3;
+	const x: i32 = 5;
+	let p: i32@@ = [&i, &i];
+	p[1] = &x;
+	return *(p[1]);
+};

@@ -135,6 +135,9 @@ void fprint_tok_t(FILE *f, token_t t)
 	case T_PERCENT:
 		fprintf(f, "%%");
 		break;
+	case T_AT:
+		fprintf(f, "@");
+		break;
 	case T_LT:
 		fprintf(f, "<");
 		break;

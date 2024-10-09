@@ -1,5 +1,5 @@
 comp_err scan error
 --TEXT--
-let main: () -> @ i32 = {
+let main: () -> # i32 = {
 	return 5;
 };

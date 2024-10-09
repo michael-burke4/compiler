@@ -1,0 +1,6 @@
+comp_err typecheck
+--TEXT--
+let main: () -> i32 = {
+	const x: i32 = 5;
+	return *x;
+};

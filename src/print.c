@@ -179,6 +179,10 @@ void ftype_print(FILE *f, ast_type *type)
 		ftype_print(f, type->subtype);
 		fprintf(f, "*");
 		break;
+	case Y_CONSTPTR:
+		ftype_print(f, type->subtype);
+		fprintf(f, "@");
+		break;
 	case Y_STRUCT:
 		fprintf(f, "struct");
 		if (type->name != NULL) {
@@ -207,7 +211,10 @@ void fdecl_print(FILE *f, ast_decl *decl)
 		fputs("};", f);
 		return;
 	}
-	fprintf(f, "let ");
+	if (decl->typesym->type->isconst)
+		fprintf(f, "const ");
+	else
+		fprintf(f, "let ");
 	ftyped_sym_print(f, decl->typesym);
 	if (decl->expr != NULL) {
 		fprintf(f, " = ");

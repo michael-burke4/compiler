@@ -56,8 +56,8 @@ static void typecheck_array_initializer(ast_decl *decl)
 	ast_type *t;
 	if (decl->initializer == NULL)
 		return;
-	if (decl->typesym->type->kind != Y_POINTER) {
-		eputs("Can only use initializers with pointers and structs.");
+	if (decl->typesym->type->kind != Y_POINTER && decl->typesym->type->kind != Y_CONSTPTR) {
+		eputs("Can only use initializers with pointers.");
 		had_error = 1;
 		return;
 	}
@@ -133,12 +133,16 @@ void typecheck_decl(ast_decl *decl)
 			decl->expr = build_cast(decl->expr, decl->typesym->type->kind);
 		} else if (!(type_equals(decl->typesym->type, typ))) {
 			had_error = 1;
-			eputs("Failed typecheck TODO: good error messages.");
+			fprintf(stderr, "Cannot assign type ");
+			ftype_print(stderr, typ);
+			fprintf(stderr, " to type ");
+			ftype_print(stderr, decl->typesym->type);
+			eputs("");
 		}
 		type_destroy(typ);
 		scope_bind_ts(decl->typesym);
 	} else if (decl->initializer) {
-		if (decl->typesym->type->kind != Y_POINTER) {
+		if (decl->typesym->type->kind != Y_POINTER && decl->typesym->type->kind != Y_CONSTPTR) {
 			had_error = 1;
 			eputs("Only pointers can use array initializers");
 			return;
@@ -250,6 +254,11 @@ static ast_type *derive_assign(ast_expr *expr) {
 		left = derive_expr_type(expr->left);
 		derived = 1;
 	}
+	if (left->isconst) {
+		eputs("Cannot assign to const expression");
+		had_error = 1;
+		return NULL;
+	}
 	right = derive_expr_type(expr->right);
 	if (type_equals(left, right)) {
 		if (derived)
@@ -282,6 +291,7 @@ static ast_type *derive_pre_unary(ast_expr *expr)
 {
 	ast_type *left;
 	ast_type *right;
+	int isconst;
 	switch (expr->op) {
 	case T_AMPERSAND:
 		left = derive_expr_type(expr->left);
@@ -290,12 +300,13 @@ static ast_type *derive_pre_unary(ast_expr *expr)
 			type_destroy(left);
 			return NULL;
 		}
-		right = type_init(Y_POINTER, NULL);
+		isconst = left->isconst;
+		right = type_init(isconst ? Y_CONSTPTR : Y_POINTER, NULL);
 		right->subtype = left;
 		return right;
 	case T_STAR:
 		left = derive_expr_type(expr->left);
-		if (left == NULL || left->kind != Y_POINTER) {
+		if (left == NULL || (left->kind != Y_POINTER && left->kind != Y_CONSTPTR)) {
 			eputs("Cannot dereference non-pointer expression");
 			type_destroy(left);
 			return NULL;
@@ -329,7 +340,7 @@ static ast_type *derive_post_unary(ast_expr *expr)
 	switch (expr->op) {
 	case T_LBRACKET:
 		left = derive_expr_type(expr->left);
-		if (left == NULL || left->kind != Y_POINTER) {
+		if (left == NULL || (left->kind != Y_POINTER && left->kind != Y_CONSTPTR)) {
 			eputs("can only use index operator on pointers");
 			type_destroy(left);
 			had_error = 1;

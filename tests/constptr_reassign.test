@@ -1,0 +1,9 @@
+ret 5
+--TEXT--
+let main: () -> i32 = {
+	const i: i32 = 2;
+	const x: i32 = 5;
+	let p: i32@ = &i;
+	p = &x;
+	return *p;
+};

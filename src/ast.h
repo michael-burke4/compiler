@@ -23,6 +23,7 @@ typedef enum {
 	Y_BOOL,
 	Y_VOID,
 	Y_POINTER,
+	Y_CONSTPTR, // the values at the memory address being pointed to cannot be changed using this ptr
 	Y_FUNCTION,
 	Y_STRUCT,
 } type_t;
@@ -32,6 +33,7 @@ typedef struct ast_type {
 	vect *arglist;
 	type_t kind;
 	strvec *name;
+	int isconst;
 } ast_type;
 
 typedef struct ast_typed_symbol {

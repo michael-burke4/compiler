@@ -38,6 +38,7 @@ typedef enum {
 	T_MINUS,
 	T_STAR,
 	T_FSLASH,
+	T_AT,
 	T_PERCENT,
 
 	T_LT,

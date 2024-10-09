@@ -249,8 +249,8 @@ ast_decl *parse_decl(void)
 		typed_symbol->type->arglist = initializer;
 		ret = decl_init(typed_symbol, NULL, NULL, NULL);
 		return ret;
-	} else if (!expect(T_LET)) {
-		report_error_cur_tok("Missing 'let' keyword in declaration.");
+	} else if (!expect(T_LET) && !expect(T_CONST)) {
+		report_error_cur_tok("Missing 'let'/'const' keyword in declaration.");
 		sync_to(T_EOF, 1); // maybe this should be in the goto
 		goto decl_parse_err;
 	}
@@ -330,6 +330,12 @@ ast_stmt *parse_stmt(void)
 	case T_LET:
 		kind = S_DECL;
 		decl = parse_decl();
+		break;
+	case T_CONST:
+		kind = S_DECL;
+		decl = parse_decl();
+		if (decl->typesym != NULL)
+			decl->typesym->type->isconst = 1;
 		break;
 	case T_IF:
 		kind = S_IFELSE;
@@ -487,10 +493,12 @@ ast_type *parse_type(void)
 		fprint_tok(stderr, cur_token);
 		sync_to(T_EOF, 1);
 	}
-	while (cur_tok_type() == T_STAR) {
+	while (cur_tok_type() == T_STAR || cur_tok_type() == T_AT) {
+		int isconst = cur_tok_type() == T_AT;
 		subtype = ret;
-		ret = type_init(Y_POINTER, NULL);
+		ret = type_init(isconst ? Y_CONSTPTR : Y_POINTER, NULL);
 		ret->subtype = subtype;
+		ret->subtype->isconst = isconst;
 		next();
 	}
 	return ret;
