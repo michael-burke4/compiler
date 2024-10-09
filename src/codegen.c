@@ -286,7 +286,7 @@ static LLVMValueRef assign_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, as
 
 // this function is courtesy of
 // https://stackoverflow.com/questions/65042902/create-and-reference-a-string-literal-via-llvm-c-interface
-LLVMValueRef define_string_literal(LLVMModuleRef mod, LLVMBuilderRef builder, const char *source_string, size_t size) {
+LLVMValueRef define_const_string_literal(LLVMModuleRef mod, LLVMBuilderRef builder, const char *source_string, size_t size) {
 	LLVMTypeRef str_type = LLVMArrayType(LLVMInt8TypeInContext(CTXT(mod)), size);
 	LLVMValueRef str = LLVMAddGlobal(mod, str_type, "");
 	LLVMSetInitializer(str, LLVMConstStringInContext(CTXT(mod), source_string, size, 1));
@@ -397,7 +397,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	case E_TRUE_LIT:
 		return LLVMConstInt(LLVMInt1TypeInContext(CTXT(mod)), 1, 0);
 	case E_STR_LIT:
-		return define_string_literal(mod, builder, expr->string_literal->text, expr->string_literal->size);
+		return define_const_string_literal(mod, builder, expr->string_literal->text, expr->string_literal->size);
 	case E_CHAR_LIT:
 		return LLVMConstInt(LLVMInt8TypeInContext(CTXT(mod)), (int)expr->string_literal->text[0], 0);
 	case E_INEQUALITY:

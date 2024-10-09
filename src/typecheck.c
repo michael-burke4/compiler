@@ -462,6 +462,10 @@ ast_type *derive_expr_type(ast_expr *expr)
 		return type_init(Y_BOOL, NULL);
 	case E_INT_LIT:
 		return type_init(expr->int_size, NULL);
+	case E_STR_LIT:
+		left = type_init(Y_CONSTPTR, NULL);
+		left->subtype = type_init(Y_CHAR, NULL);
+		return left;
 	case E_FNCALL:
 		return typecheck_fncall(expr);
 	case E_SYSCALL:
