@@ -7,10 +7,11 @@ TGTDIR=target
 DBGDIR=dbg
 
 CC=clang
-CFLAGS=-std=c99 -Wall -Wextra -Wpedantic -Werror -O2 `llvm-config --cflags` -Wno-deprecated
+CFLAGS=-std=c99 -Wall -Wextra -Wpedantic -Werror `llvm-config --cflags` -Wno-deprecated
 LD=clang
 LDFLAGS=`llvm-config --cxxflags --ldflags --libs core executionengine mcjit interpreter analysis native bitwriter --system-libs` -std=c99
-DBGFLAGS=-DDEBUG -g
+MAINFLAGS=-O2
+DBGFLAGS=-DDEBUG -Og
 
 CSRC=$(wildcard $(SRCDIR)/*.c)
 DEPS=$(wildcard $(SRCDIR)/*.h)
@@ -24,6 +25,7 @@ ifdef SRC
 SRC_BASE=$(basename $(notdir $(SRC)))
 endif
 
+main: CFLAGS+=$(MAINFLAGS)
 main: $(OBJDIR) $(BINDIR) $(BINDIR)/main
 
 $(BINDIR)/main: $(OBJ)
