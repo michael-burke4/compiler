@@ -159,9 +159,6 @@ void ftype_print(FILE *f, ast_type *type)
 	case Y_BOOL:
 		fprintf(f, "bool");
 		break;
-	case Y_STRING:
-		fprintf(f, "string");
-		break;
 	case Y_CHAR:
 		fprintf(f, "char");
 		break;

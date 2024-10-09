@@ -75,9 +75,6 @@ void fprint_tok_t(FILE *f, token_t t)
 	case T_U64:
 		fprintf(f, "u64");
 		break;
-	case T_STRING:
-		fprintf(f, "string");
-		break;
 	case T_CONST:
 		fprintf(f, "const");
 		break;

@@ -24,8 +24,6 @@ static token_s *check_if_keyword(strvec *word, size_t line, size_t col)
 		ret = tok_init_nl(T_U32, line, col, NULL);
 	else if (strvec_equals_str(word, "u64"))
 		ret = tok_init_nl(T_U64, line, col, NULL);
-	else if (strvec_equals_str(word, "string"))
-		ret = tok_init_nl(T_STRING, line, col, NULL);
 	else if (strvec_equals_str(word, "const"))
 		ret = tok_init_nl(T_CONST, line, col, NULL);
 	else if (strvec_equals_str(word, "break"))

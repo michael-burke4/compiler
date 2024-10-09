@@ -434,10 +434,6 @@ ast_type *parse_type(void)
 		ret = type_init(Y_U32, NULL);
 		next();
 		break;
-	case T_STRING:
-		ret = type_init(Y_STRING, NULL);
-		next();
-		break;
 	case T_CHAR:
 		ret = type_init(Y_CHAR, NULL);
 		next();

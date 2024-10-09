@@ -20,7 +20,6 @@ typedef enum {
 	Y_I32 = 0x18,
 	Y_I64 = 0x19,
 	Y_CHAR,
-	Y_STRING,
 	Y_BOOL,
 	Y_VOID,
 	Y_POINTER,

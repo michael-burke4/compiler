@@ -16,7 +16,6 @@ typedef enum {
 	T_I64,
 	T_U32,
 	T_U64,
-	T_STRING,
 	T_CONST,
 	T_BREAK,
 	T_CONTINUE,

@@ -221,11 +221,6 @@ static ast_type *typecheck_syscall(ast_expr *expr)
 	}
 	for (size_t i = 0 ; i < expr_arglist->size ; ++i) {
 		derived = derive_expr_type(expr_arglist->elements[i]);
-		if (derived->kind != Y_I32 && derived->kind != Y_STRING) {
-			eputs("syscall args can only be i32s and strings right now!");
-			type_destroy(derived);
-			return NULL;
-		}
 		type_destroy(derived);
 	}
 	return type_init(Y_VOID, NULL);
@@ -449,8 +444,6 @@ ast_type *derive_expr_type(ast_expr *expr)
 		return derive_assign(expr);
 	case E_PAREN:
 		return derive_expr_type(expr->left);
-	case E_STR_LIT:
-		return type_init(Y_STRING, NULL);
 	case E_CHAR_LIT:
 		return type_init(Y_CHAR, NULL);
 	case E_TRUE_LIT:

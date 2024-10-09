@@ -54,8 +54,6 @@ static LLVMTypeRef to_llvm_type(LLVMModuleRef mod, ast_type *tp)
 		return LLVMInt64TypeInContext(ctxt);
 	case Y_BOOL:
 		return LLVMInt1TypeInContext(ctxt);
-	case Y_STRING:
-		return LLVMPointerType(LLVMInt8TypeInContext(ctxt), 0);
 	case Y_VOID:
 		return LLVMVoidTypeInContext(ctxt);
 	case Y_POINTER:
