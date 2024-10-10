@@ -120,12 +120,50 @@ static void initializer_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_s
 	scope_bind(alloca2, stmt->decl->typesym->symbol);
 }
 
+static void ifelse_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, int in_fn) {
+	LLVMValueRef cur_function;
+	LLVMContextRef ctxt = CTXT(mod);
+	cur_function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
+
+	LLVMValueRef v1 = expr_codegen(mod, builder, stmt->expr, 0);
+	LLVMBasicBlockRef b1 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "");
+	LLVMBasicBlockRef b2 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "");
+	LLVMBasicBlockRef b3 = NULL;
+
+	if (stmt->else_body == NULL) {
+		v1 = LLVMBuildCondBr(builder, v1, b1, b2);
+		LLVMPositionBuilderAtEnd(builder, b1);
+		stmt_codegen(mod, builder, stmt->body, in_fn);
+		v1 = LLVMGetLastInstruction(b1);
+		if (!LLVMIsATerminatorInst(v1))
+			LLVMBuildBr(builder, b2);
+		LLVMPositionBuilderAtEnd(builder, b2);
+		return;
+	}
+	v1 = LLVMBuildCondBr(builder, v1, b1, b2);
+	LLVMPositionBuilderAtEnd(builder, b1);
+	stmt_codegen(mod, builder, stmt->body, in_fn);
+	v1 = LLVMGetLastInstruction(b1);
+	if (!LLVMIsATerminatorInst(v1)) {
+		b3 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "");
+		LLVMBuildBr(builder, b3);
+	}
+
+	LLVMPositionBuilderAtEnd(builder, b2);
+	stmt_codegen(mod, builder, stmt->else_body, in_fn);
+	v1 = LLVMGetLastInstruction(b2);
+	if (!LLVMIsATerminatorInst(v1)) {
+		if (b3 == NULL)
+			b3 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "");
+		LLVMBuildBr(builder, b3);
+	}
+	LLVMPositionBuilderAtEnd(builder, b3);
+}
 void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, int in_fn)
 {
 	LLVMValueRef v1;
 	LLVMBasicBlockRef b1;
 	LLVMBasicBlockRef b2;
-	LLVMBasicBlockRef b3;
 	LLVMValueRef cur_function;
 	LLVMContextRef ctxt = CTXT(mod);
 	ast_stmt *cur;
@@ -159,40 +197,7 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, int
 			LLVMBuildRet(builder, expr_codegen(mod, builder, stmt->expr, 0));
 		break;
 	case S_IFELSE:
-		cur_function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
-		v1 = expr_codegen(mod, builder, stmt->expr, 0);
-		b1 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "");
-		b2 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "");
-		b3 = NULL;
-
-		if (stmt->else_body == NULL) {
-			v1 = LLVMBuildCondBr(builder, v1, b1, b2);
-			LLVMPositionBuilderAtEnd(builder, b1);
-			stmt_codegen(mod, builder, stmt->body, in_fn);
-			v1 = LLVMGetLastInstruction(b1);
-			if (!LLVMIsATerminatorInst(v1))
-				LLVMBuildBr(builder, b2);
-			LLVMPositionBuilderAtEnd(builder, b2);
-			return;
-		}
-		v1 = LLVMBuildCondBr(builder, v1, b1, b2);
-		LLVMPositionBuilderAtEnd(builder, b1);
-		stmt_codegen(mod, builder, stmt->body, in_fn);
-		v1 = LLVMGetLastInstruction(b1);
-		if (!LLVMIsATerminatorInst(v1)) {
-			b3 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "");
-			LLVMBuildBr(builder, b3);
-		}
-
-		LLVMPositionBuilderAtEnd(builder, b2);
-		stmt_codegen(mod, builder, stmt->else_body, in_fn);
-		v1 = LLVMGetLastInstruction(b2);
-		if (!LLVMIsATerminatorInst(v1)) {
-			if (b3 == NULL)
-				b3 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "");
-			LLVMBuildBr(builder, b3);
-		}
-		LLVMPositionBuilderAtEnd(builder, b3);
+		ifelse_codegen(mod, builder, stmt, in_fn);
 		break;
 	case S_DECL:
 		if (stmt->decl->initializer != NULL) {
