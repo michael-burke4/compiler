@@ -1,0 +1,10 @@
+ret 2
+--TEXT--
+let main: () -> i32 = {
+	let s: char* = "hi";
+	let s2: char* = ['h', 'i'];
+	if (s[0] == s2[0]) {
+		return 2;
+	}
+	return 5;
+};

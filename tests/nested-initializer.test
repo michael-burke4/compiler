@@ -1,0 +1,9 @@
+comp_err parse
+--TEXT--
+let main: () -> i32 = {
+	let s2: char** = [["hello", "world"], ["goodbye", "world"]];
+	if (s[0] == s2[0]) {
+		return 2;
+	}
+	return 5;
+};

@@ -1,0 +1,14 @@
+ret 2
+--TEXT--
+let main: () -> i32 = {
+	let arr: char@* = ["HI", "BYE"];
+	if (arr[1][1] == 'Y') {
+		if ("test"[2] == 's') {
+			return 2;
+		}
+		else {
+			return 8;
+		}
+	}
+	return 5;
+};

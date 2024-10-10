@@ -1,0 +1,9 @@
+ret 4
+--TEXT--
+let main: () -> i32 = {
+	let s: char* = &("test"[0]);
+	if (*s == 't') {
+		return 4;
+	}
+	return 1;
+};

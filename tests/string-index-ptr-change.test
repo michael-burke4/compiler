@@ -1,0 +1,16 @@
+ret 5
+--TEXT--
+let main: () -> i32 = {
+	let t: char* = "test";
+	let s: char* = &(t[0]);
+	*s = 'b';
+	if (*s == 't') {
+		return 2;
+	}
+	if (*s == 'b') {
+		if (*s == t[0]) {
+			return 5;
+		}
+	}
+	return 1;
+};

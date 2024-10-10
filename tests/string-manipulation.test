@@ -1,0 +1,14 @@
+ret 10
+--TEXT--
+let main: () -> i32 = {
+	let s: char* = "test";
+	if (s[0] == 'b') {
+		return 3;
+	}
+	s[0] = 'b';
+	if (s[0] == 'b') {
+		return 10;
+	} else {
+		return 2;
+	}
+};

@@ -128,6 +128,17 @@ void typecheck_decl(ast_decl *decl)
 	} else if (decl->typesym->type->kind == Y_STRUCT && decl->typesym->type->name == NULL) {
 		scope_bind_ts(decl->typesym);
 	} else if (decl->expr) {
+		if (decl->typesym->type->kind == Y_POINTER && decl->typesym->type->subtype->kind == Y_CHAR
+				&& decl->expr->kind == E_STR_LIT) {
+			ast_expr *e;
+			decl->initializer = vect_init(decl->expr->string_literal->size);
+			for (size_t i = 0 ; i < decl->initializer->capacity ; ++i) {
+				e = expr_init(E_CHAR_LIT, 0, 0, 0, 0, 0, strvec_copy(decl->expr->string_literal));
+				vect_append(decl->initializer, e);
+			}
+			scope_bind_ts(decl->typesym);
+			return;
+		}
 		typ = derive_expr_type(decl->expr);
 		if (assignment_rhs_promotable(decl->typesym->type, typ)) {
 			decl->expr = build_cast(decl->expr, decl->typesym->type->kind);

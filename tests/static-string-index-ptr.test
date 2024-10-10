@@ -1,0 +1,10 @@
+ret 2
+--TEXT--
+let main: () -> i32 = {
+	let t: char@ = "test";
+	let s: char@ = &(t[0]);
+	if (*s == 't') {
+		return 2;
+	}
+	return 1;
+};

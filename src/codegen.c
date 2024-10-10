@@ -461,7 +461,9 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 			v = expr_codegen(mod, builder, expr->left, 0);
 			return LLVMBuildLoad3(builder, v, "");
 		} else if (expr->op == T_AMPERSAND) {
-			return scope_lookup(expr->left->name);
+			if (expr->left->name != NULL)
+				return scope_lookup(expr->left->name);
+			return expr_codegen(mod, builder, expr->left, 1);
 		}
 		//fallthrough
 	default:
