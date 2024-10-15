@@ -168,7 +168,6 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, int
 	LLVMContextRef ctxt = CTXT(mod);
 	ast_stmt *cur;
 	char buffer[BUFFER_MAX_LEN];
-	int need_retvoid = scope_get_return_type()->kind == Y_VOID;
 
 	if (stmt == NULL)
 		return;
@@ -178,13 +177,9 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, int
 		scope_enter();
 		cur = stmt->body;
 		while (cur) {
-			if (in_fn == 0 || cur->kind == S_RETURN || (cur->kind == S_IFELSE && cur->next == 0))
-				need_retvoid = 0;
 			stmt_codegen(mod, builder, cur, in_fn);
 			cur = cur->next;
 		}
-		if (need_retvoid)
-			LLVMBuildRetVoid(builder);
 		scope_exit();
 		break;
 	case S_EXPR:

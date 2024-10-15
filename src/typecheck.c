@@ -35,6 +35,95 @@ static void scope_bind_args(ast_decl *decl)
 		scope_bind_ts(arglist_get(arglist, i));
 }
 
+static void typecheck_return(ast_stmt *stmt) {
+	ast_type *typ;
+	if (stmt->next != NULL) {
+		had_error = 1;
+		eputs("Return statements must be at the end of statement blocks.");
+	}
+	// typ does not 'own' this - don't free this value.
+	typ = scope_get_return_type();
+	if (typ == NULL) {
+		had_error = 1;
+		eputs("Cannot use a return statement outside of a function");
+	} else if (stmt->expr == NULL) {
+		if (typ->kind != Y_VOID) {
+			had_error = 1;
+			eputs("Non-void function has empty return statement.");
+		}
+	} else {
+		// Dangerous reuse of typ: now 'owns' what is points to. Must free.
+		typ = derive_expr_type(stmt->expr);
+		if (!type_equals(typ, scope_get_return_type())) {
+			had_error = 1;
+			eputs("Return value does not match function signature");
+		}
+		type_destroy(typ);
+	}
+}
+
+
+static ast_stmt *last(ast_stmt *block) {
+	if (block == NULL)
+		return NULL;
+	for (; block->next != NULL ; block = block->next) {}
+	return block;
+}
+
+// if `if` and `else` branch of a S_IFELSE end with ret and the S_IFELSE has
+// no stmt->next
+// This does have to be done recursively. For example:
+// let fn: () -> i32 = {
+//	if (condition) {
+//		// arbitrary amount
+//		// of code
+//		if (other_condition) {
+//			// more code ...
+//			return 0;
+//		}
+//		else {
+//			// more code ...
+//			return 1;
+//		}
+//	} else {
+//		// more code ...
+//		if (other_condition) {
+//			// more code ...
+//			return 2;
+//		}
+//		else {
+//			// more code ...
+//			return 3;
+//		}
+//	}
+// }
+// PRECONDITIONS:
+// 	stmt must be non-null.
+// 	stmt->next must be null.
+static int is_return_worthy(ast_stmt *stmt) {
+	if (stmt->kind == S_RETURN) {
+		typecheck_return(stmt);
+		// typecheck_return can still set had_error and print an error message:
+		// what matters to is_return_worthy is that this statement is return-worthy!
+		return 1;
+	}
+	if (stmt->kind == S_IFELSE) {
+		if (stmt->else_body == NULL) {
+			return 0;
+		}
+		return is_return_worthy(last(stmt->body->body)) && is_return_worthy(last(stmt->else_body->body));
+	}
+	return 0;
+}
+
+static void append_retvoid_if_needed(ast_decl *fn) {
+	if (fn == NULL || fn->typesym->type->subtype->kind != Y_VOID || fn->body == NULL || fn->body->body == NULL)
+		return;
+	ast_stmt *s = last(fn->body->body);
+	if (!is_return_worthy(s))
+		s->next = stmt_init(S_RETURN, 0, 0, 0, 0);
+}
+
 static void typecheck_fnbody(ast_decl *decl)
 {
 	if (decl == NULL || decl->body == NULL) {
@@ -46,6 +135,7 @@ static void typecheck_fnbody(ast_decl *decl)
 	scope_enter();
 	scope_bind_return_type(decl->typesym->type->subtype);
 	scope_bind_args(decl);
+	append_retvoid_if_needed(decl);
 	typecheck_stmt(decl->body->body, 1);
 	scope_exit();
 }
@@ -121,10 +211,6 @@ void typecheck_decl(ast_decl *decl)
 	} else if (decl->typesym->type->kind == Y_FUNCTION) {
 		scope_bind_ts(decl->typesym);
 		typecheck_fnbody(decl);
-		//typ = scope_get_return_type();
-		//scope_bind_return_type(decl->typesym->type->subtype);
-		//typecheck_stmt(decl->body);
-		//scope_bind_return_type(typ);
 	} else if (decl->typesym->type->kind == Y_STRUCT && decl->typesym->type->name == NULL) {
 		scope_bind_ts(decl->typesym);
 	} else if (decl->expr) {
@@ -516,94 +602,11 @@ ast_type *derive_expr_type(ast_expr *expr)
 	}
 }
 
-static void typecheck_return(ast_stmt *stmt) {
-	ast_type *typ;
-	if (stmt->next != NULL) {
-		had_error = 1;
-		eputs("Return statements must be at the end of statement blocks.");
-	}
-	// typ does not 'own' this - don't free this value.
-	typ = scope_get_return_type();
-	if (typ == NULL) {
-		had_error = 1;
-		eputs("Cannot use a return statement outside of a function");
-	} else if (stmt->expr == NULL) {
-		if (typ->kind != Y_VOID) {
-			had_error = 1;
-			eputs("Non-void function has empty return statement.");
-		}
-	} else {
-		// Dangerous reuse of typ: now 'owns' what is points to. Must free.
-		typ = derive_expr_type(stmt->expr);
-		if (!type_equals(typ, scope_get_return_type())) {
-			had_error = 1;
-			eputs("Return value does not match function signature");
-		}
-		type_destroy(typ);
-	}
-}
-
-static ast_stmt *last(ast_stmt *block) {
-	if (block == NULL)
-		return NULL;
-	for (; block->next != NULL ; block = block->next) {}
-	return block;
-}
-
-// if `if` and `else` branch of a S_IFELSE end with ret and the S_IFELSE has
-// no stmt->next
-// This does have to be done recursively. For example:
-// let fn: () -> i32 = {
-//	if (condition) {
-//		// arbitrary amount
-//		// of code
-//		if (other_condition) {
-//			// more code ...
-//			return 0;
-//		}
-//		else {
-//			// more code ...
-//			return 1;
-//		}
-//	} else {
-//		// more code ...
-//		if (other_condition) {
-//			// more code ...
-//			return 2;
-//		}
-//		else {
-//			// more code ...
-//			return 3;
-//		}
-//	}
-// }
-// PRECONDITIONS:
-// 	stmt must be non-null.
-// 	stmt->next must be null.
-static int is_return_worthy(ast_stmt *stmt) {
-	if (stmt->kind == S_RETURN) {
-		typecheck_return(stmt);
-		// typecheck_return can still set had_error and print an error message:
-		// what matters to is_return_worthy is that this statement is return-worthy!
-		return 1;
-	}
-	if (stmt->kind == S_IFELSE) {
-		if (stmt->else_body == NULL) {
-			return 0;
-		}
-		return is_return_worthy(last(stmt->body->body)) && is_return_worthy(last(stmt->else_body->body));
-	}
-	return 0;
-}
-
 void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 {
 	ast_type *typ;
 	if (stmt == NULL) {
 		if (at_fn_top_level) {
-			if(scope_get_return_type()->kind == Y_VOID) {
-				return;
-			}
 			had_error = 1;
 			eputs("Non-void functions must end in valid return statements");
 			return;
