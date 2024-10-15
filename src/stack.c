@@ -71,3 +71,9 @@ void *stack_item_from_top(stack *stk, size_t position)
 		return NULL;
 	return stack_item_from_base(stk, stk->size - position - 1);
 }
+
+void *stack_top(stack *stk) {
+	if (stk == NULL || stk->top == NULL)
+		return NULL;
+	return stk->top->data;
+}
