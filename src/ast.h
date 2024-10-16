@@ -110,4 +110,5 @@ ast_type *type_copy(ast_type *t);
 vect *arglist_copy(vect *arglist);
 
 void arglist_destroy(vect *arglist);
+ast_stmt *last(ast_stmt *block);
 #endif

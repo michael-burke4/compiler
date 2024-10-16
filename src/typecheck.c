@@ -63,13 +63,6 @@ static void typecheck_return(ast_stmt *stmt) {
 }
 
 
-static ast_stmt *last(ast_stmt *block) {
-	if (block == NULL)
-		return NULL;
-	for (; block->next != NULL ; block = block->next) {}
-	return block;
-}
-
 // if `if` and `else` branch of a S_IFELSE end with ret and the S_IFELSE has
 // no stmt->next
 // This does have to be done recursively. For example:

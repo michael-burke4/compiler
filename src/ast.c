@@ -192,3 +192,11 @@ type_t smallest_fit(int64_t num)
 		return Y_I32;
 	return Y_I64;
 }
+
+ast_stmt *last(ast_stmt *block)
+{
+	if (block == NULL)
+		return NULL;
+	for (; block->next != NULL ; block = block->next) {}
+	return block;
+}
