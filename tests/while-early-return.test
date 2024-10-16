@@ -1,0 +1,8 @@
+ret 5
+--TEXT--
+let main: () -> i32 = {
+	while (true) {
+		return 5;
+	}
+	return 3;
+};

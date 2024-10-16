@@ -1,0 +1,13 @@
+ret 14
+--TEXT--
+let main: () -> i32 = {
+	let i: i32 = 1;
+	let j: i32 = 1;
+	while (i < 3) {
+		while (j < 3) {
+			j = j + i;
+		}
+		i += 10;
+	}
+	return j + i;
+};

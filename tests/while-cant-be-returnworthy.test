@@ -1,0 +1,7 @@
+comp_err typecheck
+--TEXT--
+let main: () -> i32 = {
+	while (true) {
+		return 5;
+	}
+};

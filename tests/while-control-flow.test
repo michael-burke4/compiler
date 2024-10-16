@@ -1,0 +1,17 @@
+ret 2
+--TEXT--
+let main: () -> i32 = {
+	let x: i32 = 10;
+	while (true) {
+		if (x < 11) {
+			while(true) {
+				return 2;
+			}
+			return 5;
+		}
+		else {
+			return 20;
+		}
+	}
+	return 3;
+};

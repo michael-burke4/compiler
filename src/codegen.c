@@ -123,6 +123,21 @@ static void initializer_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_s
 // We don't need to do any of the typechecking that is_return_worthy does.
 // Is it dumb to run (basically) the same check twice? Yes.
 // TODO: add a return worthy flag to ast_stmt struct or something?
+// TODO: while loops could be return worthy, but this takes more doing.
+//
+// situations like this complicate things:
+//
+// this one is return-worthy
+// while (condition) {
+//	return 5;
+// }
+//
+// this one isn't
+// while (condition) {
+// 	if (other_condition)
+//		break;
+//	return 5;
+// }
 static int is_return_worthy_lite(ast_stmt *stmt) {
 	if (stmt->kind == S_RETURN) {
 		return 1;
@@ -171,13 +186,39 @@ static void ifelse_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *
 	}
 }
 
+static void while_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, LLVMBasicBlockRef p_con) {
+	LLVMValueRef cur_function;
+	LLVMContextRef ctxt = CTXT(mod);
+	cur_function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
+
+	LLVMValueRef v1 = NULL;
+	LLVMBasicBlockRef condition_check = LLVMAppendBasicBlockInContext(ctxt, cur_function, "while_condition");
+	LLVMBasicBlockRef whi = LLVMAppendBasicBlockInContext(ctxt, cur_function, "while");
+	LLVMBasicBlockRef con = LLVMAppendBasicBlockInContext(ctxt, cur_function, "while_continue");
+
+	LLVMBuildBr(builder, condition_check);
+	LLVMPositionBuilderAtEnd(builder, condition_check);
+	v1 = expr_codegen(mod, builder, stmt->expr, 0);
+	LLVMBuildCondBr(builder, v1, whi, con);
+
+	LLVMPositionBuilderAtEnd(builder, whi);
+	stmt_codegen(mod, builder, stmt->body, condition_check);
+	v1 = LLVMGetLastInstruction(whi);
+	if (!LLVMIsATerminatorInst(v1))
+		LLVMBuildBr(builder, condition_check);
+
+	if (con != NULL) {
+		LLVMPositionBuilderAtEnd(builder, con);
+		if (p_con != NULL) {
+			v1 = LLVMBuildBr(builder, p_con);
+			LLVMPositionBuilderBefore(builder, v1);
+		}
+	}
+}
+
 void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, LLVMBasicBlockRef p_con)
 {
 	LLVMValueRef v1;
-	LLVMBasicBlockRef b1 = NULL;
-	LLVMBasicBlockRef b2 = NULL;
-	LLVMValueRef cur_function;
-	LLVMContextRef ctxt = CTXT(mod);
 	ast_stmt *cur;
 	char buffer[BUFFER_MAX_LEN];
 
@@ -219,20 +260,7 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, LLV
 		}
 		break;
 	case S_WHILE:
-		cur_function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
-		v1 = expr_codegen(mod, builder, stmt->expr, 0);
-		b1 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "while");
-		b2 = LLVMAppendBasicBlockInContext(ctxt, cur_function, "continue");
-		LLVMBuildCondBr(builder, v1, b1, b2);
-
-		LLVMPositionBuilderAtEnd(builder, b1);
-		stmt_codegen(mod, builder, stmt->body, b2);
-		v1 = LLVMGetLastInstruction(b1);
-		if (!is_return_worthy_lite(last(stmt->body->body))) {
-			v1 = expr_codegen(mod, builder, stmt->expr, 0);
-			LLVMBuildCondBr(builder, v1, b1, b2);
-		}
-		LLVMPositionBuilderAtEnd(builder, b2);
+		while_codegen(mod, builder, stmt, p_con);
 		break;
 	default:
 		fprintf(stderr, "can't codegen that stmt kind right now. (%d)\n", stmt->kind);
