@@ -1,0 +1,24 @@
+comp_err typecheck
+--TEXT--
+let f: (x: i32) -> i32 = {
+	if (x < 10) {
+		return 2;
+	} else {
+		if (x > 200) {
+			return 4;
+		} else {
+			if (x > 199) {
+				return 3;
+			}
+			else {
+				x += 3;
+			}
+		}
+	}
+};
+
+let main: () -> i32 = {
+	let x: i32 = 9;
+	let y: i32 = 10;
+	return f(y);
+};
