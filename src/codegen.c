@@ -120,69 +120,73 @@ static void initializer_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_s
 	scope_bind(alloca2, stmt->decl->typesym->symbol);
 }
 
-// We don't need to do any of the typechecking that is_return_worthy does.
-// Is it dumb to run (basically) the same check twice? Yes.
-// TODO: add a return worthy flag to ast_stmt struct or something?
-// TODO: while loops could be return worthy, but this takes more doing.
-//
-// situations like this complicate things:
-//
-// this one is return-worthy
-// while (condition) {
-//	return 5;
-// }
-//
-// this one isn't
-// while (condition) {
-// 	if (other_condition)
-//		break;
-//	return 5;
-// }
-static int is_return_worthy_lite(ast_stmt *stmt) {
-	if (stmt->kind == S_RETURN) {
+static int is_terminal(ast_stmt *stmt) {
+	if (stmt->kind == S_RETURN || stmt->kind == S_BREAK || stmt->kind == S_CONTINUE) {
 		return 1;
 	}
 	if (stmt->kind == S_IFELSE) {
 		if (stmt->else_body == NULL) {
 			return 0;
 		}
-		return is_return_worthy_lite(last(stmt->body->body)) && is_return_worthy_lite(last(stmt->else_body->body));
+		return is_terminal(last(stmt->body->body)) && is_terminal(last(stmt->else_body->body));
 	}
 	return 0;
 }
+
 
 static void ifelse_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, LLVMBasicBlockRef p_con) {
 	LLVMValueRef cur_function;
 	LLVMContextRef ctxt = CTXT(mod);
 	cur_function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
 
-	LLVMValueRef v1 = expr_codegen(mod, builder, stmt->expr, 0);
 	LLVMBasicBlockRef iff = LLVMAppendBasicBlockInContext(ctxt, cur_function, "if");
 	LLVMBasicBlockRef els = LLVMAppendBasicBlockInContext(ctxt, cur_function, "else");
-	LLVMBasicBlockRef con = NULL;
-	if (!is_return_worthy_lite(stmt))
+	LLVMBasicBlockRef con = p_con;
+	if (stmt->next != NULL)
 		con = LLVMAppendBasicBlockInContext(ctxt, cur_function, "continue");
 
+	// if (condition)
+	LLVMValueRef v1 = expr_codegen(mod, builder, stmt->expr, 0);
 	v1 = LLVMBuildCondBr(builder, v1, iff, els);
 
+	// {
+	//	// if branch code
+	// }
 	LLVMPositionBuilderAtEnd(builder, iff);
 	stmt_codegen(mod, builder, stmt->body, con);
 	v1 = LLVMGetLastInstruction(iff);
 	if (!LLVMIsATerminatorInst(v1))
 		LLVMBuildBr(builder, con);
 
+	// else {
+	//	// else branch code
+	// }
 	LLVMPositionBuilderAtEnd(builder, els);
 	stmt_codegen(mod, builder, stmt->else_body, con);
 	v1 = LLVMGetLastInstruction(els);
 	if (v1 == NULL || !LLVMIsATerminatorInst(v1))
 		LLVMBuildBr(builder, con);
 
-	if (con != NULL) {
-		LLVMPositionBuilderAtEnd(builder, con);
-		if (p_con != NULL) {
-			v1 = LLVMBuildBr(builder, p_con);
-			LLVMPositionBuilderBefore(builder, v1);
+	if (con == NULL)
+		return;
+
+	LLVMPositionBuilderAtEnd(builder, con);
+	if (p_con != con && !is_terminal(last(stmt))) {
+		v1 = LLVMBuildBr(builder, p_con);
+		LLVMPositionBuilderBefore(builder, v1);
+	}
+}
+
+static void distribute_breaks_and_continues(ast_stmt *stmt, LLVMBasicBlockRef brk, LLVMBasicBlockRef con) {
+	while (stmt != NULL) {
+		if (stmt->kind == S_BREAK)
+			stmt->extra = brk;
+		else if (stmt->kind == S_CONTINUE)
+			stmt->extra = con;
+		else if (stmt->kind == S_IFELSE) {
+			distribute_breaks_and_continues(stmt->body->body, brk, con);
 		}
+		stmt = stmt->next;
 	}
 }
 
@@ -191,28 +195,35 @@ static void while_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *s
 	LLVMContextRef ctxt = CTXT(mod);
 	cur_function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
 
-	LLVMValueRef v1 = NULL;
-	LLVMBasicBlockRef condition_check = LLVMAppendBasicBlockInContext(ctxt, cur_function, "while_condition");
+
+	LLVMBasicBlockRef cod = LLVMAppendBasicBlockInContext(ctxt, cur_function, "cond");
 	LLVMBasicBlockRef whi = LLVMAppendBasicBlockInContext(ctxt, cur_function, "while");
-	LLVMBasicBlockRef con = LLVMAppendBasicBlockInContext(ctxt, cur_function, "while_continue");
+	LLVMBasicBlockRef con = p_con;
+	if (stmt->next != NULL)
+		con = LLVMAppendBasicBlockInContext(ctxt, cur_function, "continue");
 
-	LLVMBuildBr(builder, condition_check);
-	LLVMPositionBuilderAtEnd(builder, condition_check);
-	v1 = expr_codegen(mod, builder, stmt->expr, 0);
-	LLVMBuildCondBr(builder, v1, whi, con);
+	distribute_breaks_and_continues(stmt->body->body, con, cod);
 
+	LLVMBuildBr(builder, cod);
+	// while (condition)
+	LLVMPositionBuilderAtEnd(builder, cod);
+	LLVMValueRef v1 = expr_codegen(mod, builder, stmt->expr, 0);
+	v1 = LLVMBuildCondBr(builder, v1, whi, con);
+
+	// {
+	//	// while code
+	// }
 	LLVMPositionBuilderAtEnd(builder, whi);
-	stmt_codegen(mod, builder, stmt->body, condition_check);
+	stmt_codegen(mod, builder, stmt->body, cod);
 	v1 = LLVMGetLastInstruction(whi);
 	if (!LLVMIsATerminatorInst(v1))
-		LLVMBuildBr(builder, condition_check);
+		LLVMBuildBr(builder, cod);
 
-	if (con != NULL) {
-		LLVMPositionBuilderAtEnd(builder, con);
-		if (p_con != NULL) {
-			v1 = LLVMBuildBr(builder, p_con);
-			LLVMPositionBuilderBefore(builder, v1);
-		}
+
+	LLVMPositionBuilderAtEnd(builder, con);
+	if (p_con != con && !is_terminal(last(stmt))) {
+		v1 = LLVMBuildBr(builder, p_con);
+		LLVMPositionBuilderBefore(builder, v1);
 	}
 }
 
@@ -261,6 +272,10 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, LLV
 		break;
 	case S_WHILE:
 		while_codegen(mod, builder, stmt, p_con);
+		break;
+	case S_CONTINUE:
+	case S_BREAK:
+		LLVMBuildBr(builder, stmt->extra);
 		break;
 	default:
 		fprintf(stderr, "can't codegen that stmt kind right now. (%d)\n", stmt->kind);

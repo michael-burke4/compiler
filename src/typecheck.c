@@ -11,6 +11,8 @@
 
 extern int had_error;
 
+static int in_loop = 0;
+
 void typecheck_program(ast_decl *program)
 {
 	if (program == NULL)
@@ -598,6 +600,7 @@ ast_type *derive_expr_type(ast_expr *expr)
 void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 {
 	ast_type *typ;
+	int old_in_loop = in_loop;
 	if (stmt == NULL) {
 		if (at_fn_top_level) {
 			had_error = 1;
@@ -654,9 +657,26 @@ void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 			eputs("if statement condition must be a boolean");
 		}
 		type_destroy(typ);
-		if (stmt->body != NULL)
+		in_loop = 1;
+		if (stmt->body != NULL) {
 			typecheck_stmt(stmt->body->body, 0);
+		} else {
+			had_error = 1;
+			eputs("Empty while loop body.");
+		}
+		in_loop = old_in_loop;
 		typecheck_stmt(stmt->next, at_fn_top_level);
+		break;
+	case S_BREAK:
+	case S_CONTINUE:
+		if (!in_loop) {
+			had_error = 1;
+			eputs("Break/continue statement used outside of loop");
+		}
+		if (stmt->next != NULL) {
+			had_error = 1;
+			eputs("Break/continue statements must appear at the end of statement blocks");
+		}
 		break;
 	case S_BLOCK:
 		// DO NOT DESTROY TYP HERE!

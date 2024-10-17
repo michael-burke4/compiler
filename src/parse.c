@@ -315,6 +315,9 @@ ast_stmt *parse_stmt_block(void)
 			current = current->next;
 		}
 	}
+	if (current == NULL) {
+		report_error_cur_tok("Empty statement block.");
+	}
 	next();
 	return block;
 }
@@ -372,6 +375,24 @@ ast_stmt *parse_stmt(void)
 		}
 		next();
 		body = parse_stmt_block();
+		break;
+	case T_CONTINUE:
+		kind = S_CONTINUE;
+		next();
+		if (!expect(T_SEMICO)) {
+			goto stmt_err;
+			report_error_cur_tok("Missing semicolon after `continue`.");
+		}
+		next();
+		break;
+	case T_BREAK:
+		kind = S_BREAK;
+		next();
+		if (!expect(T_SEMICO)) {
+			goto stmt_err;
+			report_error_cur_tok("Missing semicolon after `break`.");
+		}
+		next();
 		break;
 	case T_RETURN:
 		kind = S_RETURN;

@@ -82,7 +82,7 @@ void expr_add_sub_expr(ast_expr *e, ast_expr *sub);
 vect *sub_exprs_init(size_t size);
 void destroy_expr_vect(vect *expr_vect);
 
-typedef enum { S_ERROR, S_BLOCK, S_DECL, S_EXPR, S_IFELSE, S_RETURN, S_WHILE } stmt_t;
+typedef enum { S_ERROR, S_BLOCK, S_DECL, S_EXPR, S_IFELSE, S_RETURN, S_WHILE, S_BREAK, S_CONTINUE} stmt_t;
 
 typedef struct ast_stmt {
 	stmt_t kind;
@@ -91,6 +91,7 @@ typedef struct ast_stmt {
 	struct ast_stmt *body;
 	struct ast_stmt *else_body;
 	struct ast_stmt *next;
+	void *extra; // THIS SUCKS: break/continues need to know where to go next, this is where I stuff the LLVMBasicBlockRef
 } ast_stmt;
 
 ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt, ast_decl *next);

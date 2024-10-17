@@ -1,0 +1,14 @@
+comp_err typecheck
+--TEXT--
+let main: () -> i32 = {
+	let x: i32 = 5;
+	while (true) {
+		if (x < 10) {
+			break;
+			x += 1;
+		}
+		x += 2;
+		break;
+	}
+	return x;
+};
