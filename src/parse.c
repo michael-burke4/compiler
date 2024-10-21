@@ -45,6 +45,14 @@ static void report_error_cur_tok(const char *fmt, ...)
 	va_end(args);
 }
 
+static void report_error_prev_tok(const char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	report_error(prev_token->line, prev_token->col, fmt, args);
+	va_end(args);
+}
+
 //static inline void put_back(token_s *t)
 //{
 //	t->next = cur_token;
@@ -92,7 +100,7 @@ static vect *parse_comma_separated_exprs(token_t closer) {
 		}
 	} while (expect(T_COMMA));
 	if (!expect(closer)) {
-		report_error_cur_tok("Expression list is missing closing token");
+		report_error_prev_tok("Expression list is missing closing token.");
 		destroy_expr_vect(ret);
 		ret = NULL;
 	}
@@ -166,7 +174,6 @@ ast_typed_symbol *parse_typed_symbol(void)
 	return ast_typed_symbol_init(type, name);
 
 parse_typsym_err:
-	fprint_tok(stderr, cur_token);
 	type_destroy(type);
 	strvec_destroy(name);
 	return NULL;
@@ -186,14 +193,14 @@ static vect *parse_struct_def(void)
 	ast_typed_symbol *cur;
 	vect *def_vect = vect_init(3);
 	if (!expect(T_LCURLY)) {
-		report_error_cur_tok("missing opening brace in struct definition");
+		report_error_cur_tok("Missing opening brace in struct definition.");
 		sync_to(T_SEMICO, 0);
 		destroy_def_vect(def_vect);
 		return NULL;
 	}
 	next();
 	if (expect(T_RCURLY)) {
-		report_error_cur_tok("struct definition can't be empty");
+		report_error_cur_tok("struct definition can't be empty.");
 		sync_to(T_SEMICO, 0);
 		next();
 		destroy_def_vect(def_vect);
@@ -202,10 +209,10 @@ static vect *parse_struct_def(void)
 	while (!expect(T_RCURLY)) {
 		cur = parse_typed_symbol();
 		if (cur != NULL && !expect(T_SEMICO)) {
-			report_error_cur_tok("missing semicolon in struct field definition");
+			report_error_prev_tok("Missing semicolon in struct field definition.");
 			sync_to(T_EOF, 1);
 		} else if (cur == NULL) {
-			report_error_cur_tok("Couldn't parse typed symbol");
+			report_error_cur_tok("Couldn't parse typed symbol.");
 			sync_to(T_SEMICO, 1);
 		} else
 			next();
@@ -213,7 +220,7 @@ static vect *parse_struct_def(void)
 	}
 	next();
 	if (!expect(T_SEMICO)) {
-		report_error_cur_tok("missing semicolon after struct definition");
+		report_error_prev_tok("Missing semicolon after struct definition.");
 		sync_to(T_EOF, 1);
 		vect_destroy(def_vect);
 		return NULL;
@@ -222,7 +229,6 @@ static vect *parse_struct_def(void)
 	return def_vect;
 }
 
-//TODO: error reporting for function declarations is REALLY bad right now.
 ast_decl *parse_decl(void)
 {
 	ast_typed_symbol *typed_symbol = NULL;
@@ -230,69 +236,77 @@ ast_decl *parse_decl(void)
 	ast_stmt *stmt = NULL;
 	vect *initializer = NULL;
 	ast_decl *ret = NULL;
-	strvec *name;
-	ast_type *type;
-	if (expect(T_STRUCT)) {
-		next();
-		if (!expect(T_IDENTIFIER)) {
-			report_error_cur_tok("Expected struct name after struct keyword");
-			sync_to(T_LCURLY, 0);
-		} else {
-			type = type_init(Y_STRUCT, NULL);
-			name = cur_token->text;
-			cur_token->text = NULL;
-			typed_symbol = ast_typed_symbol_init(type, name);
-			next();
-		}
+	int missed_assign = 0;
 
-		initializer = parse_struct_def();
-		typed_symbol->type->arglist = initializer;
-		ret = decl_init(typed_symbol, NULL, NULL, NULL);
-		return ret;
-	} else if (!expect(T_LET) && !expect(T_CONST)) {
-		report_error_cur_tok("Missing 'let'/'const' keyword in declaration.");
-		sync_to(T_EOF, 1); // maybe this should be in the goto
-		goto decl_parse_err;
+	if (!expect(T_LET) && !expect(T_CONST)) {
+		report_error_cur_tok("Missing `let`/`const` keyword in decalaration.");
+		sync_to(T_EOF, 1);
+		goto parse_decl_err;
 	}
 	next();
 	typed_symbol = parse_typed_symbol();
+	// TODO: things still get ugly here if we're parsing a a function/struct that has an incorrect type symbol.
 	if (typed_symbol == NULL) {
 		report_error_cur_tok("Missing/invalid type specifier or name.");
 		sync_to(T_EOF, 1);
-		goto decl_parse_err;
+		goto parse_decl_err;
 	}
 
-	if (cur_tok_type() == T_SEMICO)
+	if (expect(T_SEMICO)) {
 		next();
-	else if (expect(T_ASSIGN)) {
-		next();
-		if (expect(T_LCURLY)) {
-			stmt = parse_stmt_block();
-		} else if (expect(T_LBRACKET)) {
-			initializer = parse_comma_separated_exprs(T_RBRACKET);
-		} else {
-			expr = parse_expr();
-		}
-		if (!expect(T_SEMICO)) {
-			report_error_cur_tok("Missing semicolon (possibly missing from previous line)");
-			sync_to(T_EOF, 1);
-			goto decl_parse_err;
-		} else {
-			next();
-		}
+		goto parse_decl_ret;
+	}
+
+	if (!expect(T_ASSIGN)) {
+		missed_assign = 1;
+		report_error_cur_tok("Missing `=`.");
 	} else {
-		report_error_cur_tok("Missing semicolon (maybe missing on previous line)");
-		goto decl_parse_err;
+		next();
 	}
-	ret = decl_init(typed_symbol, expr, stmt, NULL);
-	ret->initializer = initializer;
-	return ret;
+	if (typed_symbol->type->kind == Y_STRUCT) {
+		if (!expect(T_LCURLY)) {
+			report_error_cur_tok("Expected `{`. Struct declaration must contain definition.");
+			sync_to(T_EOF, 1);
+			goto parse_decl_err;
+		}
+		initializer = parse_struct_def();
+		if (initializer == NULL)
+			goto parse_decl_err;
+	} else if (expect(T_LCURLY)) {
+		stmt = parse_stmt_block();
+		if (stmt == NULL)
+			goto parse_decl_err;
+	} else if (expect(T_LBRACKET)) {
+		initializer = parse_comma_separated_exprs(T_RBRACKET);
+		if (initializer == NULL)
+			goto parse_decl_err;
+	} else {
+		expr = parse_expr();
+		if (expr == NULL)
+			goto parse_decl_err;
+	}
 
-decl_parse_err:
+	if (!expect(T_SEMICO)) {
+		report_error_prev_tok("Missing semicolon at end of line.");
+		if (cur_token != NULL && prev_token != NULL && cur_token->line == prev_token->line)
+			sync_to(T_EOF, 1);
+		goto parse_decl_err;
+	}
+	next();
+	if (missed_assign)
+		goto parse_decl_err;
+	goto parse_decl_ret;
+parse_decl_err:
 	ast_typed_symbol_destroy(typed_symbol);
 	expr_destroy(expr);
 	stmt_destroy(stmt);
-	return decl_init(NULL, NULL, NULL, NULL);
+	typed_symbol = NULL;
+	expr = NULL;
+	stmt = NULL;
+parse_decl_ret:
+	ret = decl_init(typed_symbol, expr, stmt, NULL);
+	ret->initializer = initializer;
+	return ret;
 }
 
 ast_stmt *parse_stmt_block(void)
@@ -751,9 +765,7 @@ ast_expr *parse_expr_unit(void)
 		next();
 		return expr_init(E_CHAR_LIT, NULL, NULL, 0, NULL, 0, txt);
 	default:
-		report_error_cur_tok("Could not parse expr unit. The offending token in question:");
-		fprintf(stderr, "\t");
-		fprint_tok(stderr, cur_token);
+		report_error_cur_tok("Could not parse expr unit.");
 		sync_to(T_EOF, 1);
 		return NULL;
 	}

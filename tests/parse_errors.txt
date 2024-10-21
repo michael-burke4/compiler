@@ -1,0 +1,20 @@
+let x i32 = 5;
+let y: i32 = 6;
+let z: i32 = ;
+let f: () -> i32;
+let f: () -> i32 {
+	return 5;
+};
+
+let f: () -> i32 = {
+	return 5;
+}
+let m: i32* = [];
+let m: i32* = [;
+let m: i32* = [52, 47, @];
+let x: i32 = 10
+let z: i32 = 20;
+let a: i32* = [10, 20, 30, 40]
+let f: () -> i32 = {
+	return 5;
+};
