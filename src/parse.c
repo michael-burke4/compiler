@@ -200,7 +200,7 @@ static vect *parse_struct_def(void)
 	}
 	next();
 	if (expect(T_RCURLY)) {
-		report_error_cur_tok("struct definition can't be empty.");
+		report_error_cur_tok("Struct definition can't be empty.");
 		sync_to(T_SEMICO, 0);
 		next();
 		destroy_def_vect(def_vect);
@@ -491,7 +491,7 @@ ast_type *parse_type(void)
 		ret = type_init(Y_STRUCT, NULL);
 		next();
 		if (!expect(T_IDENTIFIER)) {
-			report_error_cur_tok("struct instances require names after the `struct` keyword");
+			report_error_cur_tok("Struct instances require names after the `struct` keyword.");
 			sync_to(T_ASSIGN, 1);
 			type_destroy(ret);
 			return NULL;
@@ -668,14 +668,14 @@ ast_expr *parse_expr_post_unary(void)
 		if (typ == T_LBRACKET) {
 			e = parse_expr();
 			if (!expect(T_RBRACKET)) {
-				report_error_cur_tok("Missing closing bracket");
+				report_error_cur_tok("Missing closing bracket.");
 				expr_destroy(e);
 				return NULL;
 			}
 			next();
 		} else if (typ == T_PERIOD) {
 			if (!expect(T_IDENTIFIER)) {
-				report_error_cur_tok("Member operator right side must be an identifier");
+				report_error_cur_tok("Member operator right side must be an identifier.");
 				return NULL;
 			}
 			e = parse_expr_unit(); // This can only be an expr unit: we know it's an identifier.
@@ -704,7 +704,7 @@ ast_expr *parse_expr_unit(void)
 		if (cur_tok_type() != T_RPAREN) {
 			// TODO leave error handling to fns like parse_stmt and parse_decl.
 			// Just bubble the error up by returning zero.
-			report_error_cur_tok("Expression is missing a closing paren");
+			report_error_cur_tok("Expression is missing a closing paren.");
 			sync_to(T_EOF, 1);
 			expr_destroy(ex);
 			return NULL;
@@ -720,7 +720,7 @@ ast_expr *parse_expr_unit(void)
 		if (errno != 0) {
 			report_error_cur_tok("Could not parse int literal \"");
 			strvec_print(cur->text);
-			eputs("\"");
+			eputs("\".");
 		}
 		ex = expr_init(E_INT_LIT, NULL, NULL, 0, NULL, n, NULL);
 		ex->int_size = smallest_fit(n);
