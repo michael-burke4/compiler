@@ -10,7 +10,7 @@ CC=clang
 #CFLAGS=-std=c99 -Wall -Wextra -Wpedantic -Werror `llvm-config --cflags` -Wno-deprecated
 CFLAGS=-std=c99 -Wall -Wextra -Wpedantic `llvm-config --cflags` -Wno-deprecated
 LD=clang
-LDFLAGS=`llvm-config --cxxflags --ldflags --libs core executionengine mcjit interpreter analysis native bitwriter --system-libs` -std=c99
+LDFLAGS=`llvm-config --cxxflags --ldflags --libs core analysis native bitwriter --system-libs` -std=c99
 MAINFLAGS=-O2
 DBGFLAGS=-DDEBUG -Og
 
