@@ -4,3 +4,4 @@ obj
 target
 dbg
 cov
+*.DS_Store
