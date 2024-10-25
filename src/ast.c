@@ -26,11 +26,6 @@ ast_type *type_init(type_t kind, strvec *name)
 	return ret;
 }
 
-void expr_append_sub_expr(ast_expr *e, ast_expr *sub)
-{
-	vect_append(e->sub_exprs, (void *)sub);
-}
-
 ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, strvec *name,
 			int64_t num, strvec *str_lit)
 {
