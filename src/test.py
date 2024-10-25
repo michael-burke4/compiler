@@ -12,7 +12,7 @@ def print_error(msg):
     print(msg, file=sys.stderr)
 
 if len(sys.argv) != 3:
-    error(1, f'usage: {sys.argv[0]} compiler_bin tests_dir')
+    error_out(1, f'usage: {sys.argv[0]} compiler_bin tests_dir')
 
 
 def try_remove(file_paths):
