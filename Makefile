@@ -5,14 +5,17 @@ OBJDIR=obj
 BINDIR=bin
 TGTDIR=target
 DBGDIR=dbg
+COVDIR=cov
 
-CC=clang
+CC=gcc
 #CFLAGS=-std=c99 -Wall -Wextra -Wpedantic -Werror `llvm-config --cflags` -Wno-deprecated
-CFLAGS=-std=c99 -Wall -Wextra -Wpedantic `llvm-config --cflags` -Wno-deprecated
+CFLAGS=-std=c99 -c -Wall -Wextra -Wpedantic `llvm-config --cflags` -Wno-deprecated
 LD=clang
 LDFLAGS=`llvm-config --cxxflags --ldflags --libs core analysis native bitwriter --system-libs` -std=c99
 MAINFLAGS=-O2
 DBGFLAGS=-DDEBUG -Og
+COVCFLAGS=-fprofile-arcs -ftest-coverage
+COVLDFLAGS= -lgcov --coverage
 
 CSRC=$(wildcard $(SRCDIR)/*.c)
 DEPS=$(wildcard $(SRCDIR)/*.h)
@@ -35,12 +38,13 @@ $(BINDIR)/main: $(OBJ)
 $(OBJDIR)/%.o $(DBGDIR)/%.o: $(SRCDIR)/%.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-debug: CFLAGS+=$(DBGFLAGS)
+debug: CFLAGS+=$(DBGFLAGS) $(COVCFLAGS)
+debug: LDFLAGS+=$(COVLDFLAGS)
 debug: $(DBGDIR) $(DBG_OBJ) $(DBGDIR)/main
 $(DBGDIR)/main: $(DBG_OBJ)
 	$(LD) -o $@ $^ $(LDFLAGS)
 
-$(OBJDIR) $(BINDIR) $(TGTDIR):
+$(OBJDIR) $(BINDIR) $(TGTDIR) $(COVDIR):
 	-mkdir $@
 
 compile: $(TGTDIR) $(BINDIR)/main
@@ -72,12 +76,17 @@ else
 	$(error no SRC supplied. Please specify SRC=srcfile)
 endif
 
-test: debug
-test:
+test: clean debug
+test: $(COVDIR)
 	$(SRCDIR)/test.py $(DBGDIR)/main $(TESTDIR)
+	gcov -f -b $(DBGDIR)/*.gcda
+	mv *.gcov $(DBGDIR)/
+	lcov -c -d $(DBGDIR) -o $(DBGDIR)/cov.info
+	genhtml -o $(COVDIR)/ $(DBGDIR)/cov.info
 
 clean:
 	-rm $(OBJDIR)/*
 	-rm $(BINDIR)/*
 	-rm $(TGTDIR)/*
 	-rm $(DBGDIR)/*
+	-rm -rf $(COVDIR)/*
