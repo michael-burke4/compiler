@@ -1,0 +1,10 @@
+ret 10
+--TEXT--
+let main: () -> i32 = {
+	let x: i64 = 1000;
+	if (x == 1000) {
+		return 10;
+	}
+
+	return 3;
+};

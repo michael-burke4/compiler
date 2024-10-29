@@ -1,0 +1,21 @@
+ret 1
+--TEXT--
+let main: () -> i32 = {
+	let c: char = '\n';
+	let c2: char = '\\';
+	let c3: char = '\'';
+	let s: char* = "\\abc\nd'\"";
+	if (c == s[4]) {
+		if (s[0] == c2) {
+			if (s[6] == c3) {
+				if(s[7] == '"') {
+					return 1;
+				}
+				return 5;
+			}
+			return 4;
+		}
+		return 3;
+	}
+	return 2;
+};

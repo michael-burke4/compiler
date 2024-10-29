@@ -214,7 +214,9 @@ void typecheck_decl(ast_decl *decl)
 			ast_expr *e;
 			decl->initializer = vect_init(decl->expr->string_literal->size);
 			for (size_t i = 0 ; i < decl->initializer->capacity ; ++i) {
-				e = expr_init(E_CHAR_LIT, 0, 0, 0, 0, 0, strvec_copy(decl->expr->string_literal));
+				strvec *c = strvec_init(1);
+				strvec_append(c, decl->expr->string_literal->text[i]);
+				e = expr_init(E_CHAR_LIT, 0, 0, 0, 0, 0, c);
 				vect_append(decl->initializer, e);
 			}
 			scope_bind_ts(decl->typesym);

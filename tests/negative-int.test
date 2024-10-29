@@ -1,0 +1,7 @@
+ret 3
+--TEXT--
+let main: () -> i32 = {
+	let x: i32 = -1;
+	let y: i32 = 4;
+	return x + y;
+};

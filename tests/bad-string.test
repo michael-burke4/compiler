@@ -1,0 +1,7 @@
+comp_err scan
+--TEXT--
+let main: () -> i32 = {
+	let s: char* = "unterminated!;
+	let s: char* = "here is a bad escape char: \u";
+	return 2;
+};

@@ -104,6 +104,16 @@ static token_s *scan_char_literal(FILE *f, size_t *line, size_t *col)
 	} else if (c == '\\') {
 		(*col)++;
 		c = fgetc(f);
+		if (c == 'n')
+			c = '\n';
+		else if (c == '\\')
+			c = '\\';
+		else if (c == '\'')
+			c = '\'';
+		else {
+			report_error(*line, old_col, "Unrecognized escape sequence.");
+			return tok_init_nl(T_ERROR, *line, old_col, NULL);
+		}
 	} else if (c == '\'') {
 		(*col)++;
 		report_error(*line, old_col, "Empty char literal.");
@@ -143,6 +153,8 @@ static token_s *scan_string_literal(FILE *f, size_t *line, size_t *col)
 				strvec_append(str, '\n');
 			else if (c == '"')
 				strvec_append(str, '"');
+			else if (c == '\\')
+				strvec_append(str, '\\');
 			else {
 				ungetc(c, f);
 				(*col)--;

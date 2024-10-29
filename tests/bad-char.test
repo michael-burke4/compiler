@@ -1,0 +1,9 @@
+comp_err scan
+--TEXT--
+let main: () -> i32 = {
+	let c: char = '
+	a';
+	let c2: char = '\*';
+	let c3: char = '';
+	return 2;
+};

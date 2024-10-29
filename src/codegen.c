@@ -411,7 +411,10 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		else
 			return LLVMBuildAdd(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 	case E_EQUALITY:
-		return LLVMBuildICmp(builder, LLVMIntEQ, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+		if (expr->op == T_EQ)
+			return LLVMBuildICmp(builder, LLVMIntEQ, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+		else
+			return LLVMBuildICmp(builder, LLVMIntNE, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 	case E_FNCALL:
 		strvec_tostatic(expr->name, buffer);
 		v = LLVMGetNamedFunction(mod, buffer);
