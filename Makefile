@@ -79,10 +79,10 @@ endif
 test: clean debug
 test: $(COVDIR)
 	$(SRCDIR)/test.py $(DBGDIR)/main $(TESTDIR)
-	gcov -f -b $(DBGDIR)/*.gcda
+	gcov -f -b $(DBGDIR)/*.gcda > /dev/null
 	mv *.gcov $(DBGDIR)/
-	lcov -c -d $(DBGDIR) -o $(DBGDIR)/cov.info
-	genhtml -o $(COVDIR)/ $(DBGDIR)/cov.info
+	lcov -c -d $(DBGDIR) -o $(DBGDIR)/cov.info > /dev/null 2> /dev/null
+	genhtml -o $(COVDIR)/ $(DBGDIR)/cov.info > /dev/null
 
 clean:
 	-rm $(OBJDIR)/*
