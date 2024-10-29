@@ -1,0 +1,16 @@
+ret 21
+--TEXT--
+let pt: struct = {
+	x: i32;
+	y: i32;
+};
+
+let main: () -> i32 = {
+	let x: struct pt;
+	let y: struct pt;
+	x.x = 10;
+	x.y = 20;
+	y.x = 1;
+	y.y = 2;
+	return x.y + y.x;
+};

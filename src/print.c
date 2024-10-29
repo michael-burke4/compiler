@@ -197,20 +197,6 @@ void ftype_print(FILE *f, ast_type *type)
 
 void fdecl_print(FILE *f, ast_decl *decl)
 {
-	// Struct definitions don't have type names in their typesyms:
-	// the type of a struct definition is just `struct`
-	// while it is `struct (struct_name_here)` in instantiation.
-	if (decl->typesym->type->kind == Y_STRUCT && decl->typesym->type->name == NULL) {
-		fprintf(f, "struct ");
-		fstrvec_print(f, decl->typesym->symbol);
-		fputs(" {", f);
-		for (size_t i = 0 ; i < decl->typesym->type->arglist->size; ++i) {
-			ftyped_sym_print(f, decl->typesym->type->arglist->elements[i]);
-			fputs(";", f);
-		}
-		fputs("};", f);
-		return;
-	}
 	if (decl->typesym->type->isconst)
 		fprintf(f, "const ");
 	else
@@ -219,6 +205,14 @@ void fdecl_print(FILE *f, ast_decl *decl)
 	if (decl->expr != NULL) {
 		fprintf(f, " = ");
 		fexpr_print(f, decl->expr);
+	} else if (decl->typesym->type->kind == Y_STRUCT && decl->typesym->type->name == NULL) {
+		fprintf(f, " {\n");
+		for (size_t i = 0 ; i < decl->typesym->type->arglist->size; ++i) {
+			ftyped_sym_print(f, decl->typesym->type->arglist->elements[i]);
+			fprintf(f, ";\n");
+		}
+		fprintf(f, "}");
+
 	} else if (decl->body != NULL) {
 		fprintf(f, " = ");
 		fstmt_print(f, decl->body);

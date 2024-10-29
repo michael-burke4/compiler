@@ -220,13 +220,6 @@ static vect *parse_struct_def(void)
 		vect_append(def_vect, cur);
 	}
 	next();
-	if (!expect(T_SEMICO)) {
-		report_error_prev_tok("Missing semicolon after struct definition.");
-		sync_to(T_EOF, 1);
-		vect_destroy(def_vect);
-		return NULL;
-	}
-	next();
 	return def_vect;
 }
 
@@ -236,6 +229,7 @@ ast_decl *parse_decl(void)
 	ast_expr *expr = NULL;
 	ast_stmt *stmt = NULL;
 	vect *initializer = NULL;
+	vect *arglist = NULL;
 	ast_decl *ret = NULL;
 	int missed_assign = 0;
 
@@ -264,15 +258,12 @@ ast_decl *parse_decl(void)
 	} else {
 		next();
 	}
-	if (typed_symbol->type->kind == Y_STRUCT) {
-		if (!expect(T_LCURLY)) {
-			report_error_cur_tok("Expected `{`. Struct declaration must contain definition.");
-			sync_to(T_EOF, 1);
+	if (typed_symbol->type->kind == Y_STRUCT && expect(T_LCURLY)) {
+		arglist = parse_struct_def(); // not an 'arglist' per se but oh well
+		if (arglist == NULL) {
 			goto parse_decl_err;
 		}
-		initializer = parse_struct_def();
-		if (initializer == NULL)
-			goto parse_decl_err;
+		typed_symbol->type->arglist = arglist;
 	} else if (expect(T_LCURLY)) {
 		stmt = parse_stmt_block();
 		if (stmt == NULL)
@@ -491,15 +482,21 @@ ast_type *parse_type(void)
 	case T_STRUCT:
 		ret = type_init(Y_STRUCT, NULL);
 		next();
-		if (!expect(T_IDENTIFIER)) {
-			report_error_cur_tok("Struct instances require names after the `struct` keyword.");
-			sync_to(T_ASSIGN, 1);
-			type_destroy(ret);
-			return NULL;
+
+		if (expect(T_ASSIGN)) {
+			// This is a struct decl
+			// `let point: struct = {...}`
+			break;
+		} else if (expect(T_IDENTIFIER)) {
+			// struct instantiation
+			// let p: struct point;
+			ret->name = cur_token->text;
+			cur_token->text = NULL;
+			next();
+		} else {
+			report_error_cur_tok("Invalid token in struct type specifier");
+			sync_to(T_COLON, 1);
 		}
-		ret->name = cur_token->text;
-		cur_token->text = NULL;
-		next();
 		break;
 	case T_LPAREN:
 		next();
@@ -517,17 +514,16 @@ ast_type *parse_type(void)
 		subtype = parse_type();
 		if (subtype == NULL) {
 			report_error_cur_tok("Missing/invalid return type in function declaration.");
-			sync_to(T_ASSIGN, 1);
+			sync_to(T_ASSIGN, 0);
 		}
 		ret = type_init(Y_FUNCTION, NULL);
 		ret->subtype = subtype;
 		ret->arglist = arglist;
 		break;
 	default:
-		report_error_cur_tok("Could not use the following token as a type:");
-		fprintf(stderr, "\t");
-		fprint_tok(stderr, cur_token);
-		sync_to(T_EOF, 1);
+		report_error_cur_tok("Invalid type");
+		// Syncing from here is left as an exercise to the caller.
+		return NULL;
 	}
 	while (cur_tok_type() == T_STAR || cur_tok_type() == T_AT) {
 		int isconst = cur_tok_type() == T_AT;
