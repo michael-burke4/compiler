@@ -13,6 +13,26 @@
 
 extern struct stack *sym_tab;
 
+static inline LLVMValueRef LLVMBuildGEP_compat(LLVMBuilderRef B, LLVMValueRef Pointer, LLVMValueRef *Indices, unsigned int NumIndices, const char *Name)
+{
+	return LLVMBuildGEP2(B, LLVMGetElementType(LLVMTypeOf(Pointer)), Pointer, Indices, NumIndices, Name);
+}
+
+static inline LLVMValueRef LLVMBuildStructGEP_compat(LLVMBuilderRef B, LLVMValueRef Pointer, unsigned int Idx, const char *Name)
+{
+	return LLVMBuildStructGEP2(B, LLVMGetElementType(LLVMTypeOf(Pointer)), Pointer, Idx, Name);
+}
+
+static inline LLVMValueRef LLVMBuildLoad_compat(LLVMBuilderRef B, LLVMValueRef Pointer, const char *Name)
+{
+	return LLVMBuildLoad2(B, LLVMGetElementType(LLVMTypeOf(Pointer)), Pointer, Name);
+}
+
+static inline LLVMValueRef LLVMBuildCall_compat(LLVMBuilderRef B, LLVMValueRef Fn, LLVMValueRef *Args, unsigned int NumArgs, const char *Name)
+{
+	return LLVMBuildCall2(B, LLVMGetElementType(LLVMTypeOf(Fn)), Fn, Args, NumArgs, Name);
+}
+
 static LLVMValueRef codegen_syscall3(LLVMBuilderRef builder, LLVMValueRef args[4])
 {
 	LLVMTypeRef argtypes[4] = {LLVMTypeOf(args[0]), LLVMTypeOf(args[1]), LLVMTypeOf(args[2]), LLVMTypeOf(args[3])};
@@ -27,7 +47,7 @@ static LLVMValueRef codegen_syscall3(LLVMBuilderRef builder, LLVMValueRef args[4
 		;
 	char constraints[256] = "r,r,r,r,~{x0},~{x1},~{x2},~{x8},~{memory}";
 	LLVMValueRef asmcall = LLVMGetInlineAsm(functy, inline_asm, strlen(inline_asm), constraints, strlen(constraints), 1, 1, 0, 0);
-	return LLVMBuildCall(builder, asmcall, args, 4, "");
+	return LLVMBuildCall_compat(builder, asmcall, args, 4, "");
 }
 
 static LLVMTypeRef int_kind_to_llvm_type(LLVMModuleRef mod, type_t kind) {
@@ -75,11 +95,6 @@ static LLVMTypeRef to_llvm_type(LLVMModuleRef mod, ast_type *tp)
 	}
 }
 
-// If LLVMBuildLoad2 is so good, why is there no LLVMBuildLoad3??
-static LLVMValueRef LLVMBuildLoad3(LLVMBuilderRef b, LLVMValueRef pointer_val, const char *name) {
-	return LLVMBuildLoad2(b, LLVMGetElementType(LLVMTypeOf(pointer_val)), pointer_val, name);
-}
-
 LLVMModuleRef module_codegen(LLVMContextRef ctxt, ast_decl *start, char *module_name)
 {
 	LLVMModuleRef ret = LLVMModuleCreateWithNameInContext(module_name, ctxt);
@@ -109,7 +124,7 @@ static void initializer_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_s
 	LLVMValueRef init = LLVMBuildAlloca(builder, array_type, "");
 	for (size_t i = 0 ; i < stmt->decl->initializer->size ; ++i) { // clang uses memcpy for this! would be much better!
 		a[1] = LLVMConstInt(LLVMInt32TypeInContext(CTXT(mod)), i, 0);
-		LLVMValueRef gep = LLVMBuildGEP(builder, init, a, 2, "");
+		LLVMValueRef gep = LLVMBuildGEP_compat(builder, init, a, 2, "");
 		LLVMValueRef value = expr_codegen(mod, builder, stmt->decl->initializer->elements[i], 0);
 		LLVMBuildStore(builder, value, gep);
 	}
@@ -480,7 +495,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		v = LLVMGetNamedFunction(mod, buffer);
 		argno = LLVMCountParams(v);
 		get_fncall_args(mod, builder, expr, argno, &args);
-		return LLVMBuildCall(builder, v, args, argno, "");
+		return LLVMBuildCall_compat(builder, v, args, argno, "");
 	case E_SYSCALL:
 		for (size_t i = 0 ; i < expr->sub_exprs->size ; ++i) {
 			syscall_args[i] = expr_codegen(mod, builder, expr->sub_exprs->elements[i], 0);
@@ -491,7 +506,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		ret = get_param_by_name(v, buffer);
 		if (ret == NULL) {
 			ret = scope_lookup(expr->name);
-			ret = LLVMBuildLoad3(builder, ret, "");
+			ret = LLVMBuildLoad_compat(builder, ret, "");
 		}
 		return ret;
 	case E_ASSIGN:
@@ -534,9 +549,9 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		if (expr->op == T_LBRACKET) {
 			v = expr_codegen(mod, builder, expr->left, 0);
 			v2 = expr_codegen(mod, builder, expr->right, 0);
-			v = LLVMBuildGEP(builder, v, &v2, 1, "");
+			v = LLVMBuildGEP_compat(builder, v, &v2, 1, "");
 			if (!store_ctxt)
-				v = LLVMBuildLoad3(builder, v, "");
+				v = LLVMBuildLoad_compat(builder, v, "");
 			return v;
 		} else if (expr->op == T_PERIOD) {
 			if (expr->left->kind == E_IDENTIFIER) {
@@ -560,9 +575,9 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 
 			// set up gep indices
 			size_t ind = get_member_position(struct_decl, expr->right->name);
-			v2 = LLVMBuildStructGEP(builder, v, ind, "");
+			v2 = LLVMBuildStructGEP_compat(builder, v, ind, "");
 			if (!store_ctxt) {
-				return LLVMBuildLoad3(builder, v2, "");
+				return LLVMBuildLoad_compat(builder, v2, "");
 			}
 			return v2;
 		} else {
@@ -578,7 +593,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	case E_PRE_UNARY:
 		if (expr->op == T_STAR) {
 			v = expr_codegen(mod, builder, expr->left, 0);
-			return LLVMBuildLoad3(builder, v, "");
+			return LLVMBuildLoad_compat(builder, v, "");
 		} else if (expr->op == T_AMPERSAND) {
 			if (expr->left->name != NULL)
 				return scope_lookup(expr->left->name);
