@@ -309,21 +309,6 @@ static ast_type *typecheck_fncall(ast_expr *expr)
 	return type_copy(fn_ts->type->subtype);
 }
 
-static ast_type *typecheck_syscall(ast_expr *expr)
-{
-	vect *expr_arglist = expr->sub_exprs;
-	ast_type *derived;
-	if (expr_arglist->size != 4) {
-		eputs("CURRENTLY CAN ONLY SYSCALL IF THERE ARE 4 ARGS. SORRY");
-		return NULL;
-	}
-	for (size_t i = 0 ; i < expr_arglist->size ; ++i) {
-		derived = derive_expr_type(expr_arglist->elements[i]);
-		type_destroy(derived);
-	}
-	return type_init(Y_VOID, NULL);
-}
-
 static ast_type *derive_assign(ast_expr *expr) {
 	ast_typed_symbol *ts = NULL;
 	ast_type *left = NULL;
@@ -578,8 +563,6 @@ ast_type *derive_expr_type(ast_expr *expr)
 		return left;
 	case E_FNCALL:
 		return typecheck_fncall(expr);
-	case E_SYSCALL:
-		return typecheck_syscall(expr);
 	case E_IDENTIFIER:
 		ts = scope_lookup(expr->name);
 		if (ts == NULL) {

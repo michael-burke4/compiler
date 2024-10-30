@@ -113,11 +113,6 @@ void fexpr_print(FILE *f, ast_expr *expr)
 		fprint_sub_exprs(f, expr);
 		fprintf(f, ")");
 		break;
-	case E_SYSCALL:
-		fprintf(f, "syscall(");
-		fprint_sub_exprs(f, expr);
-		fprintf(f, ")");
-		break;
 	case E_FALSE_LIT:
 		fprintf(f, "false");
 		break;

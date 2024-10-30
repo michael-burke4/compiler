@@ -759,16 +759,6 @@ ast_expr *parse_expr_unit(void)
 		cur->text = NULL;
 		next();
 		return expr_init(E_STR_LIT, NULL, NULL, 0, NULL, 0, txt);
-	case T_SYSCALL:
-		next();
-		if (!expect(T_LPAREN)) {
-			report_error_cur_tok("Missing open paren after `syscall`");
-			sync_to(T_EOF, 1);
-			return expr_init(E_SYSCALL, NULL, NULL, 0, NULL, 0, NULL);
-		}
-		ex = expr_init(E_SYSCALL, NULL, NULL, 0, NULL, 0, NULL);
-		ex->sub_exprs = parse_comma_separated_exprs(T_RPAREN);
-		return ex;
 	case T_IDENTIFIER:
 		txt = cur->text;
 		cur->text = NULL;

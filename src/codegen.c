@@ -33,23 +33,6 @@ static inline LLVMValueRef LLVMBuildCall_compat(LLVMBuilderRef B, LLVMValueRef F
 	return LLVMBuildCall2(B, LLVMGetElementType(LLVMTypeOf(Fn)), Fn, Args, NumArgs, Name);
 }
 
-static LLVMValueRef codegen_syscall3(LLVMBuilderRef builder, LLVMValueRef args[4])
-{
-	LLVMTypeRef argtypes[4] = {LLVMTypeOf(args[0]), LLVMTypeOf(args[1]), LLVMTypeOf(args[2]), LLVMTypeOf(args[3])};
-	// TODO: don't just return void.
-	LLVMTypeRef functy = LLVMFunctionType(LLVMVoidType(), argtypes, 4, 0);
-	char *inline_asm = \
-		"mov x8, ${0:x}"	"\n"\
-		"mov x0, ${1:x}"	"\n"\
-		"mov x1, $2"		"\n"\
-		"mov x2, ${3:x}"	"\n"\
-		"svc #0"		"\n"\
-		;
-	char constraints[256] = "r,r,r,r,~{x0},~{x1},~{x2},~{x8},~{memory}";
-	LLVMValueRef asmcall = LLVMGetInlineAsm(functy, inline_asm, strlen(inline_asm), constraints, strlen(constraints), 1, 1, 0, 0);
-	return LLVMBuildCall_compat(builder, asmcall, args, 4, "");
-}
-
 static LLVMTypeRef int_kind_to_llvm_type(LLVMModuleRef mod, type_t kind) {
 	LLVMContextRef ctxt = CTXT(mod);
 	switch (kind) {
@@ -458,7 +441,6 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	LLVMValueRef v2;
 	LLVMValueRef args[MAX_ARGS];
 	LLVMValueRef ret;
-	LLVMValueRef syscall_args[4];
 	LLVMTypeRef t;
 	buffer[0] = '\0';
 	unsigned argno;
@@ -496,11 +478,6 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		argno = LLVMCountParams(v);
 		get_fncall_args(mod, builder, expr, argno, &args);
 		return LLVMBuildCall_compat(builder, v, args, argno, "");
-	case E_SYSCALL:
-		for (size_t i = 0 ; i < expr->sub_exprs->size ; ++i) {
-			syscall_args[i] = expr_codegen(mod, builder, expr->sub_exprs->elements[i], 0);
-		}
-		return codegen_syscall3(builder, syscall_args);
 	case E_IDENTIFIER:
 		v = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
 		ret = get_param_by_name(v, buffer);

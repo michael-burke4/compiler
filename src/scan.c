@@ -44,8 +44,6 @@ static token_s *check_if_keyword(strvec *word, size_t line, size_t col)
 		ret = tok_init_nl(T_WHILE, line, col, NULL);
 	else if (strvec_equals_str(word, "bool"))
 		ret = tok_init_nl(T_BOOL, line, col, NULL);
-	else if (strvec_equals_str(word, "syscall"))
-		ret = tok_init_nl(T_SYSCALL, line, col, NULL);
 	else if (strvec_equals_str(word, "struct"))
 		ret = tok_init_nl(T_STRUCT, line, col, NULL);
 	if (ret != NULL)
