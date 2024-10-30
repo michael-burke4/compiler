@@ -46,6 +46,8 @@ typedef enum {
 	E_MULDIV,
 	E_EQUALITY,
 	E_INEQUALITY,
+	E_LOG_OR,
+	E_LOG_AND,
 	E_ASSIGN,
 	E_PAREN,
 	E_INT_LIT,

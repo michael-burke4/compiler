@@ -545,7 +545,7 @@ ast_expr *parse_expr(void)
 
 ast_expr *parse_expr_assign(void)
 {
-	ast_expr *this = parse_expr_equality();
+	ast_expr *this = parse_expr_or();
 	ast_expr *that;
 	token_t typ = cur_tok_type();
 	token_t op;
@@ -554,8 +554,40 @@ ast_expr *parse_expr_assign(void)
 			typ == T_BW_AND_ASSIGN || typ == T_BW_OR_ASSIGN) {
 		op = typ;
 		next();
-		that = parse_expr_inequality();
+		that = parse_expr_or();
 		this = expr_init(E_ASSIGN, this, that, op, NULL, 0, NULL);
+		typ = cur_tok_type();
+	}
+	return this;
+}
+
+ast_expr *parse_expr_or(void)
+{
+	ast_expr *this = parse_expr_and();
+	ast_expr *that;
+	token_t typ = cur_tok_type();
+	token_t op;
+	while (typ == T_OR) {
+		op = typ;
+		next();
+		that = parse_expr_and();
+		this = expr_init(E_LOG_OR, this, that, op, NULL, 0, NULL);
+		typ = cur_tok_type();
+	}
+	return this;
+}
+
+ast_expr *parse_expr_and(void)
+{
+	ast_expr *this = parse_expr_equality();
+	ast_expr *that;
+	token_t typ = cur_tok_type();
+	token_t op;
+	while (typ == T_AND) {
+		op = typ;
+		next();
+		that = parse_expr_equality();
+		this = expr_init(E_LOG_AND, this, that, op, NULL, 0, NULL);
 		typ = cur_tok_type();
 	}
 	return this;

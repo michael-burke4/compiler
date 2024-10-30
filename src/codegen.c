@@ -95,7 +95,7 @@ LLVMModuleRef module_codegen(LLVMContextRef ctxt, ast_decl *start, char *module_
 // First it allocates space for an array on the stack (with element type determined by decl subtype)
 // then it populates each array space with the corresponding element from the initializer
 // then it builds a cast of the array type to a pointer type so it can be treated like any other ptr.
-// 	this casted pointer is what is used later.
+//	this casted pointer is what is used later.
 static void initializer_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt)
 {
 	char buffer[BUFFER_MAX_LEN];
@@ -216,7 +216,7 @@ static void while_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *s
 	LLVMPositionBuilderAtEnd(builder, whi);
 	stmt_codegen(mod, builder, stmt->body, cod);
 	v1 = LLVMGetLastInstruction(whi);
-	if (!LLVMIsATerminatorInst(v1))
+	if (v1 == NULL || !LLVMIsATerminatorInst(v1))
 		LLVMBuildBr(builder, cod);
 
 
@@ -383,6 +383,59 @@ static char *shorten_struct_string(char *string) {
 	return string;
 }
 
+static LLVMValueRef log_or_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr)
+{
+	LLVMValueRef cur_function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
+	LLVMBasicBlockRef L = LLVMAppendBasicBlock(cur_function, "L");
+	LLVMBasicBlockRef R = LLVMAppendBasicBlock(cur_function, "R");
+	LLVMBasicBlockRef C = LLVMAppendBasicBlock(cur_function, "C");
+	LLVMValueRef l_cond = expr_codegen(mod, builder, expr->left, 0);
+	LLVMBuildCondBr(builder, l_cond, L, R);
+
+	LLVMPositionBuilderAtEnd(builder, L);
+	LLVMBuildBr(builder, C);
+
+	LLVMPositionBuilderAtEnd(builder, R);
+	LLVMValueRef r_cond = expr_codegen(mod, builder, expr->right, 0);
+	LLVMBuildBr(builder, C);
+
+	LLVMPositionBuilderAtEnd(builder, C);
+	LLVMTypeRef bool_type = LLVMInt1TypeInContext(CTXT(mod));
+	LLVMValueRef phi = LLVMBuildPhi(builder, bool_type, "");
+	LLVMAddIncoming(phi, (LLVMValueRef[]){l_cond, r_cond}, (LLVMBasicBlockRef[]){L, R}, 2);
+
+	return phi;
+}
+
+static LLVMValueRef log_and_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr)
+{
+	LLVMValueRef cur_function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
+	LLVMBasicBlockRef L = LLVMAppendBasicBlock(cur_function, "L");
+	LLVMBasicBlockRef R = LLVMAppendBasicBlock(cur_function, "R");
+	LLVMBasicBlockRef C = LLVMAppendBasicBlock(cur_function, "C");
+	LLVMValueRef l_cond = expr_codegen(mod, builder, expr->left, 0);
+
+	// note R and L are flipped here from log_or.
+	// If the l cond is false, we won't bother checking R cond
+	// and jump right to the continue block and stuff false into the phi.
+	// Otherwise the l cond is true and we need to check the r cond.
+	LLVMBuildCondBr(builder, l_cond, R, L);
+
+	LLVMPositionBuilderAtEnd(builder, L);
+	LLVMBuildBr(builder, C);
+
+	LLVMPositionBuilderAtEnd(builder, R);
+	LLVMValueRef r_cond = expr_codegen(mod, builder, expr->right, 0);
+	LLVMBuildBr(builder, C);
+
+	LLVMPositionBuilderAtEnd(builder, C);
+	LLVMTypeRef bool_type = LLVMInt1TypeInContext(CTXT(mod));
+	LLVMValueRef phi = LLVMBuildPhi(builder, bool_type, "");
+	LLVMAddIncoming(phi, (LLVMValueRef[]){l_cond, r_cond}, (LLVMBasicBlockRef[]){L, R}, 2);
+
+	return phi;
+}
+
 LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, int store_ctxt)
 {
 	char buffer[BUFFER_MAX_LEN];
@@ -410,6 +463,13 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 			return LLVMBuildSub(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 		else
 			return LLVMBuildAdd(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+
+	// Because the lhs and rhs of logical and/or must be bools, this is fine.
+	// This wouldn't work if any old int could be in a logical and/or expr.
+	case E_LOG_OR:
+		return log_or_codegen(mod, builder, expr);
+	case E_LOG_AND:
+		return log_and_codegen(mod, builder, expr);
 	case E_EQUALITY:
 		if (expr->op == T_EQ)
 			return LLVMBuildICmp(builder, LLVMIntEQ, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
@@ -575,7 +635,7 @@ static void define_struct(LLVMModuleRef mod, ast_decl *decl) {
 
 	// A brief explaination of scope-binding structs:
 	// Structs can only be defined at the top level, so scope binding
-	// 	them isn't reaaaally needed, but it's easier than keeping a
+	//	them isn't reaaaally needed, but it's easier than keeping a
 	//	second list just for struct defs.
 	// Structs typesyms need to be accessible easily so that you can select struct fields
 	//	by name, as LLVM doesn't keep track of the field names. It only keeps track

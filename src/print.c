@@ -14,6 +14,8 @@ static void fprint_op(FILE *f, ast_expr *expr)
 	case E_INEQUALITY:
 	case E_EQUALITY:
 	case E_ASSIGN:
+	case E_LOG_OR:
+	case E_LOG_AND:
 		fprintf(f, " ");
 		fprint_tok_t(f, expr->op);
 		fprintf(f, " ");
@@ -71,6 +73,8 @@ void fexpr_print(FILE *f, ast_expr *expr)
 	case E_EQUALITY:
 	case E_MULDIV:
 	case E_ADDSUB:
+	case E_LOG_OR:
+	case E_LOG_AND:
 		fexpr_print(f, expr->left);
 		fprint_op(f, expr);
 		fexpr_print(f, expr->right);

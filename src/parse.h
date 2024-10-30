@@ -15,6 +15,8 @@ ast_expr *parse_expr_pre_unary(void);
 ast_expr *parse_expr_unit(void);
 ast_expr *parse_expr_equality(void);
 ast_expr *parse_expr_inequality(void);
+ast_expr *parse_expr_and(void);
+ast_expr *parse_expr_or(void);
 ast_expr *parse_expr_assign(void);
 ast_stmt *parse_stmt(void);
 ast_stmt *parse_stmt_block(void);

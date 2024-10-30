@@ -1,0 +1,11 @@
+ret 3
+--TEXT--
+let main: () -> i32 = {
+	let x: i32 = 10;
+	if (x > 2 && x < 20) {
+		if (false || x < 12) {
+			return 3;
+		}
+	}
+	return 2;
+};

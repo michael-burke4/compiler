@@ -504,6 +504,7 @@ static void cast_up_if_necessary(ast_expr *expr, ast_type **left, ast_type **rig
 	}
 }
 
+// TODO: use goto error pattern
 ast_type *derive_expr_type(ast_expr *expr)
 {
 	ast_typed_symbol *ts = NULL;
@@ -512,6 +513,21 @@ ast_type *derive_expr_type(ast_expr *expr)
 	if (expr == NULL)
 		return NULL;
 	switch (expr->kind) {
+	case E_LOG_OR:
+	case E_LOG_AND:
+		left = derive_expr_type(expr->left);
+		right = derive_expr_type(expr->right);
+		if (left->kind == Y_BOOL && right->kind == Y_BOOL) {
+			type_destroy(right);
+			return left;
+		}
+		had_error = 1;
+		fprintf(stderr, "Typecheck failed at expression \"");
+		e_expr_print(expr);
+		eputs("\"");
+		type_destroy(left);
+		type_destroy(right);
+		return NULL;
 	case E_ADDSUB:
 	case E_MULDIV:
 		left = derive_expr_type(expr->left);
