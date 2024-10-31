@@ -1,0 +1,8 @@
+ret 5
+--TEXT--
+let x: (a: i32, b: i32) -> i32 = {
+	return b;
+};
+let main: () -> i32 = {
+	return x(11, 5);
+};

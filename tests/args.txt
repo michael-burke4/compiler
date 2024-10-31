@@ -1,0 +1,8 @@
+let x: (c: char, i: i32) -> i32 = {
+	i += 1;
+	return i;
+};
+
+let main: () -> i32 = {
+	return x('a', 5);
+};

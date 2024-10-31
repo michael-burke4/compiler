@@ -281,17 +281,6 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, LLV
 	}
 }
 
-static LLVMValueRef get_param_by_name(LLVMValueRef function, char *name)
-{
-	LLVMValueRef param = NULL;
-	for (unsigned int i = 0 ; i < LLVMCountParams(function) ; ++i) {
-		param = LLVMGetParam(function, i);
-		if (LLVMGetValueName(param) != NULL && strcmp(LLVMGetValueName(param), name) == 0)
-			return param;
-	}
-	return NULL;
-}
-
 // TODO undo MAX_ARGS? Enforce MAX_ARGS? IDK just decide on something!!
 #define MAX_ARGS 32
 static void get_fncall_args(LLVMModuleRef mod, LLVMBuilderRef builder,ast_expr *expr, unsigned argno, LLVMValueRef (*args)[MAX_ARGS])
@@ -479,21 +468,12 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		get_fncall_args(mod, builder, expr, argno, &args);
 		return LLVMBuildCall_compat(builder, v, args, argno, "");
 	case E_IDENTIFIER:
-		v = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
-		ret = get_param_by_name(v, buffer);
-		if (ret == NULL) {
-			ret = scope_lookup(expr->name);
-			ret = LLVMBuildLoad_compat(builder, ret, "");
-		}
+		ret = scope_lookup(expr->name);
+		ret = LLVMBuildLoad_compat(builder, ret, "");
 		return ret;
 	case E_ASSIGN:
 		if (expr->left->kind == E_IDENTIFIER) {
 			v = scope_lookup(expr->left->name);
-			if (v == NULL) {
-				strvec_tostatic(expr->left->name, buffer);
-				v = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
-				v = get_param_by_name(v, buffer);
-			}
 		} else if (expr->left->kind == E_PRE_UNARY && expr->left->op == T_STAR) {
 			v = expr_codegen(mod, builder, expr->left->left, 1);
 		} else if (expr->left->kind == E_POST_UNARY && (expr->left->op == T_LBRACKET || expr->left->op == T_PERIOD)) {
@@ -613,7 +593,6 @@ static void alloca_params_as_local_vars(LLVMBuilderRef builder, LLVMValueRef fn,
 		v = LLVMBuildAlloca(builder, param_types[i], buf);
 		LLVMBuildStore(builder, arg, v);
 		scope_bind(v, arglist_get(arglist,i)->symbol);
-		//vect_append(vc, (void *)v);
 	}
 }
 
