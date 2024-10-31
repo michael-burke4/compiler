@@ -263,11 +263,6 @@ should these conditions fail, return zero.
 static ast_type *typecheck_fncall(ast_expr *expr)
 {
 	ast_typed_symbol *fn_ts = scope_lookup(expr->name);
-	vect *decl_arglist = fn_ts->type->arglist;
-	vect *expr_arglist = expr->sub_exprs;
-	ast_type *derived;
-	size_t i;
-	int flag = 0;
 	if (fn_ts == NULL) {
 		fprintf(stderr, "Call to undeclared function \"");
 		fstrvec_print(stderr, expr->name);
@@ -281,6 +276,11 @@ static ast_type *typecheck_fncall(ast_expr *expr)
 		had_error = 1;
 		return NULL;
 	}
+	vect *decl_arglist = fn_ts->type->arglist;
+	vect *expr_arglist = expr->sub_exprs;
+	ast_type *derived;
+	size_t i;
+	int flag = 0;
 	if (decl_arglist == NULL && expr_arglist == NULL)
 		return type_copy(fn_ts->type->subtype);
 	if ((decl_arglist == NULL || expr_arglist == NULL) || (decl_arglist->size != expr_arglist->size)) {
