@@ -46,6 +46,8 @@ static token_s *check_if_keyword(strvec *word, size_t line, size_t col)
 		ret = tok_init_nl(T_BOOL, line, col, NULL);
 	else if (strvec_equals_str(word, "struct"))
 		ret = tok_init_nl(T_STRUCT, line, col, NULL);
+	else if (strvec_equals_str(word, "asm"))
+		ret = tok_init_nl(T_ASM, line, col, NULL);
 	if (ret != NULL)
 		strvec_destroy(word);
 	else
@@ -151,6 +153,8 @@ static token_s *scan_string_literal(FILE *f, size_t *line, size_t *col)
 				strvec_append(str, '\n');
 			else if (c == '"')
 				strvec_append(str, '"');
+			else if (c == '0')
+				strvec_append(str, '\0');
 			else if (c == '\\')
 				strvec_append(str, '\\');
 			else {

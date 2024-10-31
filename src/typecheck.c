@@ -598,6 +598,42 @@ ast_type *derive_expr_type(ast_expr *expr)
 	}
 }
 
+void typecheck_asm(ast_stmt *stmt) {
+	asm_struct *a = stmt->asm_obj;
+	ast_type *t = NULL;
+	// I can't imagine we'll get to this point but who knows?
+	if (a == NULL) {
+		had_error = 1;
+		eputs("Invalid asm statement");
+		return;
+	}
+
+	t = derive_expr_type(a->code);
+	if (t == NULL || a->code->kind != E_STR_LIT) {
+		eputs("asm statement's first arg must be a string literal.");
+		had_error = 1;
+		type_destroy(t);
+		return;
+	}
+	type_destroy(t);
+
+	t = derive_expr_type(a->constraints);
+	if (t != NULL && a->constraints->kind != E_STR_LIT) {
+		eputs("asm statement's second arg must be a string.");
+		had_error = 1;
+		type_destroy(t);
+		return;
+	}
+	type_destroy(t);
+
+	for (size_t i = 0 ; a->out_operands != NULL && i < a->out_operands->size ; ++i)
+		if (((ast_expr *)vect_get(a->out_operands, i))->kind != E_IDENTIFIER)
+			eputs("inline asm output operands must be identifiers.");
+
+	for (size_t i = 0 ; a->in_operands != NULL && i < a->in_operands->size ; ++i)
+		type_destroy(derive_expr_type(vect_get(a->in_operands, i)));
+}
+
 void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 {
 	ast_type *typ;
@@ -699,6 +735,10 @@ void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 		// That is not allowed!
 		had_error = 1;
 		eputs("Return statements must be at the end of statement blocks.");
+		break;
+	case S_ASM:
+		typecheck_asm(stmt);
+		typecheck_stmt(stmt->next, at_fn_top_level);
 		break;
 	}
 }

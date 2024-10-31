@@ -1,0 +1,6 @@
+ret 1
+--TEXT--
+let main: () -> i32 = {
+	asm("nop");
+	return 1;
+};

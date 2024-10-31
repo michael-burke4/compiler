@@ -327,6 +327,125 @@ ast_stmt *parse_stmt_block(void)
 	next();
 	return block;
 }
+
+static ast_stmt *parse_asm_stmt(void)
+{
+	next();
+	ast_expr *code = NULL;
+	ast_expr *constraints = NULL;
+	vect *in_operands = NULL;
+	vect *out_operands = NULL;
+
+	// asm(
+	//    ^
+	if (!expect(T_LPAREN))
+		goto asm_parse_error;
+	next();
+
+	// asm("inline asm code"
+	//     ^^^^^^^^^^^^^^^^^
+	code = parse_expr();
+	if (code == NULL || code->kind != E_STR_LIT)
+		goto asm_parse_error;
+	// asm("inline asm code")     // DONE!
+	//                      ^
+	if (expect(T_RPAREN)) {
+		next();
+		goto asm_parse_done;
+	}
+	// asm("inline asm code",
+	//                      ^
+	if (!expect(T_COMMA))
+		goto asm_parse_error;
+	next();
+
+	// asm("inline asm code", "constraints"
+	//                        ^^^^^^^^^^^^^
+	constraints = parse_expr();
+	if (constraints == NULL || constraints->kind != E_STR_LIT)
+		goto asm_parse_error;
+	// asm("inline asm code", "constraints")     // DONE!
+	//                                     ^
+	if (expect(T_RPAREN)) {
+		next();
+		goto asm_parse_done;
+	}
+	// asm("inline asm code", "constraints",
+	//                                     ^
+	if (!expect(T_COMMA))
+		goto asm_parse_error;
+	next();
+
+
+	// asm("inline asm code", "constraints", [
+	//                                       ^
+	if (!expect(T_LBRACKET))
+		goto asm_parse_error;
+	// asm("inline asm code", "constraints", [e1, e2, e3]
+	//                                       ^^^^^^^^^^^^
+	in_operands = parse_comma_separated_exprs(T_RBRACKET);
+	if (in_operands == NULL)
+		goto asm_parse_error;
+	// asm("inline asm code", "constraints", [e1, e2, e3])     // DONE!
+	//                                                   ^
+	if (expect(T_RPAREN)) {
+		next();
+		goto asm_parse_done;
+	}
+
+	// asm("inline asm code", "constraints", [e1, e2, e3],
+	//                                                   ^
+	if (!expect(T_COMMA))
+		goto asm_parse_error;
+	next();
+
+	// asm("inline asm code", "constraints", [e1, e2, e3], [
+	//                                                     ^
+	if (!expect(T_LBRACKET))
+		goto asm_parse_error;
+	out_operands = in_operands;
+	in_operands = NULL;
+	// asm("inline asm code", "constraints", [e1, e2, e3], [e4, e5, e6]
+	//                                                     ^^^^^^^^^^^^
+	in_operands = parse_comma_separated_exprs(T_RBRACKET);
+	if (in_operands == NULL)
+		goto asm_parse_error;
+	// asm("inline asm code", "constraints", [e1, e2, e3], [e4, e5, e6])     // DONE!
+	//                                                                 ^
+	if (!expect(T_RPAREN))
+		goto asm_parse_error;
+	next();
+
+
+asm_parse_done:
+	if (!expect(T_SEMICO))
+		goto asm_parse_error;
+	next();
+	ast_stmt *ret = stmt_init(S_ASM, NULL, NULL, NULL, NULL);
+	ret->asm_obj = smalloc(sizeof(*(ret->asm_obj)));
+	ret->asm_obj->code = code;
+	ret->asm_obj->constraints = constraints;
+	ret->asm_obj->in_operands = in_operands;
+	ret->asm_obj->out_operands = out_operands;
+
+	return ret;
+
+asm_parse_error:
+	for (size_t i = 0 ; out_operands != NULL &&  i < out_operands->size ; ++i) {
+		expr_destroy(out_operands->elements[i]);
+	}
+	vect_destroy(out_operands);
+	for (size_t i = 0 ; in_operands != NULL &&  i < in_operands->size ; ++i) {
+		expr_destroy(in_operands->elements[i]);
+	}
+	vect_destroy(in_operands);
+	expr_destroy(constraints);
+	expr_destroy(code);
+	report_error_cur_tok("Could not parse inline assembly statement.");
+	sync_to(T_SEMICO, 0);
+	return NULL;
+}
+
 ast_stmt *parse_stmt(void)
 {
 	stmt_t kind;
@@ -418,6 +537,11 @@ ast_stmt *parse_stmt(void)
 		else
 			next();
 		break;
+	case T_ASM:
+		body = parse_asm_stmt();
+		if (body == NULL)
+			goto stmt_err;
+		return body;
 	default:
 		kind = S_EXPR;
 		expr = parse_expr();

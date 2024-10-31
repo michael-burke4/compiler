@@ -61,8 +61,26 @@ ast_stmt *stmt_init(stmt_t kind, ast_decl *decl, ast_expr *expr, ast_stmt *body,
 	ret->body = body;
 	ret->else_body = else_body;
 	ret->next = NULL;
+	ret->asm_obj = NULL;
 
 	return ret;
+}
+
+static void asm_struct_destroy(asm_struct *a)
+{
+	if (a == NULL)
+		return;
+	expr_destroy(a->code);
+	expr_destroy(a->constraints);
+	for (size_t i = 0 ; a->in_operands != NULL && i < a->in_operands->size ; ++i) {
+		expr_destroy(vect_get(a->in_operands, i));
+	}
+	for (size_t i = 0 ; a->out_operands != NULL && i < a->out_operands->size ; ++i) {
+		expr_destroy(vect_get(a->out_operands, i));
+	}
+	vect_destroy(a->in_operands);
+	vect_destroy(a->out_operands);
+	free(a);
 }
 
 void stmt_destroy(ast_stmt *stmt)
@@ -71,6 +89,7 @@ void stmt_destroy(ast_stmt *stmt)
 	if (stmt == NULL)
 		return;
 	next = stmt->next;
+	asm_struct_destroy(stmt->asm_obj);
 	decl_destroy(stmt->decl);
 	expr_destroy(stmt->expr);
 	stmt_destroy(stmt->body);

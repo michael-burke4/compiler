@@ -225,6 +225,64 @@ static void while_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *s
 	}
 }
 
+static void asm_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt)
+{
+	asm_struct *a = stmt->asm_obj;
+	vect *in_ops = a->in_operands;
+	vect *out_ops = a->out_operands;
+	size_t in_s = in_ops == NULL ? 0 : in_ops->size;
+	size_t out_s = out_ops == NULL ? 0 : out_ops->size;
+
+	vect *val_vect = in_ops == NULL ? NULL : vect_init(in_s);
+	vect *type_vect = in_ops == NULL ? NULL : vect_init(in_s);
+
+	vect *ret_types = out_ops == NULL ? NULL : vect_init(out_s);
+
+	for (size_t i = 0 ; out_ops != NULL && i < out_s ; ++i) {
+		LLVMTypeRef t = LLVMTypeOf(expr_codegen(mod, builder, vect_get(out_ops, i), 0));
+		vect_append(ret_types, t);
+	}
+
+	for (size_t i = 0 ; in_ops != NULL && i < in_s ; ++i) {
+		LLVMValueRef v = expr_codegen(mod, builder, vect_get(in_ops, i), 0);
+		vect_append(val_vect, v);
+		vect_append(type_vect, LLVMTypeOf(v));
+	}
+
+	LLVMTypeRef ret_type = ret_types == NULL ? LLVMVoidTypeInContext(CTXT(mod))
+					: LLVMStructTypeInContext(
+						CTXT(mod),
+						(LLVMTypeRef *)ret_types->elements,
+						ret_types->size,
+						0
+					);
+	LLVMTypeRef fn_type = LLVMFunctionType(ret_type,
+				type_vect == NULL ? NULL : (LLVMTypeRef *)type_vect->elements,
+				type_vect == NULL ? 0 : type_vect->size,
+				0);
+	LLVMValueRef asm_call = LLVMGetInlineAsm(fn_type,
+					a->code->string_literal->text,
+					a->code->string_literal->size,
+					a->constraints == NULL ? NULL : a->constraints->string_literal->text,
+					a->constraints == NULL ? 0 : a->constraints->string_literal->size,
+					1, 1, 0, 0);
+	LLVMValueRef res = LLVMBuildCall_compat(builder,
+				asm_call,\
+				val_vect == NULL ? NULL : (LLVMValueRef *)val_vect->elements,
+				in_s, "");
+
+	for (size_t i = 0 ; in_ops != NULL && i < out_s ; ++i) {
+		ast_expr *e = vect_get(out_ops, i);
+		LLVMValueRef loc = scope_lookup(e->name);
+		LLVMValueRef to_store = LLVMBuildExtractValue(builder, res, i, "");
+		LLVMBuildStore(builder, to_store, loc);
+	}
+
+	vect_destroy(val_vect);
+	vect_destroy(type_vect);
+	vect_destroy(ret_types);
+}
+
 void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, LLVMBasicBlockRef p_con)
 {
 	LLVMValueRef v1;
@@ -235,6 +293,9 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, LLV
 		return;
 
 	switch (stmt->kind) {
+	case S_ASM:
+		asm_codegen(mod, builder, stmt);
+		break;
 	case S_BLOCK:
 		scope_enter();
 		cur = stmt->body;
