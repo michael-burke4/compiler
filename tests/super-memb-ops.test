@@ -1,0 +1,34 @@
+ret 25
+--TEXT--
+let pt: struct = {
+	x: i32;
+	y: i32;
+};
+
+let rect: struct = {
+	c1: struct pt;
+	c2: struct pt;
+};
+
+let abs: (n: i32) -> i32 = {
+	if (n < 0) {
+		return n * -1;
+	}
+	else {
+		return n;
+	}
+};
+
+let area: (r: struct rect*) -> i32 = {
+	return abs(((*r).c1.x - (*r).c2.x) * ((*r).c1.y - (*r).c2.y));
+};
+
+let main: () -> i32 = {
+	let r: struct rect;
+	let r_ptr: struct rect* = &r;
+	(*r_ptr).c1.x = 0;
+	(*r_ptr).c1.y = 0;
+	(*r_ptr).c2.x = 5;
+	(*r_ptr).c2.y = 5;
+	return area(&r);
+};

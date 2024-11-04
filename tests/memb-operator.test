@@ -1,0 +1,17 @@
+ret 10
+--TEXT--
+let point: struct = {
+	x: i32;
+	y: i32;
+};
+
+let fn: (p: struct point*) -> void = {
+	(*p).y = 2;
+	(*p).x = 5;
+};
+
+let main: () -> i32 = {
+	let p: struct point;
+	fn(&p);
+	return p.x * p.y;
+};

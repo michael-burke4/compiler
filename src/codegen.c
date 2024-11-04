@@ -610,7 +610,10 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 				int_kind_to_llvm_type(mod, expr->cast_to), "");
 	case E_PRE_UNARY:
 		if (expr->op == T_STAR) {
-			v = expr_codegen(mod, builder, expr->left, 0);
+			v = expr_codegen(mod, builder, expr->left, store_ctxt);
+			if (store_ctxt) {
+				return v;
+			}
 			return LLVMBuildLoad_compat(builder, v, "");
 		} else if (expr->op == T_AMPERSAND) {
 			if (expr->left->name != NULL)
