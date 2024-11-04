@@ -1,0 +1,5 @@
+ret 1
+--TEXT--
+let main: () -> i32 = {
+	return ~(-2);
+};

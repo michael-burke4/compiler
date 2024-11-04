@@ -1,0 +1,9 @@
+comp_err typecheck
+--TEXT--
+let main: () -> i32 = {
+	let n: bool = true;
+	if (-n == 5) {
+		return 1;
+	}
+	return 0;
+};
