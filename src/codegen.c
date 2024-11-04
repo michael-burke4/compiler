@@ -484,6 +484,29 @@ static LLVMValueRef log_and_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, a
 	return phi;
 }
 
+LLVMValueRef pre_unary_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, int store_ctxt)
+{
+	LLVMValueRef v = NULL;
+	switch (expr->op) {
+	case T_STAR:
+		v = expr_codegen(mod, builder, expr->left, store_ctxt);
+		if (store_ctxt) {
+			return v;
+		}
+		return LLVMBuildLoad_compat(builder, v, "");
+	case T_AMPERSAND:
+		if (expr->left->name != NULL)
+			return scope_lookup(expr->left->name);
+		return expr_codegen(mod, builder, expr->left, 1);
+	case T_MINUS:
+		v = expr_codegen(mod, builder, expr->left, 0);
+		return LLVMBuildSub(builder, LLVMConstInt(LLVMTypeOf(v), 0, 0), v, "");
+	default:
+		fprintf(stderr, "can't codegen that expr kind right now.\n");
+		exit(1);
+	}
+}
+
 LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, int store_ctxt)
 {
 	char buffer[BUFFER_MAX_LEN];
@@ -609,18 +632,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 				builder, expr->left, store_ctxt),
 				int_kind_to_llvm_type(mod, expr->cast_to), "");
 	case E_PRE_UNARY:
-		if (expr->op == T_STAR) {
-			v = expr_codegen(mod, builder, expr->left, store_ctxt);
-			if (store_ctxt) {
-				return v;
-			}
-			return LLVMBuildLoad_compat(builder, v, "");
-		} else if (expr->op == T_AMPERSAND) {
-			if (expr->left->name != NULL)
-				return scope_lookup(expr->left->name);
-			return expr_codegen(mod, builder, expr->left, 1);
-		}
-		//fallthrough
+		return pre_unary_codegen(mod, builder, expr, store_ctxt);
 	default:
 		fprintf(stderr, "can't codegen that expr kind right now.\n");
 		exit(1);

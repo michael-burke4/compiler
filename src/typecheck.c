@@ -393,6 +393,14 @@ static ast_type *derive_pre_unary(ast_expr *expr)
 		right = type_copy(left->subtype);
 		type_destroy(left);
 		return right;
+	case T_MINUS:
+		left = derive_expr_type(expr->left);
+		if (!is_int_type(left)) {
+			eputs("Cannot use unary negative operator on non-integer type.");
+			type_destroy(left);
+			return NULL;
+		}
+		return left;
 	default:
 		eputs("unsupported expr kind while typechecking!");
 		had_error = 1;

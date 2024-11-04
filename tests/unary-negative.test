@@ -1,0 +1,11 @@
+ret 2
+--TEXT--
+let main: () -> i32 = {
+	let n: i32 = 5;
+	let m: i32 = -10;
+	if (-n == -5 && -m == 10) {
+		return 2;
+	} else {
+		return 1;
+	}
+};
