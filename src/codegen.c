@@ -504,6 +504,9 @@ LLVMValueRef pre_unary_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_ex
 	case T_BW_NOT:
 		v = expr_codegen(mod, builder, expr->left, 0);
 		return LLVMBuildXor(builder, LLVMConstInt(LLVMTypeOf(v), -1, 0), v, "");
+	case T_NOT:
+		v = expr_codegen(mod, builder, expr->left, 0);
+		return LLVMBuildXor(builder, LLVMConstInt(LLVMTypeOf(v), 1, 0), v, "");
 	default:
 		fprintf(stderr, "can't codegen that expr kind right now.\n");
 		exit(1);

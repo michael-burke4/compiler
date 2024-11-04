@@ -409,6 +409,14 @@ static ast_type *derive_pre_unary(ast_expr *expr)
 			return NULL;
 		}
 		return left;
+	case T_NOT:
+		left = derive_expr_type(expr->left);
+		if (left->kind != Y_BOOL) {
+			eputs("Cannot use unary not operator on non-integer type.");
+			type_destroy(left);
+			return NULL;
+		}
+		return left;
 	default:
 		eputs("unsupported expr kind while typechecking!");
 		had_error = 1;
