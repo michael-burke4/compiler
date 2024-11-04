@@ -401,6 +401,14 @@ static ast_type *derive_pre_unary(ast_expr *expr)
 			return NULL;
 		}
 		return left;
+	case T_BW_NOT:
+		left = derive_expr_type(expr->left);
+		if (!is_int_type(left)) {
+			eputs("Cannot use unary negative operator on non-integer type.");
+			type_destroy(left);
+			return NULL;
+		}
+		return left;
 	default:
 		eputs("unsupported expr kind while typechecking!");
 		had_error = 1;
