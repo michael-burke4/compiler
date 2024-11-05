@@ -205,7 +205,7 @@ static vect *parse_struct_def(void)
 	vect *def_vect = vect_init(3);
 	if (!expect(T_LCURLY)) {
 		report_error_cur_tok("Missing opening brace in struct definition.");
-		sync_to(T_SEMICO, 0);
+		sync_to(T_RCURLY, 0);
 		destroy_def_vect(def_vect);
 		return NULL;
 	}
@@ -224,7 +224,7 @@ static vect *parse_struct_def(void)
 			sync_to(T_EOF, 1);
 		} else if (cur == NULL) {
 			report_error_cur_tok("Couldn't parse typed symbol.");
-			sync_to(T_SEMICO, 1);
+			sync_to(T_EOF, 1);
 		} else
 			next();
 		vect_append(def_vect, cur);
