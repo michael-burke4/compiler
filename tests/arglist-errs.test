@@ -1,0 +1,13 @@
+comp_err parse
+--TEXT--
+let fn: (a: i32, b: uiokljlksnv) -> i32 = {
+	return 5;
+};
+
+let fn2: (b: uiokljlksnv) -> i32 = {
+	return 5;
+};
+
+let fn3: (b: i32] -> i32 = {
+	return 5;
+};

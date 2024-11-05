@@ -1,0 +1,7 @@
+comp_err parse
+--TEXT--
+let main: () -> i32 = {
+	let x: i32* = [1, 2, 3, 4;
+
+	return 1;
+};
