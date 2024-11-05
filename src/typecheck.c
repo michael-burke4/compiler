@@ -15,10 +15,11 @@ static int in_loop = 0;
 
 void typecheck_program(ast_decl *program)
 {
-	if (program == NULL)
-		return;
-	typecheck_decl(program);
-	typecheck_program(program->next);
+	ast_decl *cur = program;
+	while (cur != NULL) {
+		typecheck_decl(cur);
+		cur = cur->next;
+	}
 }
 
 static void scope_bind_args(ast_decl *decl)

@@ -112,10 +112,20 @@ static vect *parse_comma_separated_exprs(token_t closer) {
 ast_decl *parse_program(token_s *head)
 {
 	cur_token = head;
-	if (expect(T_EOF))
-		return NULL;
-	ast_decl *ret = parse_decl();
-	ret->next = parse_program(cur_token);
+	ast_decl *ret = NULL;
+	ast_decl *cur = NULL;
+	ast_decl *tmp = NULL;
+	while (!expect(T_EOF)) {
+		tmp = parse_decl();
+		if (ret == NULL) {
+			ret = tmp;
+			cur = tmp;
+			continue;
+		}
+		cur->next = tmp;
+		cur = tmp;
+	}
+
 	return ret;
 }
 
