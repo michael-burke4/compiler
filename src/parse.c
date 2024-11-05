@@ -13,6 +13,8 @@ token_s *prev_token = NULL;
 
 static inline void next(void)
 {
+	if (cur_token->type == T_EOF)
+		return;
 	prev_token = cur_token;
 	cur_token = cur_token->next;
 }
@@ -39,10 +41,7 @@ static void report_error_cur_tok(const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	if (!cur_token)
-		report_error(prev_token->line, prev_token->col, fmt, args);
-	else
-		report_error(cur_token->line, cur_token->col, fmt, args);
+	report_error(cur_token->line, cur_token->col, fmt, args);
 	va_end(args);
 }
 
@@ -125,7 +124,9 @@ ast_decl *parse_program(token_s *head)
 		cur->next = tmp;
 		cur = tmp;
 	}
-
+	// Subject to change?
+	if (!ret)
+		report_error_cur_tok("Blank modules are not allowed.");
 	return ret;
 }
 
