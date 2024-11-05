@@ -191,23 +191,12 @@ parse_typsym_err:
 	return NULL;
 }
 
-static void destroy_def_vect(vect *def_vect)
-{
-	if (def_vect == NULL)
-		return;
-	for (size_t i = 0 ; i < def_vect->size ; ++i)
-		ast_typed_symbol_destroy(def_vect->elements[i]);
-	vect_destroy(def_vect);
-}
-
 static vect *parse_struct_def(void)
 {
 	ast_typed_symbol *cur;
-	vect *def_vect = vect_init(3);
 	if (!expect(T_LCURLY)) {
 		report_error_cur_tok("Missing opening brace in struct definition.");
 		sync_to(T_RCURLY, 0);
-		destroy_def_vect(def_vect);
 		return NULL;
 	}
 	next();
@@ -215,13 +204,12 @@ static vect *parse_struct_def(void)
 		report_error_cur_tok("Struct definition can't be empty.");
 		sync_to(T_SEMICO, 0);
 		next();
-		destroy_def_vect(def_vect);
 		return NULL;
 	}
-	while (!expect(T_RCURLY)) {
+	vect *def_vect = vect_init(3);
+	while (!expect(T_RCURLY) && !expect(T_EOF)) {
 		cur = parse_typed_symbol();
 		if (cur != NULL && !expect(T_SEMICO)) {
-			report_error_prev_tok("Missing semicolon in struct field definition.");
 			sync_to(T_EOF, 1);
 		} else if (cur == NULL) {
 			report_error_cur_tok("Couldn't parse typed symbol.");
@@ -269,7 +257,7 @@ ast_decl *parse_decl(void)
 	} else {
 		next();
 	}
-	if (typed_symbol->type->kind == Y_STRUCT && expect(T_LCURLY)) {
+	if (typed_symbol->type->kind == Y_STRUCT && typed_symbol->type->name == NULL) {
 		arglist = parse_struct_def(); // not an 'arglist' per se but oh well
 		if (arglist == NULL) {
 			goto parse_decl_err;

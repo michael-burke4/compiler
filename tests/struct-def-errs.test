@@ -3,5 +3,19 @@ comp_err parse
 let pt: struct = {
 	x i32;
 	y: i32;
-
 };
+let pt2: struct = {
+	x: i32
+	y: i32;
+};
+
+let pt3: struct =
+	x: i32;
+	y: i32;
+};
+
+let pt4: struct = {};
+
+let pt5: struct = {
+	x: i32;
+	y: i32;
