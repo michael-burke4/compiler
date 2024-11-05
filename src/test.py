@@ -85,6 +85,9 @@ class Test:
             try_remove(files)
             return 0
 
+        if not os.path.isfile(f'./{bn}'):
+            tf_print('Could not compile to binary')
+            return 0
         bn_res = subprocess.run(f'./{bn}', capture_output=True, text=True)
         try_remove(files)
         if self.comp_error:
@@ -105,21 +108,21 @@ def test_from_testfile(open_file):
         match splt[0]:
             case 'comp_err':
                 if len(splt) < 2:
-                    print_error(f'in testfile {f.name}: comp_error directive requires at least one arg.')
+                    raise Exception(f'in testfile {f.name}: comp_error directive requires at least one arg.')
                 err = ' '.join(splt[1:])
             case 'ret':
                 if len(splt) != 2:
-                    print_error(f'in testfile {f.name}: ret directive requires exactly one arg. Got {len(splt)-1}')
+                    raise Exception(f'in testfile {f.name}: ret directive requires exactly one arg. Got {len(splt)-1}')
                 try:
                     ret = int(splt[1])
                 except ValueError:
-                    print_error(f'in testfile {f.name}: could not parse supplied arg of ret directive "{splt[1]}" as integer')
+                    raise Exception(f'in testfile {f.name}: could not parse supplied arg of ret directive "{splt[1]}" as integer')
             case '--TEXT--':
                 for remaining in open_file:
                     program += remaining
                 return Test(open_file.name, program, err, ret)
             case _:
-                print_error(f'in testfile {f.name}: bad directive "{splt[0]}" in test {f.name}')
+                raise Exception(f'in testfile {f.name}: bad directive "{splt[0]}" in test {f.name}')
     print_error(f'in tesfile {f.name}: missing text section')
 
 
@@ -130,11 +133,14 @@ for file in os.listdir(sys.argv[2]):
         continue
     total += 1
     with open(f'{sys.argv[2]}/{file}', 'r') as f:
-        t = test_from_testfile(f)
         try:
+            t = test_from_testfile(f)
             if t.run(sys.argv[1]):
                 passed += 1
         except PermissionError:
             print_error('Couldn\'t create necessary tempfile in /tmp directory. Fix permissions')
+        except Exception as e:
+            print(e)
+
 
 print(f'{passed}/{total}')
