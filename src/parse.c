@@ -289,7 +289,7 @@ ast_decl *parse_decl(void)
 	}
 
 	if (!expect(T_SEMICO)) {
-		report_error_prev_tok("Missing semicolon at end of line.");
+		report_error_prev_tok("Missing terminating semicolon.");
 		if (cur_token != NULL && prev_token != NULL && cur_token->line == prev_token->line)
 			sync_to(T_EOF, 1);
 		goto parse_decl_err;
@@ -516,7 +516,7 @@ ast_stmt *parse_stmt(void)
 		next();
 		if (!expect(T_SEMICO)) {
 			goto stmt_err;
-			report_error_cur_tok("Missing semicolon after `continue`.");
+			report_error_prev_tok("Continue statement missing terminating semicolon.");
 		}
 		next();
 		break;
@@ -525,7 +525,7 @@ ast_stmt *parse_stmt(void)
 		next();
 		if (!expect(T_SEMICO)) {
 			goto stmt_err;
-			report_error_cur_tok("Missing semicolon after `break`.");
+			report_error_prev_tok("Break statement missing terminating semicolon.");
 		}
 		next();
 		break;
@@ -539,7 +539,7 @@ ast_stmt *parse_stmt(void)
 				goto stmt_err;
 			}
 			if (!expect(T_SEMICO)) {
-				report_error_cur_tok("Statement missing terminating semicolon a.");
+				report_error_prev_tok("Return statement missing terminating semicolon.");
 				goto stmt_err;
 			}
 			next();
@@ -560,7 +560,7 @@ ast_stmt *parse_stmt(void)
 			goto stmt_err;
 		}
 		if (!expect(T_SEMICO)) {
-			report_error_cur_tok("Statement missing terminating semicolon b.");
+			report_error_prev_tok("Expression missing terminating semicolon.");
 			goto stmt_err;
 		}
 		next();

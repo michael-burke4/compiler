@@ -1,0 +1,6 @@
+comp_err parse
+--TEXT--
+let main: () -> i32 = {
+	10 + 3 - 100
+	return 5
+}
