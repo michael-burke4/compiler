@@ -123,7 +123,7 @@ def test_from_testfile(open_file):
                 return Test(open_file.name, program, err, ret)
             case _:
                 raise Exception(f'in testfile {f.name}: bad directive "{splt[0]}" in test {f.name}')
-    print_error(f'in tesfile {f.name}: missing text section')
+    raise Exception(f'in tesfile {f.name}: missing text section')
 
 
 total = 0
