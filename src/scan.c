@@ -32,8 +32,6 @@ static token_s *check_if_keyword(strvec *word, size_t line, size_t col)
 		ret = tok_init_nl(T_CONTINUE, line, col, NULL);
 	else if (strvec_equals_str(word, "else"))
 		ret = tok_init_nl(T_ELSE, line, col, NULL);
-	else if (strvec_equals_str(word, "for"))
-		ret = tok_init_nl(T_FOR, line, col, NULL);
 	else if (strvec_equals_str(word, "void"))
 		ret = tok_init_nl(T_VOID, line, col, NULL);
 	else if (strvec_equals_str(word, "char"))
@@ -200,10 +198,7 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		return scan_string_literal(f, line, col);
 	case '+':
 		c = fgetc(f);
-		if (c == '+') {
-			*col += 2;
-			return tok_init_nl(T_DPLUS, *line, temp_col, NULL);
-		} else if (c == '=') {
+		if (c == '=') {
 			*col += 2;
 			return tok_init_nl(T_ADD_ASSIGN, *line, temp_col, NULL);
 		}
@@ -211,10 +206,7 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		return tok_init_nl(T_PLUS, *line, (*col)++, NULL);
 	case '-':
 		c = fgetc(f);
-		if (c == '-') {
-			*col += 2;
-			return tok_init_nl(T_DMINUS, *line, temp_col, NULL);
-		} else if (c == '=') {
+		if (c == '=') {
 			*col += 2;
 			return tok_init_nl(T_SUB_ASSIGN, *line, temp_col, NULL);
 		} else if (c == '>') {
@@ -317,8 +309,6 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		return tok_init_nl(T_PERIOD, *line, (*col)++, NULL);
 	case '~':
 		return tok_init_nl(T_BW_NOT, *line, (*col)++, NULL);
-	case '?':
-		return tok_init_nl(T_QMARK, *line, (*col)++, NULL);
 	case ':':
 		return tok_init_nl(T_COLON, *line, (*col)++, NULL);
 	case ';':
