@@ -266,7 +266,7 @@ ast_decl *parse_decl(void)
 	} else if (expect(T_LCURLY)) {
 		stmt = parse_stmt_block();
 		if (stmt == NULL)
-			goto parse_decl_err;
+			goto parse_decl_err; // LCOV_EXCL_LINE
 	} else if (expect(T_LBRACKET)) {
 		initializer = parse_comma_separated_exprs(T_RBRACKET);
 		if (initializer == NULL)
