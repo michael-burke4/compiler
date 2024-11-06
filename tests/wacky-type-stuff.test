@@ -1,0 +1,8 @@
+comp_err typecheck
+--TEXT--
+let x: (y: (x: i32) -> i32) -> i32 = {
+	y;
+	return 10;
+};
+
+let z: i32 = true;
