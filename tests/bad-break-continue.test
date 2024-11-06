@@ -1,0 +1,15 @@
+comp_err parse
+--TEXT--
+let x: () -> i32 = {
+	while (true) {
+		break
+	}
+
+	let x: i32 = 5;
+	while (x == 5) {
+		x += 1;
+		continue
+	}
+
+	return 2;
+};

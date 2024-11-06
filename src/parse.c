@@ -476,15 +476,15 @@ ast_stmt *parse_stmt(void)
 		next();
 		if (!expect(T_LPAREN)) {
 			report_error_cur_tok("Missing left paren in `if` condition.");
-			goto stmt_err;
+		} else {
+			next();
 		}
-		next();
 		expr = parse_expr();
 		if (!expect(T_RPAREN)) {
 			report_error_cur_tok("Missing right paren in `if` condition.");
-			goto stmt_err;
+		} else {
+			next();
 		}
-		next();
 		body = parse_stmt_block();
 		if (expect(T_ELSE)) {
 			next();
@@ -496,52 +496,51 @@ ast_stmt *parse_stmt(void)
 		next();
 		if (!expect(T_LPAREN)) {
 			report_error_cur_tok("Missing left paren in `while` condition.");
-			goto stmt_err;
+		} else {
+			next();
 		}
-		next();
 		expr = parse_expr();
 		if (!expect(T_RPAREN)) {
 			report_error_cur_tok("Missing right paren in `while` condition.");
-			goto stmt_err;
+		} else {
+			next();
 		}
-		next();
 		body = parse_stmt_block();
 		break;
 	case T_CONTINUE:
 		kind = S_CONTINUE;
 		next();
 		if (!expect(T_SEMICO)) {
-			goto stmt_err;
 			report_error_prev_tok("Continue statement missing terminating semicolon.");
+		} else {
+			next();
 		}
-		next();
 		break;
 	case T_BREAK:
 		kind = S_BREAK;
 		next();
 		if (!expect(T_SEMICO)) {
-			goto stmt_err;
 			report_error_prev_tok("Break statement missing terminating semicolon.");
+		} else {
+			next();
 		}
-		next();
 		break;
 	case T_RETURN:
 		kind = S_RETURN;
 		next();
+		if (expect(T_SEMICO)) {
+			next();
+			break;
+		}
+		expr = parse_expr();
+		if (expr == NULL) {
+			report_error_cur_tok("Could not parse expression in return statement.");
+		}
 		if (!expect(T_SEMICO)) {
-			expr = parse_expr();
-			if (expr == NULL) {
-				report_error_cur_tok("Could not parse expression in return statement.");
-				goto stmt_err;
-			}
-			if (!expect(T_SEMICO)) {
-				report_error_prev_tok("Return statement missing terminating semicolon.");
-				goto stmt_err;
-			}
+			report_error_prev_tok("Return statement missing terminating semicolon.");
+		} else {
 			next();
 		}
-		else
-			next();
 		break;
 	case T_ASM:
 		body = parse_asm_stmt();

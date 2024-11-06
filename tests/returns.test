@@ -1,0 +1,8 @@
+comp_err parse
+--TEXT--
+let x: () -> void = {
+
+	return
+
+	return 5
+};

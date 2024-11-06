@@ -1,0 +1,6 @@
+comp_err parse
+--TEXT--
+
+let x: struct & = {
+	a: i32;
+};

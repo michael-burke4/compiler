@@ -1,0 +1,10 @@
+comp_err parse
+--TEXT--
+let main: () -> i32 = {
+	let x: i32 = 20;
+	while (x < 4 {
+		return 4;
+	}
+
+	return 5;
+};
