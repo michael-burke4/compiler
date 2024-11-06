@@ -1,0 +1,4 @@
+comp_err parse
+--TEXT--
+
+let x: i32 5;
