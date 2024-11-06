@@ -1,0 +1,7 @@
+comp_err parse
+--TEXT--
+let fn: () -> void = {
+	let x: char@ = "nop";
+	asm(x);
+	return;
+};

@@ -1,0 +1,9 @@
+comp_err parse
+--TEXT--
+let main: () -> i32 = {
+	let doubled: i32 = 10;
+	let num: i32 = 10;
+
+	asm("add w0, ${0:w}, ${0:w}\n", "r,~{w0},~{w1}", [num];
+	return doubled;
+};
