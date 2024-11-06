@@ -857,7 +857,6 @@ ast_expr *parse_expr_unit(void)
 			// TODO leave error handling to fns like parse_stmt and parse_decl.
 			// Just bubble the error up by returning zero.
 			report_error_cur_tok("Expression is missing a closing paren.");
-			sync_to(T_EOF, 1);
 			expr_destroy(ex);
 			return NULL;
 		}
@@ -870,9 +869,7 @@ ast_expr *parse_expr_unit(void)
 		int64_t n;
 		n = strvec_tol(cur->text);
 		if (errno != 0) {
-			report_error_cur_tok("Could not parse int literal \"");
-			strvec_print(cur->text);
-			eputs("\".");
+			report_error_prev_tok("Could not parse int literal");
 		}
 		ex = expr_init(E_INT_LIT, NULL, NULL, 0, NULL, n, NULL);
 		ex->int_size = smallest_fit(n);
@@ -908,7 +905,6 @@ ast_expr *parse_expr_unit(void)
 		return expr_init(E_CHAR_LIT, NULL, NULL, 0, NULL, 0, txt);
 	default:
 		report_error_cur_tok("Could not parse expr unit.");
-		sync_to(T_EOF, 1);
 		return NULL;
 	}
 }
