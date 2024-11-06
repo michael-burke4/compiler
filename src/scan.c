@@ -108,6 +108,8 @@ static token_s *scan_char_literal(FILE *f, size_t *line, size_t *col)
 			c = '\\';
 		else if (c == '\'')
 			c = '\'';
+		else if (c == '0')
+			c = '\0';
 		else {
 			report_error(*line, old_col, "Unrecognized escape sequence.");
 			return tok_init_nl(T_ERROR, *line, old_col, NULL);
