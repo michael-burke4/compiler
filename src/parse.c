@@ -260,21 +260,28 @@ ast_decl *parse_decl(void)
 	if (typed_symbol->type->kind == Y_STRUCT && typed_symbol->type->name == NULL) {
 		arglist = parse_struct_def(); // not an 'arglist' per se but oh well
 		if (arglist == NULL) {
+			sync_to(T_EOF, 1);
 			goto parse_decl_err;
 		}
 		typed_symbol->type->arglist = arglist;
 	} else if (expect(T_LCURLY)) {
 		stmt = parse_stmt_block();
-		if (stmt == NULL)
+		if (stmt == NULL) {
+			sync_to(T_EOF, 1); // LCOV_EXCL_LINE
 			goto parse_decl_err; // LCOV_EXCL_LINE
+		}
 	} else if (expect(T_LBRACKET)) {
 		initializer = parse_comma_separated_exprs(T_RBRACKET);
-		if (initializer == NULL)
+		if (initializer == NULL) {
+			sync_to(T_EOF, 1);
 			goto parse_decl_err;
+		}
 	} else {
 		expr = parse_expr();
-		if (expr == NULL)
+		if (expr == NULL) {
+			sync_to(T_EOF, 1);
 			goto parse_decl_err;
+		}
 	}
 
 	if (!expect(T_SEMICO)) {
