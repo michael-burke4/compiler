@@ -285,7 +285,7 @@ ast_decl *parse_decl(void)
 	}
 
 	if (!expect(T_SEMICO)) {
-		report_error_prev_tok("Missing terminating semicolon.");
+		report_error_prev_tok("Could not parse declaration. Missing terminating semicolon?");
 		if (cur_token != NULL && prev_token != NULL && cur_token->line == prev_token->line)
 			sync_to(T_EOF, 1);
 		goto parse_decl_err;
