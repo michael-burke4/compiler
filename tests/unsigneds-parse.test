@@ -1,0 +1,4 @@
+comp_err typecheck
+--TEXT--
+let x: u32 = 0;
+let x: u64 = 0;
