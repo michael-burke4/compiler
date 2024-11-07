@@ -285,7 +285,8 @@ static ast_type *typecheck_fncall(ast_expr *expr)
 	if (decl_arglist == NULL && expr_arglist == NULL)
 		return type_copy(fn_ts->type->subtype);
 	if ((decl_arglist == NULL || expr_arglist == NULL) || (decl_arglist->size != expr_arglist->size)) {
-		fprintf(stderr, "Argument count mismatch");
+		eputs("Argument count mismatch");
+		had_error = 1;
 		return NULL;
 	}
 
