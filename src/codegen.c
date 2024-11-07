@@ -40,9 +40,11 @@ static LLVMTypeRef int_kind_to_llvm_type(LLVMModuleRef mod, type_t kind) {
 		return LLVMInt32TypeInContext(ctxt);
 	case Y_I64:
 		return LLVMInt64TypeInContext(ctxt);
+	// LCOV_EXCL_START
 	default:
 		fprintf(stderr, "couldn't convert type a\n");
 		abort();
+	// LCOV_EXCL_STOP
 	}
 }
 
@@ -72,9 +74,11 @@ static LLVMTypeRef to_llvm_type(LLVMModuleRef mod, ast_type *tp)
 	case Y_STRUCT:
 		strvec_tostatic(tp->name, buffer);
 		return LLVMGetTypeByName(mod, buffer);
+	// LCOV_EXCL_START
 	default:
 		fprintf(stderr, "couldn't convert type\n");
 		abort();
+	// LCOV_EXCL_STOP
 	}
 }
 
@@ -336,9 +340,11 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, LLV
 	case S_BREAK:
 		LLVMBuildBr(builder, stmt->extra);
 		break;
-	default:
-		fprintf(stderr, "can't codegen that stmt kind right now. (%d)\n", stmt->kind);
-		exit(1);
+	// LCOV_EXCL_START
+	case S_ERROR:
+		fputs("CRITICAL: reached unexpected error condition.", stderr);
+		break;
+	// LCOV_EXCL_STOP
 	}
 }
 
@@ -376,9 +382,11 @@ static LLVMValueRef assign_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, as
 	case T_SUB_ASSIGN:
 		temp = expr_init(E_ADDSUB, expr->left, expr->right, T_MINUS, NULL, 0, NULL);
 		break;
+	// LCOV_EXCL_START
 	default:
-		fprintf(stderr, "\nCan't codegen assignment type with operation token %d\n", expr->op);
+		fprintf(stderr, "Can't codegen assignment type with operation token %d\n", expr->op);
 		abort();
+	// LCOV_EXCL_STOP
 	}
 	tempval = expr_codegen(mod, builder, temp, 0);
 	ret = LLVMBuildStore(builder, tempval, loc);
@@ -410,8 +418,10 @@ static size_t get_member_position(ast_decl *decl, strvec *name) {
 			return i;
 		}
 	}
+	// LCOV_EXCL_START
 	eputs("DIDN'T FIND REQUESTED STRUCT MEMBER. FATAL ERROR.");
 	exit(1);
+	// LCOV_EXCL_STOP
 }
 
 static char *shorten_struct_string(char *string) {
@@ -419,12 +429,14 @@ static char *shorten_struct_string(char *string) {
 	string += 1;
 	tmp = string;
 	while (*tmp != '*' && *tmp != ' ') {
+		// LCOV_EXCL_START
 		if (*tmp == '\0') {
 			fprintf(stderr, "original at point of failure: %s\n", string);
 			fprintf(stderr, "tmp right now: %s\n", tmp);
 			eputs("BIG PROBLEM IN CODEGEN. NO SPACE IN STRUCT NAME!");
 			exit(1);
 		}
+		// LCOV_EXCL_STOP
 		tmp += 1;
 	}
 	*tmp = '\0';
@@ -507,9 +519,11 @@ LLVMValueRef pre_unary_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_ex
 	case T_NOT:
 		v = expr_codegen(mod, builder, expr->left, 0);
 		return LLVMBuildXor(builder, LLVMConstInt(LLVMTypeOf(v), 1, 0), v, "");
+	// LCOV_EXCL_START
 	default:
 		fprintf(stderr, "can't codegen that expr kind right now.\n");
 		exit(1);
+	// LCOV_EXCL_STOP
 	}
 }
 
@@ -519,7 +533,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	LLVMValueRef v;
 	LLVMValueRef v2;
 	LLVMValueRef args[MAX_ARGS];
-	LLVMValueRef ret;
+	LLVMValueRef ret = NULL;
 	LLVMTypeRef t;
 	buffer[0] = '\0';
 	unsigned argno;
@@ -579,10 +593,13 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 			v = expr_codegen(mod, builder, expr->left->left, 1);
 		} else if (expr->left->kind == E_POST_UNARY && (expr->left->op == T_LBRACKET || expr->left->op == T_PERIOD)) {
 			v = expr_codegen(mod, builder, expr->left, 1);
-		} else {
-			eputs("Can't assign to this expr type right now.");
+		}
+		//LCOV_EXCL_START
+		else {
+			eputs("CRITICAL: Attempting assignment to unexpected expression type?");
 			exit(1);
 		}
+		//LCOV_EXCL_STOP
 		return assign_codegen(mod, builder, expr, v);
 	case E_FALSE_LIT:
 		return LLVMConstInt(LLVMInt1TypeInContext(CTXT(mod)), 0, 0);
@@ -638,10 +655,13 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 				return LLVMBuildLoad_compat(builder, v2, "");
 			}
 			return v2;
-		} else {
+		}
+		// LCOV_EXCL_START
+		else {
 			eputs("can't codegen this post unary expr type yet");
 			exit(1);
 		}
+		// LCOV_EXCL_STOP
 	case E_CAST:
 		// TODO: ZExt for unsigneds
 		// TODO: cast down (truncate)
@@ -649,11 +669,9 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 				builder, expr->left, store_ctxt),
 				int_kind_to_llvm_type(mod, expr->cast_to), "");
 	case E_PRE_UNARY:
-		return pre_unary_codegen(mod, builder, expr, store_ctxt);
-	default:
-		fprintf(stderr, "can't codegen that expr kind right now.\n");
-		exit(1);
+		ret = pre_unary_codegen(mod, builder, expr, store_ctxt);
 	}
+	return ret; // This is dumb but silences a warning.
 }
 
 static LLVMTypeRef *build_param_types(LLVMModuleRef mod, ast_decl *decl)
