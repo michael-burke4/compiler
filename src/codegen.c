@@ -527,6 +527,17 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	case E_INT_LIT:
 		t = int_kind_to_llvm_type(mod, expr->int_size);
 		return LLVMConstInt(t, (unsigned long long)expr->num, 0);
+	case E_SHIFT:
+		if (expr->op == T_RSHIFT)
+			return LLVMBuildAShr(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+		else
+			return LLVMBuildShl(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+	case E_BW_OR:
+		return LLVMBuildOr(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+	case E_BW_XOR:
+		return LLVMBuildXor(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+	case E_BW_AND:
+		return LLVMBuildAnd(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 	case E_MULDIV:
 		if (expr->op == T_STAR)
 			return LLVMBuildMul(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");

@@ -708,15 +708,63 @@ ast_expr *parse_expr_or(void)
 
 ast_expr *parse_expr_and(void)
 {
-	ast_expr *this = parse_expr_equality();
+	ast_expr *this = parse_expr_bw_xor();
 	ast_expr *that;
 	token_t typ = cur_tok_type();
 	token_t op;
 	while (typ == T_AND) {
 		op = typ;
 		next();
-		that = parse_expr_equality();
+		that = parse_expr_bw_xor();
 		this = expr_init(E_LOG_AND, this, that, op, NULL, 0, NULL);
+		typ = cur_tok_type();
+	}
+	return this;
+}
+
+ast_expr *parse_expr_bw_xor(void)
+{
+	ast_expr *this = parse_expr_bw_or();
+	ast_expr *that;
+	token_t typ = cur_tok_type();
+	token_t op;
+	while (typ == T_XOR) {
+		op = typ;
+		next();
+		that = parse_expr_bw_or();
+		this = expr_init(E_BW_XOR, this, that, op, NULL, 0, NULL);
+		typ = cur_tok_type();
+	}
+	return this;
+}
+
+ast_expr *parse_expr_bw_or(void)
+{
+	ast_expr *this = parse_expr_bw_and();
+	ast_expr *that;
+	token_t typ = cur_tok_type();
+	token_t op;
+	while (typ == T_BW_OR) {
+		op = typ;
+		next();
+		that = parse_expr_bw_and();
+		this = expr_init(E_BW_OR, this, that, op, NULL, 0, NULL);
+		typ = cur_tok_type();
+	}
+	return this;
+}
+
+ast_expr *parse_expr_bw_and(void)
+{
+	ast_expr *this = parse_expr_equality();
+	ast_expr *that;
+	token_t typ = cur_tok_type();
+	token_t op;
+	while (typ == T_AMPERSAND) {
+		op = typ;
+		next();
+		that = parse_expr_equality();
+		this = expr_init(E_BW_AND, this, that, op, NULL, 0, NULL);
 		typ = cur_tok_type();
 	}
 	return this;
@@ -740,15 +788,31 @@ ast_expr *parse_expr_equality(void)
 
 ast_expr *parse_expr_inequality(void)
 {
-	ast_expr *this = parse_expr_addsub();
+	ast_expr *this = parse_expr_shift();
 	ast_expr *that;
 	token_t typ = cur_tok_type();
 	token_t op;
 	while (typ == T_LT || typ == T_LTE || typ == T_GT || typ == T_GTE) {
 		op = typ;
 		next();
-		that = parse_expr_addsub();
+		that = parse_expr_shift();
 		this = expr_init(E_INEQUALITY, this, that, op, NULL, 0, NULL);
+		typ = cur_tok_type();
+	}
+	return this;
+}
+
+ast_expr *parse_expr_shift(void)
+{
+	ast_expr *this = parse_expr_addsub();
+	ast_expr *that;
+	token_t typ = cur_tok_type();
+	token_t op;
+	while (typ == T_LSHIFT || typ == T_RSHIFT) {
+		op = typ;
+		next();
+		that = parse_expr_addsub();
+		this = expr_init(E_SHIFT, this, that, op, NULL, 0, NULL);
 		typ = cur_tok_type();
 	}
 	return this;

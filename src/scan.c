@@ -283,6 +283,8 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		}
 		ungetc(c, f);
 		return tok_init_nl(T_NOT, *line, (*col)++, NULL);
+	case '^':
+		return tok_init_nl(T_XOR, *line, (*col)++, NULL);
 	case '&':
 		c = fgetc(f);
 		if (c == '&') {

@@ -1,0 +1,6 @@
+ret 8
+--TEXT--
+let main: () -> i32 = {
+	let x: i32 = 9;
+	return x ^ 1;
+};

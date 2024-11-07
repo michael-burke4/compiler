@@ -1,0 +1,9 @@
+ret 2
+--TEXT--
+let main: () -> i32 = {
+	let x: bool = 8 == 7;
+	if (!x) {
+		return 2;
+	}
+	return 5;
+};

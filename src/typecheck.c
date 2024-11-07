@@ -540,6 +540,10 @@ ast_type *derive_expr_type(ast_expr *expr)
 		return NULL;
 	case E_ADDSUB:
 	case E_MULDIV:
+	case E_SHIFT:
+	case E_BW_XOR:
+	case E_BW_OR:
+	case E_BW_AND:
 		left = derive_expr_type(expr->left);
 		right = derive_expr_type(expr->right);
 		cast_up_if_necessary(expr, &left, &right);

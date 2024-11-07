@@ -48,6 +48,9 @@ typedef enum {
 	E_INEQUALITY,
 	E_LOG_OR,
 	E_LOG_AND,
+	E_BW_XOR,
+	E_BW_OR,
+	E_BW_AND,
 	E_ASSIGN,
 	E_PAREN,
 	E_INT_LIT,
@@ -61,6 +64,7 @@ typedef enum {
 	E_FNCALL,
 	E_MEMBER,
 	E_CAST,
+	E_SHIFT,
 } expr_t;
 
 type_t smallest_fit(int64_t num);
