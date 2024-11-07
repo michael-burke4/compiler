@@ -1,0 +1,15 @@
+ret 1
+--TEXT--
+
+let main: () -> i32 = {
+	let x: i32 = 0;
+	let y: i32 = 48;
+	let z: i32 = 17;
+	x |= 16;
+	y &= 16;
+	z ^= 1;
+	if (x == y && y == z) {
+		return 1;
+	}
+	return 0;
+};

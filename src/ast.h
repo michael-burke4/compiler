@@ -62,7 +62,6 @@ typedef enum {
 	E_PRE_UNARY,
 	E_POST_UNARY,
 	E_FNCALL,
-	E_MEMBER,
 	E_CAST,
 	E_SHIFT,
 } expr_t;

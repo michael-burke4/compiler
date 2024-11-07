@@ -382,6 +382,15 @@ static LLVMValueRef assign_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, as
 	case T_SUB_ASSIGN:
 		temp = expr_init(E_ADDSUB, expr->left, expr->right, T_MINUS, NULL, 0, NULL);
 		break;
+	case T_BW_AND_ASSIGN:
+		temp = expr_init(E_BW_AND, expr->left, expr->right, T_AMPERSAND, NULL, 0, NULL);
+		break;
+	case T_BW_OR_ASSIGN:
+		temp = expr_init(E_BW_OR, expr->left, expr->right, T_BW_OR, NULL, 0, NULL);
+		break;
+	case T_XOR_ASSIGN:
+		temp = expr_init(E_BW_XOR, expr->left, expr->right, T_XOR, NULL, 0, NULL);
+		break;
 	// LCOV_EXCL_START
 	default:
 		fprintf(stderr, "Can't codegen assignment type with operation token %d\n", expr->op);

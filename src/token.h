@@ -67,6 +67,7 @@ typedef enum {
 	T_MOD_ASSIGN,
 	T_BW_AND_ASSIGN,
 	T_BW_OR_ASSIGN,
+	T_XOR_ASSIGN,
 
 	T_QMARK,
 	T_COLON,
