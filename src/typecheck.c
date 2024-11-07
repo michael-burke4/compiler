@@ -142,11 +142,6 @@ static void typecheck_array_initializer(ast_decl *decl)
 	ast_type *t;
 	if (decl->initializer == NULL)
 		return;
-	if (decl->typesym->type->kind != Y_POINTER && decl->typesym->type->kind != Y_CONSTPTR) {
-		eputs("Can only use initializers with pointers.");
-		had_error = 1;
-		return;
-	}
 	for (size_t i = 0 ; i < decl->initializer->size ; ++i) {
 		t = derive_expr_type(decl->initializer->elements[i]);
 		if (!type_equals(t, decl->typesym->type->subtype)) {
