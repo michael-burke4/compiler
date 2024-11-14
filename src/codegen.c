@@ -122,19 +122,19 @@ static void initializer_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_s
 	scope_bind(alloca2, stmt->decl->typesym->symbol);
 }
 
-static int is_terminal(ast_stmt *stmt) {
-	if (stmt->kind == S_RETURN || stmt->kind == S_BREAK || stmt->kind == S_CONTINUE) {
-		return 1;
-	}
-	if (stmt->kind == S_IFELSE) {
-		if (stmt->else_body == NULL) {
-			return 0;
-		}
-		return is_terminal(last(stmt->body->body)) && is_terminal(last(stmt->else_body->body));
+static int followed_by_branch(ast_stmt *stmt) {
+	if (stmt == NULL)
+		return 0;
+	stmt = stmt->next;
+	while (stmt != NULL) {
+		if (stmt->kind == S_IFELSE
+				|| stmt->kind == S_WHILE || stmt->kind == S_RETURN
+				|| stmt->kind == S_BREAK || stmt->kind == S_CONTINUE)
+			return 1;
+		stmt = stmt->next;
 	}
 	return 0;
 }
-
 
 static void ifelse_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, LLVMBasicBlockRef p_con) {
 	LLVMValueRef cur_function;
@@ -145,7 +145,7 @@ static void ifelse_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *
 	LLVMBasicBlockRef els = LLVMAppendBasicBlockInContext(ctxt, cur_function, "else");
 	LLVMBasicBlockRef con = p_con;
 	if (stmt->next != NULL)
-		con = LLVMAppendBasicBlockInContext(ctxt, cur_function, "continue");
+		con = LLVMAppendBasicBlockInContext(ctxt, cur_function, "ifelse_continue");
 
 	// if (condition)
 	LLVMValueRef v1 = expr_codegen(mod, builder, stmt->expr, 0);
@@ -173,7 +173,7 @@ static void ifelse_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *
 		return;
 
 	LLVMPositionBuilderAtEnd(builder, con);
-	if (p_con != con && !is_terminal(last(stmt))) {
+	if (p_con != con && !followed_by_branch(stmt)) {
 		v1 = LLVMBuildBr(builder, p_con);
 		LLVMPositionBuilderBefore(builder, v1);
 	}
@@ -202,7 +202,7 @@ static void while_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *s
 	LLVMBasicBlockRef whi = LLVMAppendBasicBlockInContext(ctxt, cur_function, "while");
 	LLVMBasicBlockRef con = p_con;
 	if (stmt->next != NULL)
-		con = LLVMAppendBasicBlockInContext(ctxt, cur_function, "continue");
+		con = LLVMAppendBasicBlockInContext(ctxt, cur_function, "while_continue");
 
 	distribute_breaks_and_continues(stmt->body->body, con, cod);
 
@@ -223,7 +223,7 @@ static void while_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *s
 
 
 	LLVMPositionBuilderAtEnd(builder, con);
-	if (p_con != con && !is_terminal(last(stmt))) {
+	if (p_con != con && !followed_by_branch(stmt)) {
 		v1 = LLVMBuildBr(builder, p_con);
 		LLVMPositionBuilderBefore(builder, v1);
 	}
