@@ -597,7 +597,7 @@ ast_type *derive_expr_type(ast_expr *expr)
 			had_error = 1;
 			return NULL;
 		}
-		if (ts->type->kind == Y_STRUCT && strvec_equals(ts->type->name, expr->name)) {
+		if (ts->type->kind == Y_STRUCT && ts->type->name != NULL && strvec_equals(ts->type->name, expr->name)) {
 			fprintf(stderr, "Can't use struct type \"");
 			fstrvec_print(stderr, ts->symbol);
 			eputs("\" in this expression");

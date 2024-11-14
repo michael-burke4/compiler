@@ -896,10 +896,6 @@ ast_expr *parse_expr_post_unary(void)
 			}
 			next();
 		} else if (typ == T_PERIOD) {
-			if (!expect(T_IDENTIFIER)) {
-				report_error_cur_tok("Member operator right side must be an identifier.");
-				return NULL;
-			}
 			e = parse_expr_unit(); // This can only be an expr unit: we know it's an identifier.
 		}
 		inner = expr_init(E_POST_UNARY, inner, NULL, typ, NULL, 0, NULL);
