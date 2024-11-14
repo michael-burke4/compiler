@@ -14,6 +14,19 @@ typedef struct ast_decl {
 	struct vect *initializer;
 } ast_decl;
 
+// Quick note on Y_STRUCT type and declarations:
+//
+// a decl declaring a new type of stuct will look like the following:
+//
+// let example: struct = {...};
+// ast_decl -> typesym -> type -> kind = Y_STRUCT
+//                     -> symbol = example
+//
+// let instance: struct example;
+// ast_decl -> typesym -> type -> kind = Y_STRUCT
+//                             -> name = "example"
+//                     -> symbol = "instance"
+
 typedef enum {
 	Y_U32 = 0x08,
 	Y_U64 = 0x09,
