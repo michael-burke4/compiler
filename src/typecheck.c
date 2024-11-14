@@ -401,7 +401,7 @@ static ast_type *derive_pre_unary(ast_expr *expr)
 	case T_BW_NOT:
 		left = derive_expr_type(expr->left);
 		if (!is_int_type(left)) {
-			eputs("Cannot use unary negative operator on non-integer type.");
+			eputs("Cannot use unary bitwise not operator on non-integer type.");
 			type_destroy(left);
 			return NULL;
 		}
@@ -409,7 +409,7 @@ static ast_type *derive_pre_unary(ast_expr *expr)
 	case T_NOT:
 		left = derive_expr_type(expr->left);
 		if (left->kind != Y_BOOL) {
-			eputs("Cannot use unary not operator on non-integer type.");
+			eputs("Cannot use unary not operator on non-bolean type.");
 			type_destroy(left);
 			return NULL;
 		}
