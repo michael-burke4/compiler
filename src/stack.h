@@ -18,7 +18,5 @@ void stack_push(stack *stk, void *item);
 void *stack_pop(stack *stk);
 void *stack_item_from_base(stack *stk, size_t position);
 void *stack_item_from_top(stack *stk, size_t position);
-void *stack_top(stack *stk);
-size_t stack_size(stack *stk);
 
 #endif

@@ -9,7 +9,6 @@ void st_destroy(void);
 void st_level_destroy(scope *level);
 void scope_enter(void);
 void scope_exit(void);
-size_t scope_level(void);
 void scope_bind(void *symbol, strvec *name);
 void scope_bind_ts(ast_typed_symbol *symbol);
 void scope_bind_return_type(ast_type *type);

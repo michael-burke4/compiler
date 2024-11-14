@@ -35,13 +35,6 @@ void *stack_pop(stack *stk)
 	return ret;
 }
 
-size_t stack_size(stack *stk)
-{
-	if (stk == NULL)
-		return 0;
-	return stk->size;
-}
-
 // Position 0 is the BASE of the stack!!!
 void *stack_item_from_base(stack *stk, size_t position)
 {
@@ -70,10 +63,4 @@ void *stack_item_from_top(stack *stk, size_t position)
 	if (stk == NULL)
 		return NULL;
 	return stack_item_from_base(stk, stk->size - position - 1);
-}
-
-void *stack_top(stack *stk) {
-	if (stk == NULL || stk->top == NULL)
-		return NULL;
-	return stk->top->data;
 }

@@ -39,11 +39,6 @@ void scope_exit(void)
 	scope_destroy((scope *)stack_pop(sym_tab));
 }
 
-size_t scope_level(void)
-{
-	return stack_size(sym_tab);
-}
-
 void scope_bind(void *symbol, strvec *name)
 {
 	scope *top = (scope *)stack_item_from_top(sym_tab, 0);
