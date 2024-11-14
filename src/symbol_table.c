@@ -10,7 +10,7 @@ void st_destroy(void)
 {
 	scope *level = (scope *)stack_item_from_top(sym_tab, 0);
 
-	while (level) {
+	while (level != NULL) {
 		scope_destroy(level);
 		stack_pop(sym_tab);
 		level = (scope *)stack_item_from_top(sym_tab, 0);
