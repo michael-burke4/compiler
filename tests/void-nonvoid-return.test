@@ -1,0 +1,5 @@
+comp_err typecheck
+--TEXT--
+let x: () -> void = {
+	return 5;
+};

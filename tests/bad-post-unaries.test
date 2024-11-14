@@ -1,0 +1,18 @@
+comp_err typecheck
+--TEXT--
+let pt: struct = {
+	x: i32;
+	y: i32;
+};
+
+let main: () -> i32 = {
+	let x: i32* = [1, 2, 3];
+	x[0][0];
+	x[false];
+	false.x;
+	let p: struct pt;
+	pt.false;
+	p.z;
+
+	return p.x;
+};

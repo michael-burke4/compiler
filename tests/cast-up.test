@@ -1,0 +1,21 @@
+ret 5
+--TEXT--
+let s: struct = {
+	i: i64;
+};
+let fn2: (i: i32) -> i32 = {
+	return i;
+};
+
+let main: () -> i32 = {
+	let x: struct s;
+	x.i = 100;
+	x.i = fn2(3);
+	let a: i64;
+	a = 3;
+	if (x.i == 3 && a == 3) {
+		return 5;
+	}
+
+	return 3;
+};

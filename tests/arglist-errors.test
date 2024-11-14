@@ -1,0 +1,9 @@
+comp_err typecheck
+--TEXT--
+let fn: (x: i32) -> void = {
+	fn();
+};
+
+let fn2: (b: bool) -> void = {
+	fn(b);
+};

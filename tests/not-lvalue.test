@@ -1,0 +1,5 @@
+comp_err typecheck
+--TEXT--
+let fn2: (b: bool) -> void = {
+	true = b;
+};

@@ -1,0 +1,7 @@
+comp_err typecheck
+--TEXT--
+let main: () -> i32 = {
+	let x: bool = ~true;
+	let x2: i32 = !10;
+	return x2;
+};
