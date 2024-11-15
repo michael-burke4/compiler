@@ -32,8 +32,13 @@ static inline int expect(token_t expected)
 	return cur_tok_type() == expected;
 }
 
-static inline size_t cur_tok_line(void)
+static size_t cur_tok_line(void)
 {
+	if (cur_token == NULL) {
+		if (prev_token == NULL)
+			return 0;
+		return prev_token->line;
+	}
 	return cur_token->line;
 }
 
@@ -231,6 +236,7 @@ ast_decl *parse_decl(void)
 	vect *arglist = NULL;
 	ast_decl *ret = NULL;
 	int missed_assign = 0;
+	size_t line = cur_tok_line();
 
 	if (!expect(T_LET) && !expect(T_CONST)) {
 		report_error_cur_tok("Missing `let`/`const` keyword in decalaration.");
@@ -302,7 +308,7 @@ parse_decl_err:
 	expr = NULL;
 	stmt = NULL;
 parse_decl_ret:
-	ret = decl_init(typed_symbol, expr, stmt, NULL);
+	ret = decl_init(typed_symbol, expr, stmt, NULL, line);
 	ret->initializer = initializer;
 	return ret;
 }
@@ -314,7 +320,7 @@ ast_stmt *parse_stmt_block(void)
 	if (!expect(T_LCURLY)) {
 		return NULL;
 	}
-	block = stmt_init(S_BLOCK, NULL, NULL, NULL, NULL);
+	block = stmt_init(S_BLOCK, NULL, NULL, NULL, NULL, cur_tok_line());
 	block->next = NULL;
 	next();
 	while (!expect(T_RCURLY) && !expect(T_EOF)) {
@@ -341,6 +347,7 @@ static ast_stmt *parse_asm_stmt(void)
 	ast_expr *constraints = NULL;
 	vect *in_operands = NULL;
 	vect *out_operands = NULL;
+	size_t line = cur_tok_line();
 
 	// asm(
 	//    ^
@@ -427,7 +434,7 @@ asm_parse_done:
 	if (!expect(T_SEMICO))
 		goto asm_parse_error;
 	next();
-	ast_stmt *ret = stmt_init(S_ASM, NULL, NULL, NULL, NULL);
+	ast_stmt *ret = stmt_init(S_ASM, NULL, NULL, NULL, NULL, line);
 	ret->asm_obj = smalloc(sizeof(*(ret->asm_obj)));
 	ret->asm_obj->code = code;
 	ret->asm_obj->constraints = constraints;
@@ -459,6 +466,7 @@ ast_stmt *parse_stmt(void)
 	ast_expr *expr = NULL;
 	ast_stmt *body = NULL;
 	ast_stmt *else_body = NULL;
+	size_t line = cur_tok_line();
 
 	switch (cur_tok_type()) {
 	case T_LET:
@@ -560,17 +568,15 @@ ast_stmt *parse_stmt(void)
 		}
 		next();
 	}
-	return stmt_init(kind, decl, expr, body, else_body);
+	return stmt_init(kind, decl, expr, body, else_body, line);
 stmt_err:
 	sync_to(T_EOF, 1);
 	decl_destroy(decl);
 	expr_destroy(expr);
 	stmt_destroy(body);
 	stmt_destroy(else_body);
-	return stmt_init(S_ERROR, NULL, NULL, NULL, NULL);
+	return stmt_init(S_ERROR, NULL, NULL, NULL, NULL, line);
 }
-//ast_stmt *stmt_init(stmt_t kind, ast_decl *decl, ast_expr *expr, ast_stmt *body,
-//ast_stmt *else_body);
 
 ast_type *parse_type(void)
 {

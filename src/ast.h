@@ -12,6 +12,7 @@ typedef struct ast_decl {
 	struct ast_stmt *body;
 	struct ast_decl *next;
 	struct vect *initializer;
+	size_t line;
 } ast_decl;
 
 // Quick note on Y_STRUCT type and declarations:
@@ -117,15 +118,16 @@ typedef struct ast_stmt {
 	struct ast_stmt *next;
 	struct asm_struct *asm_obj;
 	void *extra; // THIS SUCKS: break/continues need to know where to go next, this is where I stuff the LLVMBasicBlockRef
+	size_t line;
 } ast_stmt;
 
-ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt, ast_decl *next);
+ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt, ast_decl *next, size_t line);
 ast_type *type_init(type_t kind, strvec *name);
 ast_typed_symbol *ast_typed_symbol_init(ast_type *type, strvec *symbol);
 ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, strvec *name,
 			int64_t num, strvec *str_lit);
 ast_stmt *stmt_init(stmt_t kind, ast_decl *decl, ast_expr *expr, ast_stmt *body,
-			ast_stmt *else_body);
+			ast_stmt *else_body, size_t line);
 void ast_free(ast_decl *program);
 void type_destroy(ast_type *type);
 void expr_destroy(ast_expr *expr);

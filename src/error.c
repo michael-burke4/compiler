@@ -26,6 +26,17 @@ void report_error(size_t line, size_t col, const char *fmt, ...)
 	va_end(args);
 }
 
+void report_error_line(size_t line, const char *fmt, ...)
+{
+	va_list args;
+	had_error = 1;
+	va_start(args, fmt);
+	fprintf(stderr, "[line %lu] ", line);
+	fprintf(stderr, fmt, args);
+	fprintf(stderr, "\n");
+	va_end(args);
+}
+
 void eputs(const char *s)
 {
 	fputs(s, stderr);
