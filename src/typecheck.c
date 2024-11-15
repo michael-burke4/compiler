@@ -330,7 +330,7 @@ static ast_type *derive_assign(ast_expr *expr) {
 		left = derive_expr_type(expr->left);
 		derived = 1;
 	}
-	if (left->isconst) {
+	if (left != NULL && left->isconst) {
 		eputs("Cannot assign to const expression");
 		had_error = 1;
 		return NULL;

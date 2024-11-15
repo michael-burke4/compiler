@@ -1,0 +1,8 @@
+comp_err typecheck
+--TEXT--
+let main: () -> void = {
+	let x: i32 = 10;
+	x.bad = 100;
+
+	return 5;
+};
