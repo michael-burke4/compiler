@@ -94,12 +94,11 @@ typedef struct token_s {
 	token_t type;
 	size_t line;
 	size_t col;
-	struct token_s *prev;
 	struct token_s *next;
 	strvec *text;
 } token_s;
 
-token_s *tok_init(token_t type, size_t line, size_t col, token_s *prev, token_s *next,
+token_s *tok_init(token_t type, size_t line, size_t col, token_s *next,
 			strvec *text);
 token_s *tok_init_nl(token_t type, size_t line, size_t col, strvec *text);
 void tok_list_destroy(token_s *head);

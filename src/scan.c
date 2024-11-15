@@ -357,7 +357,6 @@ token_s *scan(FILE *f)
 			head = cur;
 		else {
 			prev->next = cur;
-			cur->prev = prev;
 		}
 		if (cur->type == T_EOF)
 			return head;

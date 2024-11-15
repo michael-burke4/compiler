@@ -5,21 +5,19 @@
 #include <stdlib.h>
 
 /**
- *	Like tok_init, but with no provided links to next/prev tokens.
- *	(links can still be set later)
+ *	Like tok_init, but with no provided link to next token.
  */
 token_s *tok_init_nl(token_t type, size_t line, size_t col, strvec *text)
 {
-	return tok_init(type, line, col, NULL, NULL, text);
+	return tok_init(type, line, col, NULL, text);
 }
 
-token_s *tok_init(token_t type, size_t line, size_t col, token_s *prev, token_s *next, strvec *text)
+token_s *tok_init(token_t type, size_t line, size_t col, token_s *next, strvec *text)
 {
 	token_s *ret = malloc(sizeof(*ret));
 	ret->type = type;
 	ret->line = line;
 	ret->col = col;
-	ret->prev = prev;
 	ret->next = next;
 	ret->text = text;
 	return ret;
