@@ -624,7 +624,7 @@ ast_type *parse_type(void)
 			next();
 		} else {
 			report_error_cur_tok("Invalid token in struct type specifier");
-			sync_to(T_COLON, 1);
+			next();
 		}
 		break;
 	case T_LPAREN:

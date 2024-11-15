@@ -202,8 +202,18 @@ void typecheck_decl(ast_decl *decl)
 	} else if (decl->typesym->type->kind == Y_FUNCTION) {
 		scope_bind_ts(decl->typesym);
 		typecheck_fnbody(decl);
-	} else if (decl->typesym->type->kind == Y_STRUCT && decl->typesym->type->name == NULL) {
-		scope_bind_ts(decl->typesym);
+	} else if (decl->typesym->type->kind == Y_STRUCT) {
+		if (decl->typesym->type->name == NULL) {
+			scope_bind_ts(decl->typesym);
+		}
+		else {
+			ast_typed_symbol *found = scope_lookup(decl->typesym->type->name);
+			if (found == NULL) {
+				had_error = 1;
+				eputs("Can't use undeclared struct type");
+			}
+			scope_bind_ts(decl->typesym);
+		}
 	} else if (decl->expr) {
 		if (decl->typesym->type->kind == Y_POINTER && decl->typesym->type->subtype->kind == Y_CHAR
 				&& decl->expr->kind == E_STR_LIT) {

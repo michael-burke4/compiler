@@ -1,0 +1,12 @@
+comp_err parse
+--TEXT--
+let false: struct = {
+	b: bool;
+};
+
+let main: () -> i32 = {
+	let x: struct false;
+
+	return 1;
+};
+
