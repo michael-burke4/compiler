@@ -2,7 +2,6 @@
 #include "codegen.h"
 #include "error.h"
 #include "parse.h"
-#include "print.h"
 #include "scan.h"
 #include "symbol_table.h"
 #include "token.h"

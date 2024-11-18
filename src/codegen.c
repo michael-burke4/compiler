@@ -1,7 +1,6 @@
 #include "codegen.h"
 #include "error.h"
 #include "ht.h"
-#include "print.h"
 #include "symbol_table.h"
 #include "util.h"
 

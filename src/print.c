@@ -3,6 +3,8 @@
 
 #include <stdio.h>
 
+// LCOV_EXCL_START
+
 static void fprint_op(FILE *f, ast_expr *expr)
 {
 	if (!expr)
@@ -332,3 +334,5 @@ void e_typed_sym_print(ast_typed_symbol *typesym)
 {
 	ftyped_sym_print(stderr, typesym);
 }
+
+// LCOV_EXCL_STOP
