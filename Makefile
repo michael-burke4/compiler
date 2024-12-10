@@ -8,8 +8,7 @@ DBGDIR=dbg
 COVDIR=cov
 
 CC=gcc
-#CFLAGS=-std=c99 -Wall -Wextra -Wpedantic -Werror `llvm-config --cflags` -Wno-deprecated
-CFLAGS=-std=c99 -c -Wall -Wextra -Wpedantic `llvm-config --cflags` -Wno-deprecated
+CFLAGS=-std=c99 -c -Wall -Wextra -Wpedantic `llvm-config --cflags`
 LD=clang
 LDFLAGS=`llvm-config --cxxflags --ldflags --libs core analysis native bitwriter --system-libs` -std=c99
 MAINFLAGS=-O2
