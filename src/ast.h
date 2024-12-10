@@ -28,18 +28,32 @@ typedef struct ast_decl {
 //                             -> name = "example"
 //                     -> symbol = "instance"
 
+#define TYPE_SIGNEDNESS_MASK 0xF000
+#define TYPE_WIDTH_MASK 0x0F00
+
+#define UNSIGNED(typ) ((typ & TYPE_SIGNEDNESS_MASK) == 0x1000)
+#define SIGNED(typ) ((typ & TYPE_SIGNEDNESS_MASK) == 0x2000)
+#define TYPE_WIDTH(typ) (typ & TYPE_WIDTH_MASK)
+#define TYPE_SIGNEDNESS(typ) (typ & TYPE_SIGNEDNESS_MASK)
+
+// Explicitly assigning Y_CHAR..Y_STRUCT values to make it 100% clear that they don't collide with
+// the integer size/signedness shenanigans
 typedef enum {
-	Y_U32 = 0x08,
-	Y_U64 = 0x09,
-	Y_I32 = 0x18,
-	Y_I64 = 0x19,
-	Y_CHAR,
-	Y_BOOL,
-	Y_VOID,
-	Y_POINTER,
-	Y_CONSTPTR, // the values at the memory address being pointed to cannot be changed using this ptr
-	Y_FUNCTION,
-	Y_STRUCT,
+	Y_CHAR = 0x0000,
+	Y_BOOL = 0x0001,
+	Y_VOID = 0x0002,
+	Y_POINTER = 0x0003,
+	Y_CONSTPTR = 0x0004, // the values at the memory address being pointed to cannot be changed using this ptr
+	Y_FUNCTION = 0x0005,
+	Y_STRUCT = 0x0006,
+	// kinda dumb but useful: integer types encode bit witdth in the 4 binary digits at 0x0F00,
+	// and the 0xF000 bits encode signedness: 1 is unsigned, 2 is signed.
+	// TYPE_SIGNEDNESS_MASK and TYPE_WIDTH_MASK help keep track of this!
+	// Should things change, don't forget to change those macros!
+	Y_U32 = 0x1800,
+	Y_U64 = 0x1900,
+	Y_I32 = 0x2800,
+	Y_I64 = 0x2900,
 } type_t;
 
 typedef struct ast_type {
@@ -91,9 +105,10 @@ typedef struct ast_expr {
 	int64_t num;
 	strvec *string_literal;
 	vect *sub_exprs;
-	int is_lvalue;
+	uint8_t is_lvalue;
 	type_t cast_to;
 	type_t int_size;
+	uint8_t is_unsigned;
 } ast_expr;
 
 void expr_add_sub_expr(ast_expr *e, ast_expr *sub);

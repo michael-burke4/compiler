@@ -177,7 +177,7 @@ static int is_int_type(ast_type *t)
 static int assignment_rhs_promotable(ast_type *lhs, ast_type *rhs)
 {
 	if (is_int_type(lhs) && is_int_type(rhs) &&
-			(lhs->kind & 0x0F) > (rhs->kind & 0x0F))
+			TYPE_WIDTH(lhs->kind) > TYPE_WIDTH(rhs->kind))
 		return 1;
 	return 0;
 }
@@ -324,8 +324,7 @@ static ast_type *derive_assign(ast_expr *expr) {
 		return right;
 	}
 	if (is_int_type(left) && is_int_type(right)) {
-		int size_mask = 0x0F;
-		if ((left->kind & size_mask) > (right->kind & size_mask)) {
+		if (TYPE_WIDTH(left->kind) > TYPE_WIDTH(right->kind)) {
 			expr->right = build_cast(expr->right, left->kind);
 			if (derived) {
 				type_destroy(right);
@@ -464,15 +463,20 @@ static void cast_up_if_necessary(ast_expr *expr, ast_type **left, ast_type **rig
 {
 	ast_type *l = *left;
 	ast_type *r = *right;
-	// TODO: worry about signed vs unsigned
 	if (is_int_type(l) && is_int_type(r) && !type_equals(l, r)) {
-		if (l->kind > r->kind) {
-			expr->right = build_cast(expr->right, l->kind);
-			r->kind = l->kind;
-			return;
+		if (TYPE_WIDTH(l->kind) > TYPE_WIDTH(r->kind)) {
+			// Extract L's width and R's signedness, combine into new type for R
+			type_t new_kind = TYPE_WIDTH(l->kind) | TYPE_SIGNEDNESS(r->kind);
+			expr->right = build_cast(expr->right, new_kind);
+			r->kind = new_kind;
+			expr->right->is_unsigned = UNSIGNED(new_kind);
+		} else {
+			// and vice versa
+			type_t new_kind = TYPE_WIDTH(r->kind) | TYPE_SIGNEDNESS(l->kind);
+			expr->left = build_cast(expr->left, new_kind);
+			l->kind = new_kind;
+			expr->left->is_unsigned = UNSIGNED(new_kind);
 		}
-		expr->right = build_cast(expr->right, l->kind);
-		r->kind = l->kind;
 	}
 }
 
@@ -482,6 +486,7 @@ ast_type *derive_expr_type(ast_expr *expr)
 	ast_typed_symbol *ts = NULL;
 	ast_type *left;
 	ast_type *right;
+	ast_type *ret = NULL;
 	if (expr == NULL)
 		return NULL;
 	switch (expr->kind) {
@@ -491,12 +496,14 @@ ast_type *derive_expr_type(ast_expr *expr)
 		right = derive_expr_type(expr->right);
 		if (left->kind == Y_BOOL && right->kind == Y_BOOL) {
 			type_destroy(right);
-			return left;
+			ret = left;
+			goto derive_expr_done;
 		}
 		report_error_cur_line("Operands must both be booleans in logical and/or expressions.");
 		type_destroy(left);
 		type_destroy(right);
-		return NULL;
+		ret = NULL;
+		goto derive_expr_done;
 	case E_ADDSUB:
 	case E_MULDIV:
 	case E_SHIFT:
@@ -508,12 +515,14 @@ ast_type *derive_expr_type(ast_expr *expr)
 		cast_up_if_necessary(expr, &left, &right);
 		if (type_equals(left, right) && is_int_type(left)) {
 			type_destroy(right);
-			return left;
+			ret = left;
+			goto derive_expr_done;
 		}
 		report_error_cur_line("Operands must both be integers in arithmetic expressions.");
 		type_destroy(left);
 		type_destroy(right);
-		return NULL;
+		ret = NULL;
+		goto derive_expr_done;
 	case E_EQUALITY:
 	case E_INEQUALITY:
 		left = derive_expr_type(expr->left);
@@ -522,63 +531,83 @@ ast_type *derive_expr_type(ast_expr *expr)
 		if (type_equals(left, right) && (is_int_type(left) || left->kind == Y_CHAR)) {
 			type_destroy(left);
 			type_destroy(right);
-			return type_init(Y_BOOL, NULL);
+			ret = type_init(Y_BOOL, NULL);
+			goto derive_expr_done;
 		}
 		report_error_cur_line("Operands must both be integer types in (in)equality expressions.");
 		type_destroy(left);
 		type_destroy(right);
-		return NULL;
+		ret = NULL;
+		goto derive_expr_done;
 	case E_ASSIGN:
-		return derive_assign(expr);
+		ret = derive_assign(expr);
+		goto derive_expr_done;
 	case E_PAREN:
-		return derive_expr_type(expr->left);
+		ret = derive_expr_type(expr->left);
+		goto derive_expr_done;
 	case E_CHAR_LIT:
-		return type_init(Y_CHAR, NULL);
+		ret = type_init(Y_CHAR, NULL);
+		goto derive_expr_done;
 	case E_TRUE_LIT:
 	case E_FALSE_LIT:
-		return type_init(Y_BOOL, NULL);
+		ret = type_init(Y_BOOL, NULL);
+		goto derive_expr_done;
 	case E_INT_LIT:
-		return type_init(expr->int_size, NULL);
+		ret = type_init(expr->int_size, NULL);
+		goto derive_expr_done;
 	case E_STR_LIT:
 		left = type_init(Y_CONSTPTR, NULL);
 		left->subtype = type_init(Y_CHAR, NULL);
-		return left;
+		ret = left;
+		goto derive_expr_done;
 	case E_FNCALL:
-		return typecheck_fncall(expr);
+		ret = typecheck_fncall(expr);
+		goto derive_expr_done;
 	case E_IDENTIFIER:
 		ts = scope_lookup(expr->name);
 		if (ts == NULL) {
 			report_error_cur_line("Used undeclared identifier");
-			return NULL;
+			ret = NULL;
+			goto derive_expr_done;
 		}
 		if (ts->type->kind == Y_STRUCT && ts->type->name != NULL && strvec_equals(ts->type->name, expr->name)) {
 			report_error_cur_line("Can't use struct type in this expression");
-			return NULL;
+			ret = NULL;
+			goto derive_expr_done;
 		}
-		if (ts) {
-			return type_copy(ts->type);
-		}
-		report_error_cur_line("Use of undeclared identifier");
-		return NULL;
+		expr->is_unsigned = UNSIGNED(ts->type->kind);
+		ret = type_copy(ts->type);
+		goto derive_expr_done;
 	case E_PRE_UNARY:
-		return derive_pre_unary(expr);
+		ret = derive_pre_unary(expr);
+		goto derive_expr_done;
 	case E_POST_UNARY:
-		return derive_post_unary(expr);
+		ret = derive_post_unary(expr);
+		goto derive_expr_done;
 	default:
 		report_error_cur_line("unsupported expr kind while typechecking!");
-		return NULL;
+		ret = NULL;
+		goto derive_expr_done;
 	}
+derive_expr_done:
+	expr->is_unsigned = expr->is_unsigned ||
+				(expr->left != NULL && expr->left->is_unsigned)
+				|| (expr->right != NULL && expr->right->is_unsigned);
+	return ret;
 }
 
 void typecheck_asm(ast_stmt *stmt) {
 	asm_struct *a = stmt->asm_obj;
 	ast_type *t = NULL;
+	// LCOV_EXCL_START
 	// I can't imagine we'll get to this point but who knows?
 	if (a == NULL) {
 		report_error_cur_line("Invalid asm statement");
 		return;
 	}
 
+	// everything in this LCOV_EXCL block below this line is already checked in parsing.
+	// Subject to change.
 	t = derive_expr_type(a->code);
 	if (t == NULL || a->code->kind != E_STR_LIT) {
 		report_error_cur_line("asm statement's first arg must be a string literal.");
@@ -594,6 +623,7 @@ void typecheck_asm(ast_stmt *stmt) {
 		return;
 	}
 	type_destroy(t);
+	// LCOV_EXCL_STOP
 
 	for (size_t i = 0 ; a->out_operands != NULL && i < a->out_operands->size ; ++i)
 		if (((ast_expr *)vect_get(a->out_operands, i))->kind != E_IDENTIFIER)
@@ -620,9 +650,7 @@ void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 			report_error_cur_line("Return-worthy statements must appear at the end of fn blocks."); // TODO: this is a bad error messsage
 			return;
 		}
-		typecheck_stmt(stmt->body, 0);
-		typecheck_stmt(stmt->else_body, 0);
-		return;
+		at_fn_top_level = 0;
 	}
 	switch (stmt->kind) {
 	case S_ERROR:
@@ -650,11 +678,11 @@ void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 		break;
 	case S_WHILE:
 		if (stmt->expr == NULL) {
-			report_error_cur_line("if statement condition must be non-empty");
+			report_error_cur_line("while statement condition must be non-empty");
 		}
 		typ = derive_expr_type(stmt->expr);
 		if (typ == NULL || typ->kind != Y_BOOL) {
-			report_error_cur_line("if statement condition must be a boolean");
+			report_error_cur_line("while statement condition must be a boolean");
 		}
 		type_destroy(typ);
 		in_loop = 1;
@@ -691,9 +719,7 @@ void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 		typecheck_stmt(stmt->next, at_fn_top_level);
 		break;
 	case S_RETURN:
-		// If we get here, it means that we are at a return statement and stmt->next is not null.
-		// That is not allowed!
-		report_error_cur_line("Return statements must be at the end of statement blocks.");
+		// typechecking returns is done when checking for return-worthyness.
 		break;
 	case S_ASM:
 		typecheck_asm(stmt);
@@ -727,6 +753,8 @@ int type_equals(ast_type *a, ast_type *b)
 		return 1;
 	if (a == NULL || b == NULL)
 		return 0;
+	// TODO: clean this up
 	return type_equals(a->subtype, b->subtype) && arglist_equals(a->arglist, b->arglist) &&
-		a->kind == b->kind;
+			(a->kind == b->kind ||
+			(is_int_type(a) && is_int_type(b) && TYPE_WIDTH(a->kind) == TYPE_WIDTH(b->kind)));
 }

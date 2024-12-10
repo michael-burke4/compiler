@@ -36,12 +36,14 @@ static LLVMTypeRef int_kind_to_llvm_type(LLVMModuleRef mod, type_t kind) {
 	LLVMContextRef ctxt = CTXT(mod);
 	switch (kind) {
 	case Y_I32:
+	case Y_U32:
 		return LLVMInt32TypeInContext(ctxt);
 	case Y_I64:
+	case Y_U64:
 		return LLVMInt64TypeInContext(ctxt);
 	// LCOV_EXCL_START
 	default:
-		fprintf(stderr, "couldn't convert type a\n");
+		fprintf(stderr, "couldn't convert type %d\n", kind);
 		abort();
 	// LCOV_EXCL_STOP
 	}
@@ -53,8 +55,10 @@ static LLVMTypeRef to_llvm_type(LLVMModuleRef mod, ast_type *tp)
 	LLVMContextRef ctxt = CTXT(mod);
 	switch (tp->kind) {
 	case Y_I32:
+	case Y_U32:
 		return LLVMInt32TypeInContext(ctxt);
 	case Y_I64:
+	case Y_U64:
 		return LLVMInt64TypeInContext(ctxt);
 	case Y_BOOL:
 		return LLVMInt1TypeInContext(ctxt);
@@ -551,7 +555,10 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		return LLVMConstInt(t, (unsigned long long)expr->num, 0);
 	case E_SHIFT:
 		if (expr->op == T_RSHIFT)
-			return LLVMBuildAShr(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+			if (expr->is_unsigned)
+				return LLVMBuildLShr(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+			else
+				return LLVMBuildAShr(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 		else
 			return LLVMBuildShl(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 	case E_BW_OR:
@@ -563,15 +570,24 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	case E_MULDIV:
 		if (expr->op == T_STAR)
 			return LLVMBuildMul(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
-		else if (expr->op == T_PERCENT)
+		if (expr->is_unsigned) {
+			if (expr->op == T_PERCENT)
+				return LLVMBuildURem(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+			else
+				return LLVMBuildUDiv(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+		}
+		if (expr->op == T_PERCENT)
 			return LLVMBuildSRem(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 		else
 			return LLVMBuildSDiv(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 	case E_ADDSUB:
+		// TODO: nsw flag
+		// TODO: pointer math
 		if (expr->op == T_MINUS)
-			return LLVMBuildSub(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+			v = LLVMBuildSub(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 		else
-			return LLVMBuildAdd(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+			v = LLVMBuildAdd(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+		return v;
 
 	// Because the lhs and rhs of logical and/or must be bools, this is fine.
 	// This wouldn't work if any old int could be in a logical and/or expr.
@@ -619,13 +635,25 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		return LLVMConstInt(LLVMInt8TypeInContext(CTXT(mod)), (int)expr->string_literal->text[0], 0);
 	case E_INEQUALITY:
 		if (expr->op == T_LT)
-			return LLVMBuildICmp(builder, LLVMIntSLT, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+			if (expr->is_unsigned)
+				return LLVMBuildICmp(builder, LLVMIntULT, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+			else
+				return LLVMBuildICmp(builder, LLVMIntSLT, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 		else if (expr->op == T_LTE)
-			return LLVMBuildICmp(builder, LLVMIntSLE, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+			if (expr->is_unsigned)
+				return LLVMBuildICmp(builder, LLVMIntULE, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+			else
+				return LLVMBuildICmp(builder, LLVMIntSLE, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 		else if (expr->op == T_GT)
-			return LLVMBuildICmp(builder, LLVMIntSGT, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+			if (expr->is_unsigned)
+				return LLVMBuildICmp(builder, LLVMIntUGT, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+			else
+				return LLVMBuildICmp(builder, LLVMIntSGT, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 		else
-			return LLVMBuildICmp(builder, LLVMIntSGE, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+			if (expr->is_unsigned)
+				return LLVMBuildICmp(builder, LLVMIntUGE, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
+			else
+				return LLVMBuildICmp(builder, LLVMIntSGE, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 	case E_PAREN:
 		return expr_codegen(mod, builder, expr->left, store_ctxt);
 	case E_POST_UNARY:
@@ -671,11 +699,15 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		}
 		// LCOV_EXCL_STOP
 	case E_CAST:
-		// TODO: ZExt for unsigneds
 		// TODO: cast down (truncate)
-		return LLVMBuildSExt(builder, expr_codegen(mod,
-				builder, expr->left, store_ctxt),
-				int_kind_to_llvm_type(mod, expr->cast_to), "");
+		if (expr->is_unsigned)
+			return LLVMBuildZExt(builder, expr_codegen(mod,
+					builder, expr->left, store_ctxt),
+					int_kind_to_llvm_type(mod, expr->cast_to), "");
+		else
+			return LLVMBuildSExt(builder, expr_codegen(mod,
+					builder, expr->left, store_ctxt),
+					int_kind_to_llvm_type(mod, expr->cast_to), "");
 	case E_PRE_UNARY:
 		ret = pre_unary_codegen(mod, builder, expr, store_ctxt);
 	}
@@ -778,7 +810,9 @@ void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 	} else if (decl->typesym->type->kind == Y_STRUCT && decl->typesym->type->name == NULL) {
 		define_struct(*mod, decl);
 	} else {
+	// LCOV_EXCL_START
 		fprintf(stderr, "Can't codegen decls of this type yet :(\n");
 		exit(1);
+	// LCOV_EXCL_STOP
 	}
 }
