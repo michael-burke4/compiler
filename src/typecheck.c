@@ -195,12 +195,7 @@ void typecheck_decl(ast_decl *decl)
 		report_error_cur_line("Duplicate symbol declaration");
 		return;
 	}
-	if (decl->typesym->type->kind == Y_VOID) {
-		report_error_cur_line("Can't declare variable with type void");
-	} else if (decl->typesym->type->kind == Y_FUNCTION) {
-		scope_bind_ts(decl->typesym);
-		typecheck_fnbody(decl);
-	} else if (decl->typesym->type->kind == Y_STRUCT) {
+	if (decl->typesym->type->kind == Y_STRUCT) {
 		if (decl->typesym->type->name == NULL) {
 			scope_bind_ts(decl->typesym);
 		}
@@ -211,6 +206,12 @@ void typecheck_decl(ast_decl *decl)
 			}
 			scope_bind_ts(decl->typesym);
 		}
+	}
+	if (decl->typesym->type->kind == Y_VOID) {
+		report_error_cur_line("Can't declare variable with type void");
+	} else if (decl->typesym->type->kind == Y_FUNCTION) {
+		scope_bind_ts(decl->typesym);
+		typecheck_fnbody(decl);
 	} else if (decl->expr) {
 		if (decl->typesym->type->kind == Y_POINTER && decl->typesym->type->subtype->kind == Y_CHAR
 				&& decl->expr->kind == E_STR_LIT) {

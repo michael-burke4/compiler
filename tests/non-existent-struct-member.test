@@ -1,0 +1,12 @@
+comp_err typecheck
+--TEXT--
+let node: struct = {
+	next: struct node*;
+	num: i32;
+};
+
+let main: () -> i32 = {
+	let head: struct node;
+	let m: struct node=(*(head.nex));
+	return 5;
+};
