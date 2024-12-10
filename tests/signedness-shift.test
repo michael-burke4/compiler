@@ -1,0 +1,15 @@
+ret 1
+--TEXT--
+let main: () -> i32 = {
+	let x: u32 = -2147483647;
+	let y: i32 = -2147483647;
+
+	x = x >> 1;
+	y = y >> 1;
+
+	if (x == y) {
+		return 4;
+	}
+
+	return 1;
+};

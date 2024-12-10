@@ -1,0 +1,18 @@
+ret 3
+--TEXT--
+let main: () -> i32 = {
+	let x: i32 = -5;
+	let y: i32 = 3;
+	let ux: u32 = x;
+	let uy: u32 = y;
+
+	if ((x % y) == (ux % uy)) {
+		return 5;
+	}
+
+	if ((x / y) == (ux / uy)) {
+		return 4;
+	}
+
+	return 3;
+};

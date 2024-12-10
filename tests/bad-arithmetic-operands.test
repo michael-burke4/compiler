@@ -1,0 +1,15 @@
+comp_err typecheck
+--TEXT--
+
+let main: () -> i32 = {
+	let x: i32 = 10;
+	let b: bool = true;
+
+	if (x + b == 3) {
+		return 4;
+	}
+	if (x - b == 3) {
+		return 3;
+	}
+	return 1;
+};

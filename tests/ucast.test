@@ -1,0 +1,13 @@
+ret 0
+--TEXT--
+let f: () -> u32 = {
+	return -1;
+};
+
+let main: () -> i32 = {
+	let x: u64 = -1;
+	if (f() == x) {
+		return 2;
+	}
+	return 0;
+};

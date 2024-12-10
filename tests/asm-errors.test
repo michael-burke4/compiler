@@ -1,0 +1,7 @@
+comp_err typecheck
+--TEXT--
+let main: () -> i32 = {
+	asm("nop", "", [10, 20, 30], [true, false, x + 10]);
+
+	return 5;
+};

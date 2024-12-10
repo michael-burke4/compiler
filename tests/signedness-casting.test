@@ -1,0 +1,10 @@
+ret 10
+--TEXT--
+let main: () -> i32 = {
+	let x: u64 = 10;
+	let y: i32 = 10;
+	if (y == x) {
+		return y;
+	}
+	return 5;
+};
