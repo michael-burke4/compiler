@@ -766,11 +766,11 @@ static void define_struct(LLVMModuleRef mod, ast_decl *decl) {
 	// Also don't free this decl! The symbol table does not own it!!
 	scope_bind(decl, decl->typesym->symbol);
 
+	LLVMTypeRef st_tp = LLVMStructCreateNamed(CTXT(mod), buf);
 	for (size_t i = 0 ; i < al->size ; ++i) {
 		LLVMTypeRef cur_type = to_llvm_type(mod, ((ast_typed_symbol *)vect_get(al, i))->type);
 		vect_append(members, cur_type);
 	}
-	LLVMTypeRef st_tp = LLVMStructCreateNamed(CTXT(mod), buf);
 	LLVMStructSetBody(st_tp, (LLVMTypeRef *)members->elements, members->size, 0);
 	vect_destroy(members); // WARNING! Potential use-after-free situation?
 	// The type references themelves aren't freed
