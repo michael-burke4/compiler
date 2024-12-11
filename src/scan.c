@@ -46,6 +46,8 @@ static token_s *check_if_keyword(strvec *word, size_t line, size_t col)
 		ret = tok_init_nl(T_STRUCT, line, col, NULL);
 	else if (strvec_equals_str(word, "asm"))
 		ret = tok_init_nl(T_ASM, line, col, NULL);
+	else if (strvec_equals_str(word, "sizeof"))
+		ret = tok_init_nl(T_SIZEOF, line, col, NULL);
 	if (ret != NULL)
 		strvec_destroy(word);
 	else

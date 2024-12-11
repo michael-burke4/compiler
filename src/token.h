@@ -30,6 +30,7 @@ typedef enum {
 	T_LET,
 	T_STRUCT,
 	T_ASM,
+	T_SIZEOF,
 
 	T_DPLUS,
 	T_DMINUS,

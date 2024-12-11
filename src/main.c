@@ -109,9 +109,14 @@ int main(int argc, char *argv[])
 	st_destroy();
 	st_init();
 
+
 	// TODO: check path can fit infile?
 	strcpy(path, infile);
 	modname = basename(path);
+
+	LLVMInitializeNativeTarget();
+	LLVMInitializeNativeAsmPrinter();
+	LLVMInitializeAllTargetMCs();
 
 	LLVMContextRef ctxt = LLVMContextCreate();
 	LLVMModuleRef mod = module_codegen(ctxt, program, modname);
@@ -123,9 +128,6 @@ int main(int argc, char *argv[])
 	LLVMDisposeMessage(error);
 
 	error = 0;
-	LLVMInitializeNativeTarget();
-	LLVMInitializeNativeAsmPrinter();
-
 	if (!outfile)
 		outfile = "a.bc";
 	if (LLVMWriteBitcodeToFile(mod, outfile) != 0) {

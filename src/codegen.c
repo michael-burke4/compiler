@@ -11,7 +11,11 @@
 #define CTXT(mod) (LLVMGetModuleContext(mod))
 
 extern struct stack *sym_tab;
+LLVMTargetDataRef td = NULL;
 
+// TODO: These _compat functions don't actually work on latest LLVM releases:
+// all pointers are opaque, so LLVMGetElementType(LLVMTypeOf(Pointer)) doesn't work.
+// 	- Also, can't enable a legacy typed pointer mode anymore! Opaque pointer migration is complete!
 static inline LLVMValueRef LLVMBuildGEP_compat(LLVMBuilderRef B, LLVMValueRef Pointer, LLVMValueRef *Indices, unsigned int NumIndices, const char *Name)
 {
 	return LLVMBuildGEP2(B, LLVMGetElementType(LLVMTypeOf(Pointer)), Pointer, Indices, NumIndices, Name);
@@ -88,11 +92,24 @@ static LLVMTypeRef to_llvm_type(LLVMModuleRef mod, ast_type *tp)
 LLVMModuleRef module_codegen(LLVMContextRef ctxt, ast_decl *start, char *module_name)
 {
 	LLVMModuleRef ret = LLVMModuleCreateWithNameInContext(module_name, ctxt);
+	char *triple = LLVMGetDefaultTargetTriple();
+	LLVMTargetRef tgt = NULL;
+	LLVMGetTargetFromTriple(triple, &tgt, NULL);
+
+	// TODO: make this customizable.
+	LLVMTargetMachineRef tm = LLVMCreateTargetMachine(tgt, triple, "generic", "", LLVMCodeGenLevelNone, LLVMRelocDefault, LLVMCodeModelDefault);
+	td = LLVMCreateTargetDataLayout(tm);
+
 
 	while (start) {
 		decl_codegen(&ret, start);
 		start = start->next;
 	}
+
+	LLVMDisposeMessage(triple);
+	LLVMDisposeTargetData(td);
+	LLVMDisposeTargetMachine(tm);
+
 	return ret;
 }
 
@@ -332,6 +349,7 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, LLV
 			v1 = LLVMBuildAlloca(builder, to_llvm_type(mod, stmt->decl->typesym->type), buffer);
 			//vect_append(v, (void *)v1);
 			scope_bind(v1, stmt->decl->typesym->symbol);
+			strvec_print(stmt->decl->typesym->symbol);
 			if (stmt->decl->expr != NULL)
 				LLVMBuildStore(builder, expr_codegen(mod, builder, stmt->decl->expr, 0), v1);
 		}
@@ -511,6 +529,8 @@ static LLVMValueRef log_and_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, a
 LLVMValueRef pre_unary_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, int store_ctxt)
 {
 	LLVMValueRef v = NULL;
+	unsigned long long s = 0;
+	LLVMTypeRef t = NULL;
 	switch (expr->op) {
 	case T_STAR:
 		v = expr_codegen(mod, builder, expr->left, store_ctxt);
@@ -531,6 +551,13 @@ LLVMValueRef pre_unary_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_ex
 	case T_NOT:
 		v = expr_codegen(mod, builder, expr->left, 0);
 		return LLVMBuildXor(builder, LLVMConstInt(LLVMTypeOf(v), 1, 0), v, "");
+	case T_SIZEOF:
+		v = expr_codegen(mod, builder, expr->left, 0);
+		s = LLVMABISizeOfType(td, LLVMTypeOf(v));
+		// TODO: make a size_t/usize type that will vary with target triple or target
+		// data or whatever.
+		t = LLVMInt64TypeInContext(CTXT(mod));
+		return LLVMConstInt(t, s, 0);
 	// LCOV_EXCL_START
 	default:
 		fprintf(stderr, "can't codegen that expr kind right now.\n");

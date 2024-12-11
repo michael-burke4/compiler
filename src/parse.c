@@ -869,6 +869,7 @@ ast_expr *parse_expr_pre_unary(void)
 	case T_NOT:
 	case T_BW_NOT:
 	case T_AMPERSAND:
+	case T_SIZEOF:
 		next();
 		inner = parse_expr_pre_unary(); // TODO: is this correct? Do a lot of thinking.
 		return expr_init(E_PRE_UNARY, inner, NULL, typ, NULL, 0, NULL);

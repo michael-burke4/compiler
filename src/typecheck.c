@@ -391,6 +391,15 @@ static ast_type *derive_pre_unary(ast_expr *expr)
 			return NULL;
 		}
 		return left;
+	case T_SIZEOF:
+		left = derive_expr_type(expr->left);
+		if (left == NULL) {
+			report_error_cur_line("sizeof operand type is not defined");
+			type_destroy(left);
+			return NULL;
+		}
+		type_destroy(left);
+		return type_init(Y_U64, NULL);
 	default:
 		report_error_cur_line("unsupported expr kind while typechecking!");
 		return NULL;
