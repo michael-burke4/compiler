@@ -1,5 +1,5 @@
-ret 5
---TEXT--
+// ret 5
+// END_HEADER
 let main: () -> i32 = {
 	return 5;
 };

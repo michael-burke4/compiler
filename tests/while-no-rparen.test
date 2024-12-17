@@ -1,5 +1,5 @@
-comp_err parse
---TEXT--
+// comp_err parse
+// END_HEADER
 let main: () -> i32 = {
 	let x: i32 = 20;
 	while (x < 4 {

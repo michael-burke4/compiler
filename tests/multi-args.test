@@ -1,5 +1,5 @@
-ret 5
---TEXT--
+// ret 5
+// END_HEADER
 let x: (a: i32, b: i32) -> i32 = {
 	return b;
 };

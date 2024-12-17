@@ -1,5 +1,5 @@
-comp_err typecheck
---TEXT--
+// comp_err typecheck
+// END_HEADER
 let f: (x: i32) -> i32 = {
 	if (x < 10) {
 		return 2;

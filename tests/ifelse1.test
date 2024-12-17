@@ -1,5 +1,5 @@
-ret 18
---TEXT--
+// ret 18
+// END_HEADER
 let main: () -> i32 = {
 	let x: i32 = 16;
 	if (x < 20) {

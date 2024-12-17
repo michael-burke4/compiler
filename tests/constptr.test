@@ -1,5 +1,5 @@
-ret 2
---TEXT--
+// ret 2
+// END_HEADER
 let main: () -> i32 = {
 	const i: i32 = 2;
 	let p: i32@ = &i;

@@ -97,33 +97,35 @@ class Test:
             tf_print('Return codes did not match.')
             return 0
         return 1
-        
 
 def test_from_testfile(open_file):
     err = None
     ret = None
     program = ''
+    hd = False # 'hd' = 'header done'
     for line in open_file:
-        splt = line.split()
-        match splt[0]:
-            case 'comp_err':
-                if len(splt) < 2:
-                    raise Exception(f'in testfile {f.name}: comp_error directive requires at least one arg.')
-                err = ' '.join(splt[1:])
-            case 'ret':
-                if len(splt) != 2:
-                    raise Exception(f'in testfile {f.name}: ret directive requires exactly one arg. Got {len(splt)-1}')
-                try:
-                    ret = int(splt[1])
-                except ValueError:
-                    raise Exception(f'in testfile {f.name}: could not parse supplied arg of ret directive "{splt[1]}" as integer')
-            case '--TEXT--':
-                for remaining in open_file:
-                    program += remaining
-                return Test(open_file.name, program, err, ret)
-            case _:
-                raise Exception(f'in testfile {f.name}: bad directive "{splt[0]}" in test {f.name}')
-    raise Exception(f'in tesfile {f.name}: missing text section')
+        program += line
+        if not hd and not line.startswith('//'):
+            raise Exception(f'in testfile {open_file.name}: Could not parse command in line {line.strip()}')
+        elif not hd:
+            splt = line.strip().split()
+            match splt[1]:
+                case 'comp_err':
+                    if len(splt) != 3:
+                        raise Exception(f'in testfile {open_file.name}: comp_error directive requires exactly one arg.')
+                    err = ' '.join(splt[2:])
+                case 'ret':
+                    if len(splt) != 3:
+                        raise Exception(f'in testfile {open_file.name}: ret directive requires exactly one arg. Got {len(splt)-1}')
+                    try:
+                        ret = int(splt[2])
+                    except ValueError:
+                        raise Exception(f'in testfile {open_file.name}: could not parse supplied arg of ret directive "{splt[1]}" as integer')
+                case 'END_HEADER':
+                    hd = True
+                case _:
+                    raise Exception(f'in testfile {open_file.name}: bad directive "{splt[0]}" in test {open_file.name}')
+    return Test(open_file.name, program, err, ret)
 
 
 total = 0

@@ -1,5 +1,5 @@
-ret 3
---TEXT--
+// ret 3
+// END_HEADER
 // This is a comment
 let main: () -> i32 = {
 	// return 5;

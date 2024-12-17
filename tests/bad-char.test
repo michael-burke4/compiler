@@ -1,5 +1,5 @@
-comp_err scan
---TEXT--
+// comp_err scan
+// END_HEADER
 let main: () -> i32 = {
 	let c: char = '
 	a';

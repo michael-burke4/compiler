@@ -1,5 +1,5 @@
-ret 12
---TEXT--
+// ret 12
+// END_HEADER
 let main: () -> i32 = {
 	let doubled: i32 = -1;
 	let num: i32 = 6;

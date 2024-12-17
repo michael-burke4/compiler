@@ -1,5 +1,5 @@
-comp_err typecheck
---TEXT--
+// comp_err typecheck
+// END_HEADER
 let main: () -> i32 = {
 	asm("nop", "", [10, 20, 30], [true, false, x + 10]);
 

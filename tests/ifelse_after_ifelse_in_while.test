@@ -1,5 +1,5 @@
-ret 11
---TEXT--
+// ret 11
+// END_HEADER
 let main: () -> i32 = {
 	let i: i32 = 10;
 	let j: i32 = 0;

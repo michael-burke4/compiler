@@ -1,4 +1,4 @@
-comp_err parse
---TEXT--
+// comp_err parse
+// END_HEADER
 let false: i32 = 10;
 let x i32 = 10;

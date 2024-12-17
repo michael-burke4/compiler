@@ -1,5 +1,5 @@
-ret 8
---TEXT--
+// ret 8
+// END_HEADER
 let main: () -> i32 = {
 	let x: i32 = 5;
 	while (true) {

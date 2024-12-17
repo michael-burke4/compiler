@@ -1,5 +1,5 @@
-comp_err typecheck
---TEXT--
+// comp_err typecheck
+// END_HEADER
 let f: (a: i32) -> bool = {
 	return a <= 10;
 };

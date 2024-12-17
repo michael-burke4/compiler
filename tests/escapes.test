@@ -1,5 +1,5 @@
-ret 1
---TEXT--
+// ret 1
+// END_HEADER
 let main: () -> i32 = {
 	let c: char = '\n';
 	let c2: char = '\\';

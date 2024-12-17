@@ -1,5 +1,5 @@
-ret 3
---TEXT--
+// ret 3
+// END_HEADER
 let main: () -> i32 = {
 	let x: i32 = 10;
 	if (x > 2 && x < 20) {

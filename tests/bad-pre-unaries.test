@@ -1,5 +1,5 @@
-comp_err typecheck
---TEXT--
+// comp_err typecheck
+// END_HEADER
 let main: () -> i32 = {
 	let x: bool = ~true;
 	let x2: i32 = !10;

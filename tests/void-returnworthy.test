@@ -1,5 +1,5 @@
-ret 1
---TEXT--
+// ret 1
+// END_HEADER
 let f: (a: i32*) -> void = {
 	*a = 0;
 	if (*a < 10) {

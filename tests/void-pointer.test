@@ -1,5 +1,5 @@
-ret 10
---TEXT--
+// ret 10
+// END_HEADER
 let main: () -> i32 = {
 	let a: void*;
 	return 10;

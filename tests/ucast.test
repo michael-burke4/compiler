@@ -1,5 +1,5 @@
-ret 0
---TEXT--
+// ret 0
+// END_HEADER
 let f: () -> u32 = {
 	return -1;
 };

@@ -1,5 +1,5 @@
-ret 11
---TEXT--
+// ret 11
+// END_HEADER
 let side_effect: (x: i32*) -> bool = {
 	*x += 10;
 	return false;

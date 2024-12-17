@@ -1,4 +1,4 @@
-comp_err typecheck
---TEXT--
+// comp_err typecheck
+// END_HEADER
 let x: u32 = 0;
 let x: u64 = 0;

@@ -1,5 +1,5 @@
-ret 9
---TEXT--
+// ret 9
+// END_HEADER
 let main: () -> i32 = {
 	let x: i32 = 1009;
 

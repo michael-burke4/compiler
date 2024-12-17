@@ -1,5 +1,5 @@
-comp_err typecheck
---TEXT--
+// comp_err typecheck
+// END_HEADER
 let main: () -> i32 = {
 	let t: char@ = "test";
 	let s: char* = &(t[0]);

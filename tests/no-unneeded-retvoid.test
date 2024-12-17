@@ -1,5 +1,5 @@
-ret 13
---TEXT--
+// ret 13
+// END_HEADER
 let f: (a: i32*) -> i32 = {
 	if (*a < 10) {
 		*a = 3;

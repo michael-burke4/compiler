@@ -1,5 +1,5 @@
-ret 25
---TEXT--
+// ret 25
+// END_HEADER
 let pt: struct = {
 	x: i32;
 	y: i32;

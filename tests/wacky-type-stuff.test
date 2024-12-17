@@ -1,5 +1,5 @@
-comp_err typecheck
---TEXT--
+// comp_err typecheck
+// END_HEADER
 let x: (y: (x: i32) -> i32) -> i32 = {
 	y;
 	return 10;

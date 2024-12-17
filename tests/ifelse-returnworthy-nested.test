@@ -1,5 +1,5 @@
-ret 5
---TEXT--
+// ret 5
+// END_HEADER
 let f: (x: i32) -> i32 = {
 	if (x < 10) {
 		return 2;

@@ -1,5 +1,5 @@
-comp_err typecheck
---TEXT--
+// comp_err typecheck
+// END_HEADER
 let pt: struct = {
 	x: i32;
 	y: i32;
