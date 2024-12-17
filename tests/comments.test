@@ -1,0 +1,11 @@
+ret 3
+--TEXT--
+// This is a comment
+let main: () -> i32 = {
+	// return 5;
+	// return 2;
+
+	return 3; // returns 3
+	// I hope the above comment was useful!
+};
+//here's a comment at the end of a file! :)

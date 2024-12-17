@@ -177,6 +177,7 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 {
 	int c;
 	size_t temp_col;
+scan_tok_start:
 	while (isspace(c = fgetc(f))) {
 		if (c == '\n') {
 			*col = 0;
@@ -236,6 +237,10 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 		if (c == '=') {
 			*col += 2;
 			return tok_init_nl(T_DIV_ASSIGN, *line, temp_col, NULL);
+		} else if (c == '/') {
+			while ((c = fgetc(f)) != '\n' && c != EOF);
+			ungetc(c, f);
+			goto scan_tok_start; // TODO: using a goto here is a little dumb
 		}
 		ungetc(c, f);
 		return tok_init_nl(T_FSLASH, *line, (*col)++, NULL);
