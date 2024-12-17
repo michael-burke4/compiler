@@ -51,7 +51,6 @@ static void typecheck_return(ast_stmt *stmt) {
 	if (stmt->next != NULL) {
 		report_error_cur_line("Return statements must be at the end of statement blocks.");
 	}
-	// typ does not 'own' this - don't free this value.
 	typ = scope_get_return_type();
 	if (typ == NULL) {
 		report_error_cur_line("Cannot use a return statement outside of a function");
@@ -59,13 +58,11 @@ static void typecheck_return(ast_stmt *stmt) {
 		if (typ->kind != Y_VOID) {
 			report_error_cur_line("Non-void function has empty return statement.");
 		}
-	} else {
-		// Dangerous reuse of typ: now 'owns' what is points to. Must free.
-		typ = derive_expr_type(stmt->expr);
-		if (!type_equals(typ, scope_get_return_type())) {
-			report_error_cur_line("Return value does not match function signature");
-		}
-		type_destroy(typ);
+		return;
+	}
+	derive_expr_type(stmt->expr);
+	if (!type_equals(stmt->expr->type, scope_get_return_type())) {
+		report_error_cur_line("Return value does not match function signature");
 	}
 }
 
@@ -142,17 +139,14 @@ static void typecheck_fnbody(ast_decl *decl)
 
 static void typecheck_array_initializer(ast_decl *decl)
 {
-	ast_type *t;
 	if (decl->initializer == NULL)
 		return;
 	for (size_t i = 0 ; i < decl->initializer->size ; ++i) {
-		t = derive_expr_type(decl->initializer->elements[i]);
-		if (!type_equals(t, decl->typesym->type->subtype)) {
+		derive_expr_type(decl->initializer->elements[i]);
+		if (!type_equals(((ast_expr *)(decl->initializer->elements[i]))->type, decl->typesym->type->subtype)) {
 			report_error_cur_line("Type mismatch in array initializer");
-			type_destroy(t);
 			return;
 		}
-		type_destroy(t);
 	}
 	return;
 }
@@ -182,10 +176,8 @@ static int assignment_rhs_promotable(ast_type *lhs, ast_type *rhs)
 	return 0;
 }
 
-
 void typecheck_decl(ast_decl *decl)
 {
-	ast_type *typ;
 	if (decl == NULL) {
 		report_error_cur_line("Typechecking empty decl!?!?!");
 		return;
@@ -220,19 +212,22 @@ void typecheck_decl(ast_decl *decl)
 			for (size_t i = 0 ; i < decl->initializer->capacity ; ++i) {
 				strvec *c = strvec_init(1);
 				strvec_append(c, decl->expr->string_literal->text[i]);
+				// TODO: replace 0s with NULL
 				e = expr_init(E_CHAR_LIT, 0, 0, 0, 0, 0, c);
+				e->type = type_init(Y_CHAR, NULL);
+				e->owns_type = 1;
 				vect_append(decl->initializer, e);
 			}
 			scope_bind_ts(decl->typesym);
 			return;
 		}
-		typ = derive_expr_type(decl->expr);
-		if (assignment_rhs_promotable(decl->typesym->type, typ)) {
+		derive_expr_type(decl->expr);
+		if (assignment_rhs_promotable(decl->typesym->type, decl->expr->type)) {
 			decl->expr = build_cast(decl->expr, decl->typesym->type->kind);
-		} else if (!(type_equals(decl->typesym->type, typ))) {
+		} else if (!(type_equals(decl->typesym->type, decl->expr->type))) {
 			report_error_cur_line("Assignment expression type mismatch");
+			return;
 		}
-		type_destroy(typ);
 		scope_bind_ts(decl->typesym);
 	} else if (decl->initializer) {
 		if (decl->typesym->type->kind != Y_POINTER && decl->typesym->type->kind != Y_CONSTPTR) {
@@ -249,160 +244,118 @@ void typecheck_decl(ast_decl *decl)
 /*
 Assumes that expr is a function call.
 
-In order for this to return a type the function must find that:
+In order for this to attach a type the function must find that:
 
 	(a) a function of the same name exists in the symbol table
 	(b) the provided function's list of parameters must match with the aforementioned
 		symbol table function's arg list.
-assuming these conditions are met, return the return type found in the symbol table.
-
-should these conditions fail, return zero.
 */
-static ast_type *typecheck_fncall(ast_expr *expr)
+static void typecheck_fncall(ast_expr *expr)
 {
 	ast_typed_symbol *fn_ts = scope_lookup(expr->name);
 	if (fn_ts == NULL) {
 		report_error_cur_line("Call to undeclared function");
-		return NULL;
+		return;
 	} else if (fn_ts->type->kind != Y_FUNCTION) {
 		report_error_cur_line("Identifier does not refer to a function");
-		return NULL;
+		return;
 	}
 	vect *decl_arglist = fn_ts->type->arglist;
 	vect *expr_arglist = expr->sub_exprs;
-	ast_type *derived;
 	size_t i;
-	int flag = 0;
-	if (decl_arglist == NULL && expr_arglist == NULL)
-		return type_copy(fn_ts->type->subtype);
-	if ((decl_arglist == NULL || expr_arglist == NULL) || (decl_arglist->size != expr_arglist->size)) {
+	if (decl_arglist == NULL && expr_arglist == NULL) {
+		expr->type = fn_ts->type->subtype;
+		return;
+	} else if ((decl_arglist == NULL || expr_arglist == NULL) ||
+			(decl_arglist->size != expr_arglist->size)) {
 		report_error_cur_line("Argument count mismatch");
-		return NULL;
+		return;
 	}
-
 	for (i = 0 ; i < decl_arglist->size ; ++i) {
-		derived = derive_expr_type(expr_arglist->elements[i]);
-		if (!type_equals(arglist_get(decl_arglist, i)->type, derived)) {
+		derive_expr_type(expr_arglist->elements[i]);
+		if (!type_equals(arglist_get(decl_arglist, i)->type, ((ast_expr *)expr_arglist->elements[i])->type)) {
 			report_error_cur_line("Positional argument type mismatch in function call");
-			flag = 1;
 		}
-		type_destroy(derived);
-		derived = NULL;
 	}
-	if (flag)
-		return NULL;
-	return type_copy(fn_ts->type->subtype);
+	expr->type = fn_ts->type->subtype;
 }
 
-static ast_type *derive_assign(ast_expr *expr) {
-	ast_typed_symbol *ts = NULL;
-	ast_type *left = NULL;
-	ast_type *right = NULL;
-	int derived = 0;
+static void derive_assign(ast_expr *expr) {
 	if (!expr->left->is_lvalue) {
 		report_error_cur_line("Assignment expression's left side must be an lvalue!");
-		return NULL;
+		return;
 	}
-	if (expr->left->kind == E_IDENTIFIER) {
-		ts = scope_lookup(expr->left->name);
-		if (ts == NULL) {
-			report_error_cur_line("Use of undeclared identifier");
-			return NULL;
-		}
-		left = ts->type;
-	} else {
-		left = derive_expr_type(expr->left);
-		derived = 1;
-	}
-	if (left != NULL && left->isconst) {
+	derive_expr_type(expr->left);
+	if (expr->left->type != NULL && expr->left->type->isconst) {
 		report_error_cur_line("Cannot assign to const expression");
-		return NULL;
+		return;
 	}
-	right = derive_expr_type(expr->right);
-	if (type_equals(left, right)) {
-		if (derived)
-			type_destroy(left);
-		return right;
+	derive_expr_type(expr->right);
+	if (type_equals(expr->left->type, expr->right->type)) {
+		expr->type = expr->left->type;
+		return;
 	}
-	if (is_int_type(left) && is_int_type(right)) {
-		if (TYPE_WIDTH(left->kind) > TYPE_WIDTH(right->kind)) {
-			expr->right = build_cast(expr->right, left->kind);
-			if (derived) {
-				type_destroy(right);
-				return left;
-			}
-			type_destroy(right);
-			return type_copy(left);
-		}
+	if (is_int_type(expr->left->type) && is_int_type(expr->right->type) &&
+			TYPE_WIDTH(expr->left->type->kind) > TYPE_WIDTH(expr->right->type->kind)) {
+		expr->right = build_cast(expr->right, expr->left->type->kind);
+		expr->type = expr->left->type;
+		return;
 	}
 	report_error_cur_line("Mismatched types in assigment statement");
-	type_destroy(right);
-	return NULL;
 }
 
-static ast_type *derive_pre_unary(ast_expr *expr)
+static void derive_pre_unary(ast_expr *expr)
 {
-	ast_type *left;
-	ast_type *right;
-	int isconst;
+	derive_expr_type(expr->left);
 	switch (expr->op) {
 	case T_AMPERSAND:
-		left = derive_expr_type(expr->left);
-		if (left == NULL || !expr->left->is_lvalue) {
+		if (expr->left->type == NULL || !expr->left->is_lvalue) {
 			report_error_cur_line("Cannot find address of non-lvalue expr");
-			type_destroy(left);
-			return NULL;
+			return;
 		}
-		isconst = left->isconst;
-		right = type_init(isconst ? Y_CONSTPTR : Y_POINTER, NULL);
-		right->subtype = left;
-		return right;
+		expr->type = type_init(expr->left->type->isconst ? Y_CONSTPTR : Y_POINTER, NULL);
+		expr->owns_type = true;
+		expr->type->subtype = expr->left->type;
+		expr->type->owns_subtype = false;
+		break;
 	case T_STAR:
-		left = derive_expr_type(expr->left);
-		if (left == NULL || (left->kind != Y_POINTER && left->kind != Y_CONSTPTR)) {
+		if (expr->left->type == NULL || (expr->left->type->kind != Y_POINTER && expr->left->type->kind != Y_CONSTPTR)) {
 			report_error_cur_line("Cannot dereference non-pointer expression");
-			type_destroy(left);
-			return NULL;
+			return;
 		}
-		right = type_copy(left->subtype);
-		type_destroy(left);
-		return right;
+		expr->type = expr->left->type->subtype;
+		break;
 	case T_MINUS:
-		left = derive_expr_type(expr->left);
-		if (!is_int_type(left)) {
+		if (!is_int_type(expr->left->type)) {
 			report_error_cur_line("Cannot use unary negative operator on non-integer type.");
-			type_destroy(left);
-			return NULL;
+			return;
 		}
-		return left;
+		expr->type = expr->left->type;
+		break;
 	case T_BW_NOT:
-		left = derive_expr_type(expr->left);
-		if (!is_int_type(left)) {
+		if (!is_int_type(expr->left->type)) {
 			report_error_cur_line("Cannot use unary bitwise not operator on non-integer type.");
-			type_destroy(left);
-			return NULL;
+			return;
 		}
-		return left;
+		expr->type = expr->left->type;
+		break;
 	case T_NOT:
-		left = derive_expr_type(expr->left);
-		if (left->kind != Y_BOOL) {
+		if (expr->left->type->kind != Y_BOOL) {
 			report_error_cur_line("Cannot use unary not operator on non-bolean type.");
-			type_destroy(left);
-			return NULL;
+			return;
 		}
-		return left;
+		expr->type = expr->left->type;
+		break;
 	case T_SIZEOF:
-		left = derive_expr_type(expr->left);
-		if (left == NULL) {
+		if (expr->left->type == NULL) {
 			report_error_cur_line("sizeof operand type is not defined");
-			type_destroy(left);
-			return NULL;
+			return;
 		}
-		type_destroy(left);
-		return type_init(Y_U64, NULL);
+		expr->type = type_init(Y_U64, NULL);
+		expr->owns_type = true;
+		break;
 	default:
 		report_error_cur_line("unsupported expr kind while typechecking!");
-		return NULL;
 	}
 }
 
@@ -412,240 +365,207 @@ static ast_type *struct_field_type(ast_typed_symbol *struct_ts, strvec *name) {
 	for (size_t i = 0 ; i < field_list->size ; ++i) {
 		cur = arglist_get(field_list, i);
 		if (strvec_equals(name, cur->symbol))
-			return type_copy(cur->type);
+			return cur->type;
 	}
 	return NULL;
 }
-static ast_type *derive_post_unary(ast_expr *expr)
+static void derive_post_unary(ast_expr *expr)
 {
-	ast_type *left;
-	ast_type *right;
-	ast_type *ret;
 	ast_typed_symbol *ts;
+	derive_expr_type(expr->left);
 	switch (expr->op) {
 	case T_LBRACKET:
-		left = derive_expr_type(expr->left);
-		if (left == NULL || (left->kind != Y_POINTER && left->kind != Y_CONSTPTR)) {
+		if (expr->left->type == NULL || (expr->left->type->kind != Y_POINTER &&
+					expr->left->type->kind != Y_CONSTPTR)) {
 			report_error_cur_line("can only use index operator on pointers");
-			type_destroy(left);
-			return NULL;
+			return;
 		}
-		right = derive_expr_type(expr->right);
-		if (right == NULL || right->kind != Y_I32) {
+		derive_expr_type(expr->right);
+		// TODO: make this unsigned. USIZE?
+		if (expr->right->type == NULL || expr->right->type->kind != Y_I32) {
 			report_error_cur_line("can only index pointers with integers");
-			type_destroy(left);
-			type_destroy(right);
-			return NULL;
+			return;
 		}
-		ret = type_copy(left->subtype);
-		type_destroy(left);
-		type_destroy(right);
-		return ret;
+		expr->type = expr->left->type->subtype;
+		return;
 	case T_PERIOD:
-		left = derive_expr_type(expr->left);
-		if (left == NULL || left->kind != Y_STRUCT || !expr->left->is_lvalue) {
+		// TODO: does it matter if left is an lvalue?
+		if (expr->left->type == NULL || expr->left->type->kind != Y_STRUCT || !expr->left->is_lvalue) {
 			report_error_cur_line("Member operator left side must be a struct");
-			type_destroy(left);
-			return NULL;
+			return;
 		}
 		if (expr->right->kind != E_IDENTIFIER) {
 			report_error_cur_line("Member operator right side must be an identifier");
-			type_destroy(left);
-			return NULL;
+			return;
 		}
-		ts = scope_lookup(left->name);
-		ret = struct_field_type(ts, expr->right->name);
-		if (ret == NULL) {
+		ts = scope_lookup(expr->left->type->name);
+		expr->type = struct_field_type(ts, expr->right->name);
+		if (expr->type == NULL) {
 			report_error_cur_line("Attempted to access non-existent struct member.");
-			type_destroy(left);
-			return NULL;
 		}
-		type_destroy(left);
-		return ret;
+		return;
 	default:
 		report_error_cur_line("unsupported post unary expr while typechecking");
-		return NULL;
 	}
 }
 
 
-static void cast_up_if_necessary(ast_expr *expr, ast_type **left, ast_type **right)
+static void cast_up_if_necessary(ast_expr *expr)
 {
-	ast_type *l = *left;
-	ast_type *r = *right;
-	if (is_int_type(l) && is_int_type(r) && !type_equals(l, r)) {
-		if (TYPE_WIDTH(l->kind) > TYPE_WIDTH(r->kind)) {
-			// Extract L's width and R's signedness, combine into new type for R
-			type_t new_kind = TYPE_WIDTH(l->kind) | TYPE_SIGNEDNESS(r->kind);
-			expr->right = build_cast(expr->right, new_kind);
-			r->kind = new_kind;
-			expr->right->is_unsigned = UNSIGNED(new_kind);
+	ast_expr *l = expr->left;
+	ast_expr *r = expr->right;
+	if (is_int_type(l->type) && is_int_type(r->type) &&
+			!type_equals(expr->left->type, expr->right->type)) {
+		if (TYPE_WIDTH(l->type->kind) > TYPE_WIDTH(r->type->kind)) {
+			type_t new_kind = TYPE_WIDTH(l->type->kind) | TYPE_SIGNEDNESS(r->type->kind);
+			r = build_cast(r, new_kind);
+			expr->right = r;
 		} else {
-			// and vice versa
-			type_t new_kind = TYPE_WIDTH(r->kind) | TYPE_SIGNEDNESS(l->kind);
-			expr->left = build_cast(expr->left, new_kind);
-			l->kind = new_kind;
-			expr->left->is_unsigned = UNSIGNED(new_kind);
+			type_t new_kind = TYPE_WIDTH(r->type->kind) | TYPE_SIGNEDNESS(l->type->kind);
+			l = build_cast(l, new_kind);
+			expr->left = l;
 		}
 	}
 }
 
-// TODO: use goto error pattern
-ast_type *derive_expr_type(ast_expr *expr)
+void derive_expr_type(ast_expr *expr)
 {
 	ast_typed_symbol *ts = NULL;
-	ast_type *left;
-	ast_type *right;
-	ast_type *ret = NULL;
+
 	if (expr == NULL)
-		return NULL;
+		return;
+
 	switch (expr->kind) {
 	case E_LOG_OR:
 	case E_LOG_AND:
-		left = derive_expr_type(expr->left);
-		right = derive_expr_type(expr->right);
-		if (left->kind == Y_BOOL && right->kind == Y_BOOL) {
-			type_destroy(right);
-			ret = left;
-			goto derive_expr_done;
+		derive_expr_type(expr->left);
+		derive_expr_type(expr->right);
+		if (expr->left->type->kind == Y_BOOL && expr->right->type->kind == Y_BOOL) {
+			expr->type = expr->left->type;
+			return;
 		}
 		report_error_cur_line("Operands must both be booleans in logical and/or expressions.");
-		type_destroy(left);
-		type_destroy(right);
-		ret = NULL;
-		goto derive_expr_done;
+		return;
 	case E_ADDSUB:
 	case E_MULDIV:
 	case E_SHIFT:
 	case E_BW_XOR:
 	case E_BW_OR:
 	case E_BW_AND:
-		left = derive_expr_type(expr->left);
-		right = derive_expr_type(expr->right);
-		cast_up_if_necessary(expr, &left, &right);
-		if (type_equals(left, right) && is_int_type(left)) {
-			type_destroy(right);
-			ret = left;
-			goto derive_expr_done;
+		derive_expr_type(expr->left);
+		derive_expr_type(expr->right);
+		cast_up_if_necessary(expr);
+		if (type_equals(expr->left->type, expr->right->type) && is_int_type(expr->left->type)) {
+			expr->type = expr->left->type;
+			return;
 		}
 		report_error_cur_line("Operands must both be integers in arithmetic expressions.");
-		type_destroy(left);
-		type_destroy(right);
-		ret = NULL;
-		goto derive_expr_done;
+		return;
 	case E_EQUALITY:
 	case E_INEQUALITY:
-		left = derive_expr_type(expr->left);
-		right = derive_expr_type(expr->right);
-		cast_up_if_necessary(expr, &left, &right);
-		if (type_equals(left, right) && (is_int_type(left) || left->kind == Y_CHAR)) {
-			type_destroy(left);
-			type_destroy(right);
-			ret = type_init(Y_BOOL, NULL);
-			goto derive_expr_done;
+		derive_expr_type(expr->left);
+		derive_expr_type(expr->right);
+		cast_up_if_necessary(expr);
+		if ((is_int_type(expr->left->type) && is_int_type(expr->right->type)) ||
+					(expr->left->type != NULL && expr->right->type != NULL &&
+					expr->left->type->kind == Y_CHAR
+					&& expr->right->type->kind == Y_CHAR)) {
+			expr->type = type_init(Y_BOOL, NULL);
+			expr->owns_type = true;
+			return;
 		}
 		report_error_cur_line("Operands must both be integer types in (in)equality expressions.");
-		type_destroy(left);
-		type_destroy(right);
-		ret = NULL;
-		goto derive_expr_done;
+		return;
 	case E_ASSIGN:
-		ret = derive_assign(expr);
-		goto derive_expr_done;
+		derive_assign(expr);
+		return;
 	case E_PAREN:
-		ret = derive_expr_type(expr->left);
-		goto derive_expr_done;
+		derive_expr_type(expr->left);
+		expr->type = expr->left->type;
+		return;
 	case E_CHAR_LIT:
-		ret = type_init(Y_CHAR, NULL);
-		goto derive_expr_done;
+		expr->type = type_init(Y_CHAR, NULL);
+		expr->owns_type = true;
+		return;
 	case E_TRUE_LIT:
 	case E_FALSE_LIT:
-		ret = type_init(Y_BOOL, NULL);
-		goto derive_expr_done;
+		expr->type = type_init(Y_BOOL, NULL);
+		expr->owns_type = true;
+		return;
 	case E_INT_LIT:
-		ret = type_init(expr->int_size, NULL);
-		goto derive_expr_done;
+		// Deriving this type is performed in parsing.
+		return;
 	case E_STR_LIT:
-		left = type_init(Y_CONSTPTR, NULL);
-		left->subtype = type_init(Y_CHAR, NULL);
-		ret = left;
-		goto derive_expr_done;
+		expr->type = type_init(Y_CONSTPTR, NULL);
+		expr->type->subtype = type_init(Y_CHAR, NULL);
+		expr->owns_type = true;
+		return;
 	case E_FNCALL:
-		ret = typecheck_fncall(expr);
-		goto derive_expr_done;
+		typecheck_fncall(expr);
+		return;
 	case E_IDENTIFIER:
 		ts = scope_lookup(expr->name);
 		if (ts == NULL) {
 			report_error_cur_line("Used undeclared identifier");
-			ret = NULL;
-			goto derive_expr_done;
+			return;
 		}
 		if (ts->type->kind == Y_STRUCT && ts->type->name != NULL && strvec_equals(ts->type->name, expr->name)) {
 			report_error_cur_line("Can't use struct type in this expression");
-			ret = NULL;
-			goto derive_expr_done;
+			return;
 		}
-		expr->is_unsigned = UNSIGNED(ts->type->kind);
-		ret = type_copy(ts->type);
-		goto derive_expr_done;
+		expr->type = ts->type;
+		return;
 	case E_PRE_UNARY:
-		ret = derive_pre_unary(expr);
-		goto derive_expr_done;
+		derive_pre_unary(expr);
+		return;
 	case E_POST_UNARY:
-		ret = derive_post_unary(expr);
-		goto derive_expr_done;
+		derive_post_unary(expr);
+		return;
 	default:
 		report_error_cur_line("unsupported expr kind while typechecking!");
-		ret = NULL;
-		goto derive_expr_done;
+		return;
 	}
-derive_expr_done:
-	expr->is_unsigned = expr->is_unsigned ||
-				(expr->left != NULL && expr->left->is_unsigned)
-				|| (expr->right != NULL && expr->right->is_unsigned);
-	return ret;
 }
 
 void typecheck_asm(ast_stmt *stmt) {
 	asm_struct *a = stmt->asm_obj;
-	ast_type *t = NULL;
 	// LCOV_EXCL_START
 	// I can't imagine we'll get to this point but who knows?
 	if (a == NULL) {
 		report_error_cur_line("Invalid asm statement");
 		return;
 	}
+	// LCOV_EXCL_STOP
 
 	// everything in this LCOV_EXCL block below this line is already checked in parsing.
 	// Subject to change.
-	t = derive_expr_type(a->code);
-	if (t == NULL || a->code->kind != E_STR_LIT) {
+	derive_expr_type(a->code);
+	if (a->code == NULL || a->code->type == NULL || a->code->kind != E_STR_LIT) {
 		report_error_cur_line("asm statement's first arg must be a string literal.");
-		type_destroy(t);
 		return;
 	}
-	type_destroy(t);
-
-	t = derive_expr_type(a->constraints);
-	if (t != NULL && a->constraints->kind != E_STR_LIT) {
+	derive_expr_type(a->constraints);
+	if (a->constraints != NULL &&
+			a->constraints->type != NULL &&
+			a->constraints->kind != E_STR_LIT) {
 		report_error_cur_line("asm statement's second arg must be a string.");
-		type_destroy(t);
 		return;
 	}
-	type_destroy(t);
-	// LCOV_EXCL_STOP
 
-	for (size_t i = 0 ; a->out_operands != NULL && i < a->out_operands->size ; ++i)
-		if (((ast_expr *)vect_get(a->out_operands, i))->kind != E_IDENTIFIER)
+	for (size_t i = 0 ; a->out_operands != NULL && i < a->out_operands->size ; ++i) {
+		if (((ast_expr *)vect_get(a->out_operands, i))->kind != E_IDENTIFIER) {
 			report_error_cur_line("inline asm output operands must be identifiers.");
+		}
+		derive_expr_type(vect_get(a->out_operands, i));
+	}
 
+	// TODO: double check these exprs all get freed and their types get freed by stmt_free.
 	for (size_t i = 0 ; a->in_operands != NULL && i < a->in_operands->size ; ++i)
-		type_destroy(derive_expr_type(vect_get(a->in_operands, i)));
+		derive_expr_type(vect_get(a->in_operands, i));
 }
 
 void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 {
-	ast_type *typ;
 	int old_in_loop = in_loop;
 	if (stmt == NULL) {
 		if (at_fn_top_level) {
@@ -671,11 +591,10 @@ void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 		if (stmt->expr == NULL) {
 			report_error_cur_line("if statement condition must be non-empty");
 		}
-		typ = derive_expr_type(stmt->expr);
-		if (typ == NULL || typ->kind != Y_BOOL) {
+		derive_expr_type(stmt->expr);
+		if (stmt->expr->type == NULL || stmt->expr->type->kind != Y_BOOL) {
 			report_error_cur_line("if statement condition must be a boolean");
 		}
-		type_destroy(typ);
 		scope_enter();
 		if (stmt->body != NULL)
 			typecheck_stmt(stmt->body, 0);
@@ -690,11 +609,10 @@ void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 		if (stmt->expr == NULL) {
 			report_error_cur_line("while statement condition must be non-empty");
 		}
-		typ = derive_expr_type(stmt->expr);
-		if (typ == NULL || typ->kind != Y_BOOL) {
+		derive_expr_type(stmt->expr);
+		if (stmt->expr->type == NULL || stmt->expr->type->kind != Y_BOOL) {
 			report_error_cur_line("while statement condition must be a boolean");
 		}
-		type_destroy(typ);
 		in_loop = 1;
 		if (stmt->body != NULL) {
 			typecheck_stmt(stmt->body->body, 0);
@@ -725,7 +643,7 @@ void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 		typecheck_stmt(stmt->next, at_fn_top_level);
 		break;
 	case S_EXPR:
-		type_destroy(derive_expr_type(stmt->expr));
+		derive_expr_type(stmt->expr);
 		typecheck_stmt(stmt->next, at_fn_top_level);
 		break;
 	case S_RETURN:
@@ -757,6 +675,7 @@ static int arglist_equals(vect *a, vect *b)
 	}
 	return 1;
 }
+
 int type_equals(ast_type *a, ast_type *b)
 {
 	if (a == NULL && b == NULL)

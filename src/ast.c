@@ -20,6 +20,7 @@ ast_type *type_init(type_t kind, strvec *name)
 {
 	ast_type *ret = smalloc(sizeof(*ret));
 	ret->subtype = NULL;
+	ret->owns_subtype = 1;
 	ret->arglist = NULL;
 	ret->kind = kind;
 	ret->name = name;
@@ -40,8 +41,8 @@ ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, st
 	ret->sub_exprs = NULL;
 	ret->is_lvalue = 0;
 	ret->string_literal = str_lit;
-	ret->int_size = Y_VOID;
-	ret->is_unsigned = 0;
+	ret->type = NULL;
+	ret->owns_type = false;
 	return ret;
 }
 
@@ -106,7 +107,8 @@ void type_destroy(ast_type *type)
 	if (type == NULL)
 		return;
 	arglist_destroy(type->arglist);
-	type_destroy(type->subtype);
+	if (type->owns_subtype)
+		type_destroy(type->subtype);
 	strvec_destroy(type->name);
 	free(type);
 }
@@ -129,6 +131,11 @@ void expr_destroy(ast_expr *expr)
 	strvec_destroy(expr->name);
 	strvec_destroy(expr->string_literal);
 	destroy_expr_vect(expr->sub_exprs);
+
+	// See the note in the ast.h ast_expr struct definition for details.
+	if (expr->owns_type)
+		type_destroy(expr->type);
+
 	free(expr);
 }
 

@@ -1,3 +1,4 @@
+#include "ast.h"
 #include "codegen.h"
 #include "error.h"
 #include "ht.h"
@@ -12,29 +13,6 @@
 
 extern struct stack *sym_tab;
 LLVMTargetDataRef td = NULL;
-
-// TODO: These _compat functions don't actually work on latest LLVM releases:
-// all pointers are opaque, so LLVMGetElementType(LLVMTypeOf(Pointer)) doesn't work.
-// 	- Also, can't enable a legacy typed pointer mode anymore! Opaque pointer migration is complete!
-static inline LLVMValueRef LLVMBuildGEP_compat(LLVMBuilderRef B, LLVMValueRef Pointer, LLVMValueRef *Indices, unsigned int NumIndices, const char *Name)
-{
-	return LLVMBuildGEP2(B, LLVMGetElementType(LLVMTypeOf(Pointer)), Pointer, Indices, NumIndices, Name);
-}
-
-static inline LLVMValueRef LLVMBuildStructGEP_compat(LLVMBuilderRef B, LLVMValueRef Pointer, unsigned int Idx, const char *Name)
-{
-	return LLVMBuildStructGEP2(B, LLVMGetElementType(LLVMTypeOf(Pointer)), Pointer, Idx, Name);
-}
-
-static inline LLVMValueRef LLVMBuildLoad_compat(LLVMBuilderRef B, LLVMValueRef Pointer, const char *Name)
-{
-	return LLVMBuildLoad2(B, LLVMGetElementType(LLVMTypeOf(Pointer)), Pointer, Name);
-}
-
-static inline LLVMValueRef LLVMBuildCall_compat(LLVMBuilderRef B, LLVMValueRef Fn, LLVMValueRef *Args, unsigned int NumArgs, const char *Name)
-{
-	return LLVMBuildCall2(B, LLVMGetElementType(LLVMTypeOf(Fn)), Fn, Args, NumArgs, Name);
-}
 
 static LLVMTypeRef int_kind_to_llvm_type(LLVMModuleRef mod, type_t kind) {
 	LLVMContextRef ctxt = CTXT(mod);
@@ -118,27 +96,25 @@ LLVMModuleRef module_codegen(LLVMContextRef ctxt, ast_decl *start, char *module_
 // then it populates each array space with the corresponding element from the initializer
 // then it builds a cast of the array type to a pointer type so it can be treated like any other ptr.
 //	this casted pointer is what is used later.
-static void initializer_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt)
+static void initializer_codegen(LLVMModuleRef mod, LLVMTypeRef typ, LLVMBuilderRef builder, ast_stmt *stmt)
 {
 	char buffer[BUFFER_MAX_LEN];
 	strvec_tostatic(stmt->decl->typesym->symbol, buffer);
-	LLVMValueRef a[2];
-	a[0] = LLVMConstInt(LLVMInt32TypeInContext(CTXT(mod)), 0, 0);
+	LLVMValueRef idx;
 
 	LLVMTypeRef llvmified_inner = to_llvm_type(mod, stmt->decl->typesym->type->subtype);
 
 	LLVMTypeRef array_type = LLVMArrayType(llvmified_inner, stmt->decl->initializer->size);
 	LLVMValueRef init = LLVMBuildAlloca(builder, array_type, "");
 	for (size_t i = 0 ; i < stmt->decl->initializer->size ; ++i) { // clang uses memcpy for this! would be much better!
-		a[1] = LLVMConstInt(LLVMInt32TypeInContext(CTXT(mod)), i, 0);
-		LLVMValueRef gep = LLVMBuildGEP_compat(builder, init, a, 2, "");
+		idx = LLVMConstInt(LLVMInt32TypeInContext(CTXT(mod)), i, 0);
+		LLVMValueRef gep = LLVMBuildGEP2(builder, typ, init, &idx, 1, "");
 		LLVMValueRef value = expr_codegen(mod, builder, stmt->decl->initializer->elements[i], 0);
 		LLVMBuildStore(builder, value, gep);
 	}
 	LLVMValueRef alloca2 = LLVMBuildAlloca(builder, LLVMPointerType(llvmified_inner, 0), buffer);
-	a[1] = LLVMConstInt(LLVMInt32Type(), 0, 0);
+	idx = LLVMConstInt(LLVMInt32Type(), 0, 0);
 	LLVMBuildStore(builder, LLVMBuildPointerCast(builder, init, LLVMPointerType(llvmified_inner, 0), ""), alloca2);
-	//vect_append(v, (void *)alloca2);
 	scope_bind(alloca2, stmt->decl->typesym->symbol);
 }
 
@@ -273,6 +249,7 @@ static void asm_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stm
 		vect_append(type_vect, LLVMTypeOf(v));
 	}
 
+
 	LLVMTypeRef ret_type = ret_types == NULL ? LLVMVoidTypeInContext(CTXT(mod))
 					: LLVMStructTypeInContext(
 						CTXT(mod),
@@ -290,8 +267,7 @@ static void asm_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stm
 					a->constraints == NULL ? NULL : a->constraints->string_literal->text,
 					a->constraints == NULL ? 0 : a->constraints->string_literal->size,
 					1, 1, 0, 0);
-	LLVMValueRef res = LLVMBuildCall_compat(builder,
-				asm_call,\
+	LLVMValueRef res = LLVMBuildCall2(builder, fn_type, asm_call,
 				val_vect == NULL ? NULL : (LLVMValueRef *)val_vect->elements,
 				in_s, "");
 
@@ -343,13 +319,11 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, LLV
 		break;
 	case S_DECL:
 		if (stmt->decl->initializer != NULL) {
-			initializer_codegen(mod, builder, stmt);
+			initializer_codegen(mod, to_llvm_type(mod, stmt->decl->typesym->type->subtype), builder, stmt);
 		} else {
 			strvec_tostatic(stmt->decl->typesym->symbol, buffer);
 			v1 = LLVMBuildAlloca(builder, to_llvm_type(mod, stmt->decl->typesym->type), buffer);
-			//vect_append(v, (void *)v1);
 			scope_bind(v1, stmt->decl->typesym->symbol);
-			strvec_print(stmt->decl->typesym->symbol);
 			if (stmt->decl->expr != NULL)
 				LLVMBuildStore(builder, expr_codegen(mod, builder, stmt->decl->expr, 0), v1);
 		}
@@ -371,12 +345,14 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, LLV
 
 // TODO undo MAX_ARGS? Enforce MAX_ARGS? IDK just decide on something!!
 #define MAX_ARGS 32
-static void get_fncall_args(LLVMModuleRef mod, LLVMBuilderRef builder,ast_expr *expr, unsigned argno, LLVMValueRef (*args)[MAX_ARGS])
+static void get_fncall_args(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, unsigned argno, LLVMValueRef (*args)[MAX_ARGS], LLVMTypeRef (*argtypes)[MAX_ARGS])
 {
 	if (argno == 0)
 		return;
-	for (size_t i = 0 ; i < expr->sub_exprs->size ; ++i)
+	for (size_t i = 0 ; i < expr->sub_exprs->size ; ++i) {
 		(*args)[i] = expr_codegen(mod, builder, expr->sub_exprs->elements[i], 0);
+		(*argtypes)[i] = to_llvm_type(mod, ((ast_expr *)(expr->sub_exprs->elements[i]))->type);
+	}
 }
 
 static LLVMValueRef assign_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, LLVMValueRef loc)
@@ -454,25 +430,6 @@ static size_t get_member_position(ast_decl *decl, strvec *name) {
 	// LCOV_EXCL_STOP
 }
 
-static char *shorten_struct_string(char *string) {
-	char *tmp;
-	string += 1;
-	tmp = string;
-	while (*tmp != '*' && *tmp != ' ') {
-		// LCOV_EXCL_START
-		if (*tmp == '\0') {
-			fprintf(stderr, "original at point of failure: %s\n", string);
-			fprintf(stderr, "tmp right now: %s\n", tmp);
-			eputs("BIG PROBLEM IN CODEGEN. NO SPACE IN STRUCT NAME!");
-			exit(1);
-		}
-		// LCOV_EXCL_STOP
-		tmp += 1;
-	}
-	*tmp = '\0';
-	return string;
-}
-
 static LLVMValueRef log_or_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr)
 {
 	LLVMValueRef cur_function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
@@ -537,7 +494,7 @@ LLVMValueRef pre_unary_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_ex
 		if (store_ctxt) {
 			return v;
 		}
-		return LLVMBuildLoad_compat(builder, v, "");
+		return LLVMBuildLoad2(builder, to_llvm_type(mod, expr->type), v, "");
 	case T_AMPERSAND:
 		if (expr->left->name != NULL)
 			return scope_lookup(expr->left->name);
@@ -572,17 +529,18 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	LLVMValueRef v;
 	LLVMValueRef v2;
 	LLVMValueRef args[MAX_ARGS];
+	LLVMTypeRef argtypes[MAX_ARGS];
 	LLVMValueRef ret = NULL;
 	LLVMTypeRef t;
 	buffer[0] = '\0';
 	unsigned argno;
 	switch (expr->kind) {
 	case E_INT_LIT:
-		t = int_kind_to_llvm_type(mod, expr->int_size);
+		t = int_kind_to_llvm_type(mod, expr->type->kind);
 		return LLVMConstInt(t, (unsigned long long)expr->num, 0);
 	case E_SHIFT:
 		if (expr->op == T_RSHIFT)
-			if (expr->is_unsigned)
+			if (IS_UNSIGNED(expr->left))
 				return LLVMBuildLShr(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 			else
 				return LLVMBuildAShr(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
@@ -597,7 +555,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	case E_MULDIV:
 		if (expr->op == T_STAR)
 			return LLVMBuildMul(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
-		if (expr->is_unsigned) {
+		if (IS_UNSIGNED(expr->left)) {
 			if (expr->op == T_PERCENT)
 				return LLVMBuildURem(builder, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 			else
@@ -631,11 +589,12 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		strvec_tostatic(expr->name, buffer);
 		v = LLVMGetNamedFunction(mod, buffer);
 		argno = LLVMCountParams(v);
-		get_fncall_args(mod, builder, expr, argno, &args);
-		return LLVMBuildCall_compat(builder, v, args, argno, "");
+		get_fncall_args(mod, builder, expr, argno, &args, &argtypes);
+		LLVMTypeRef fn_t = LLVMFunctionType(to_llvm_type(mod, expr->type), argtypes, argno, 0);
+		return LLVMBuildCall2(builder, fn_t, v, args, argno, "");
 	case E_IDENTIFIER:
 		ret = scope_lookup(expr->name);
-		ret = LLVMBuildLoad_compat(builder, ret, "");
+		ret = LLVMBuildLoad2(builder, to_llvm_type(mod, expr->type), ret, "");
 		return ret;
 	case E_ASSIGN:
 		if (expr->left->kind == E_IDENTIFIER) {
@@ -662,22 +621,22 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		return LLVMConstInt(LLVMInt8TypeInContext(CTXT(mod)), (int)expr->string_literal->text[0], 0);
 	case E_INEQUALITY:
 		if (expr->op == T_LT)
-			if (expr->is_unsigned)
+			if (IS_UNSIGNED(expr->left))
 				return LLVMBuildICmp(builder, LLVMIntULT, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 			else
 				return LLVMBuildICmp(builder, LLVMIntSLT, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 		else if (expr->op == T_LTE)
-			if (expr->is_unsigned)
+			if (IS_UNSIGNED(expr->left))
 				return LLVMBuildICmp(builder, LLVMIntULE, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 			else
 				return LLVMBuildICmp(builder, LLVMIntSLE, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 		else if (expr->op == T_GT)
-			if (expr->is_unsigned)
+			if (IS_UNSIGNED(expr->left))
 				return LLVMBuildICmp(builder, LLVMIntUGT, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 			else
 				return LLVMBuildICmp(builder, LLVMIntSGT, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 		else
-			if (expr->is_unsigned)
+			if (IS_UNSIGNED(expr->left))
 				return LLVMBuildICmp(builder, LLVMIntUGE, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 			else
 				return LLVMBuildICmp(builder, LLVMIntSGE, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
@@ -687,9 +646,9 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		if (expr->op == T_LBRACKET) {
 			v = expr_codegen(mod, builder, expr->left, 0);
 			v2 = expr_codegen(mod, builder, expr->right, 0);
-			v = LLVMBuildGEP_compat(builder, v, &v2, 1, "");
+			v = LLVMBuildGEP2(builder, to_llvm_type(mod, expr->left->type->subtype), v, &v2, 1, "");
 			if (!store_ctxt)
-				v = LLVMBuildLoad_compat(builder, v, "");
+				v = LLVMBuildLoad2(builder, to_llvm_type(mod, expr->type), v, "");
 			return v;
 		} else if (expr->op == T_PERIOD) {
 			if (expr->left->kind == E_IDENTIFIER) {
@@ -697,25 +656,23 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 			} else {
 				v = expr_codegen(mod, builder, expr->left, 1);
 			}
+			// TODO: clean up all this to static back to strvec nonsense.
+			strvec_tostatic(expr->left->type->name, buffer);
+			t = LLVMGetTypeByName2(CTXT(mod), buffer);
 
-			// stupid name extracting
-			LLVMTypeRef val_tp = LLVMTypeOf(v);
-			char *struct_string = LLVMPrintTypeToString(val_tp);
-			char *shortened = shorten_struct_string(struct_string);
-			strvec *name_vec = strvec_init_str(shortened);
+			strvec *name_vec = strvec_init_str(buffer);
 
 			// Look up the decl in sym tab so we can get field names
 			ast_decl *struct_decl;
 			struct_decl = scope_lookup(name_vec);
-
-			free(struct_string);
 			strvec_destroy(name_vec);
 
-			// set up gep indices
 			size_t ind = get_member_position(struct_decl, expr->right->name);
-			v2 = LLVMBuildStructGEP_compat(builder, v, ind, "");
+
+			// set up gep indices
+			v2 = LLVMBuildStructGEP2(builder, t, v, ind, "");
 			if (!store_ctxt) {
-				return LLVMBuildLoad_compat(builder, v2, "");
+				return LLVMBuildLoad2(builder, to_llvm_type(mod, expr->type), v2, "");
 			}
 			return v2;
 		}
@@ -727,14 +684,14 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		// LCOV_EXCL_STOP
 	case E_CAST:
 		// TODO: cast down (truncate)
-		if (expr->is_unsigned)
+		if (IS_UNSIGNED(expr))
 			return LLVMBuildZExt(builder, expr_codegen(mod,
 					builder, expr->left, store_ctxt),
-					int_kind_to_llvm_type(mod, expr->cast_to), "");
+					int_kind_to_llvm_type(mod, expr->type->kind), "");
 		else
 			return LLVMBuildSExt(builder, expr_codegen(mod,
 					builder, expr->left, store_ctxt),
-					int_kind_to_llvm_type(mod, expr->cast_to), "");
+					int_kind_to_llvm_type(mod, expr->type->kind), "");
 	case E_PRE_UNARY:
 		ret = pre_unary_codegen(mod, builder, expr, store_ctxt);
 	}

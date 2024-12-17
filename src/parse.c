@@ -945,7 +945,8 @@ ast_expr *parse_expr_unit(void)
 			report_error_prev_tok("Could not parse int literal");
 		}
 		ex = expr_init(E_INT_LIT, NULL, NULL, 0, NULL, n, NULL);
-		ex->int_size = smallest_fit(n);
+		ex->type = type_init(smallest_fit(n), NULL);
+		ex->owns_type = true;
 		return ex;
 	case T_STR_LIT:
 		txt = cur->text;
@@ -984,6 +985,7 @@ ast_expr *parse_expr_unit(void)
 
 ast_expr *build_cast(ast_expr *ex, type_t kind) {
 	ast_expr *ret = expr_init(E_CAST, ex, NULL, 0, NULL, 0, NULL);
-	ret->cast_to = kind;
+	ret->type = type_init(kind, NULL);
+	ret->owns_type = true;
 	return ret;
 }

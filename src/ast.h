@@ -1,6 +1,8 @@
 #ifndef AST_H
 #define AST_H
 
+#include <stdbool.h>
+
 #include "token.h"
 #include "util.h"
 
@@ -58,6 +60,7 @@ typedef enum {
 
 typedef struct ast_type {
 	struct ast_type *subtype;
+	bool owns_subtype;
 	vect *arglist;
 	type_t kind;
 	strvec *name;
@@ -106,10 +109,21 @@ typedef struct ast_expr {
 	strvec *string_literal;
 	vect *sub_exprs;
 	uint8_t is_lvalue;
-	type_t cast_to;
-	type_t int_size;
-	uint8_t is_unsigned;
+
+	// Expressions may either own their types or not own their types. Exprs must free types
+	// if and only if they own their types. Exprs only own types if the type of the expr
+	// was specifically made for that expr. An expr's type ptr can point to a type in the
+	// symbol table, another expr's type, or to a novel type created just for the expr.
+	// We don't care about the specifics, we just have to know if it is the current expr's
+	// responsibility to free that type.
+	//
+	// Sharing types can save tons of time and memory, it is just a little annoying to keep
+	// track of which exprs are in charge of freeing which types.
+	bool owns_type;
+	ast_type *type;
 } ast_expr;
+
+#define IS_UNSIGNED(e) UNSIGNED(e->type->kind)
 
 void expr_add_sub_expr(ast_expr *e, ast_expr *sub);
 vect *sub_exprs_init(size_t size);

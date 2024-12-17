@@ -1,0 +1,9 @@
+ret 1
+--TEXT--
+let main: () -> i32 = {
+	let x: u64 = sizeof 10;
+	if (x == 4) {
+		return 1;
+	}
+	return 0;
+};
