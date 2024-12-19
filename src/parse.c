@@ -598,6 +598,10 @@ ast_type *parse_type(void)
 		ret = type_init(Y_U64, NULL);
 		next();
 		break;
+	case T_USIZE:
+		ret = type_init(Y_USIZE, NULL);
+		next();
+		break;
 	case T_U32:
 		ret = type_init(Y_U32, NULL);
 		next();
@@ -914,6 +918,52 @@ ast_expr *parse_expr_post_unary(void)
 }
 
 
+static ast_expr *parse_cast(void)
+{
+	ast_expr *e = NULL;
+	ast_type *t = NULL;
+
+	next();
+	if (!expect(T_LPAREN)) {
+		report_error_cur_tok("Cast expression missing opening paren");
+		return NULL;
+	}
+	next();
+
+	if ((e = parse_expr()) == NULL) {
+		report_error_cur_tok("Could not parse inner expression in cast expression");
+		return NULL;
+	}
+
+	if (!expect(T_COMMA)) {
+		report_error_cur_tok("Cast expression missing comma");
+		expr_destroy(e);
+		return NULL;
+	}
+
+	next();
+
+	if ((t = parse_type()) == NULL) {
+		expr_destroy(e);
+		report_error_cur_tok("Could not parse type in cast expression");
+		return NULL;
+	}
+
+	if (!expect(T_RPAREN)) {
+		expr_destroy(e);
+		type_destroy(t);
+		report_error_cur_tok("Cast expression missing closing paren");
+		return NULL;
+	}
+	next();
+
+	ast_expr *ret = expr_init(E_CAST, e, NULL, 0, NULL, 0, NULL);
+	ret->type = t;
+	ret->owns_type = true;
+	return ret;
+}
+
+
 ast_expr *parse_expr_unit(void)
 {
 	token_t typ = cur_tok_type();
@@ -966,6 +1016,8 @@ ast_expr *parse_expr_unit(void)
 			ex->is_lvalue = 1;
 			return ex;
 		}
+	case T_CAST:
+		return parse_cast();
 	case T_TRUE:
 		next();
 		return expr_init(E_TRUE_LIT, NULL, NULL, 0, NULL, 0, NULL);

@@ -224,3 +224,19 @@ ast_stmt *last(ast_stmt *block)
 	for (; block->next != NULL ; block = block->next) {}
 	return block;
 }
+
+bool is_integer(ast_type *t)
+{
+	if (t == NULL)
+		return false;
+
+	switch (t->kind) {
+	case Y_U32:
+	case Y_U64:
+	case Y_I32:
+	case Y_I64:
+		return true;
+	default:
+		return false;
+	}
+}

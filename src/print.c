@@ -70,6 +70,13 @@ void fexpr_print(FILE *f, ast_expr *expr)
 		fprint_op(f, expr);
 		fexpr_print(f, expr->left);
 		break;
+	case E_CAST:
+		fprintf(f, "cast(");
+		fexpr_print(f, expr->left);
+		fprintf(f, ", ");
+		ftype_print(f, expr->type);
+		fprintf(f, ")");
+		break;
 	case E_ASSIGN:
 	case E_INEQUALITY:
 	case E_EQUALITY:

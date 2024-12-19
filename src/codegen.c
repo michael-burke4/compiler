@@ -14,23 +14,6 @@
 extern struct stack *sym_tab;
 LLVMTargetDataRef td = NULL;
 
-static LLVMTypeRef int_kind_to_llvm_type(LLVMModuleRef mod, type_t kind) {
-	LLVMContextRef ctxt = CTXT(mod);
-	switch (kind) {
-	case Y_I32:
-	case Y_U32:
-		return LLVMInt32TypeInContext(ctxt);
-	case Y_I64:
-	case Y_U64:
-		return LLVMInt64TypeInContext(ctxt);
-	// LCOV_EXCL_START
-	default:
-		fprintf(stderr, "couldn't convert type %d\n", kind);
-		abort();
-	// LCOV_EXCL_STOP
-	}
-}
-
 static LLVMTypeRef to_llvm_type(LLVMModuleRef mod, ast_type *tp)
 {
 	char buffer[BUFFER_MAX_LEN];
@@ -523,6 +506,47 @@ LLVMValueRef pre_unary_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_ex
 	}
 }
 
+static LLVMValueRef cast_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, int store_ctxt)
+{
+	ast_type *from_cast_t = expr->left->type;
+	ast_type *to_cast_t = expr->type;
+	if (is_integer(from_cast_t)) {
+		if (is_integer(to_cast_t)) {
+			if (TYPE_WIDTH(to_cast_t->kind) < TYPE_WIDTH(from_cast_t->kind)) {
+				return LLVMBuildTrunc(builder, expr_codegen(mod, builder, expr->left, store_ctxt),
+						to_llvm_type(mod, to_cast_t), "");
+			} else if (IS_UNSIGNED(expr)) {
+				return LLVMBuildZExt(builder, expr_codegen(mod,
+						builder, expr->left, store_ctxt),
+						to_llvm_type(mod, to_cast_t), "");
+			} else {
+				return LLVMBuildSExt(builder, expr_codegen(mod,
+						builder, expr->left, store_ctxt),
+						to_llvm_type(mod, to_cast_t), "");
+			}
+		} else if (to_cast_t->kind == Y_POINTER) {
+			return LLVMBuildIntToPtr(builder, expr_codegen(mod, builder, expr->left, store_ctxt),
+						to_llvm_type(mod, to_cast_t), "");
+		}
+	}
+
+	else if (from_cast_t->kind == Y_POINTER) {
+		if (to_cast_t->kind == Y_POINTER) {
+			return expr_codegen(mod, builder, expr->left, store_ctxt);
+		}
+		else if (is_integer(to_cast_t)) {
+			return LLVMBuildPtrToInt(builder, expr_codegen(mod, builder, expr->left, store_ctxt),
+						to_llvm_type(mod, to_cast_t), "");
+		}
+	}
+	// LCOV_EXCL_START
+	fprintf(stderr, "Can't codegen a cast to this type!\n");
+	exit(1);
+	// LCOV_EXCL_STOP
+}
+
+
+
 LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, int store_ctxt)
 {
 	char buffer[BUFFER_MAX_LEN];
@@ -536,7 +560,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	unsigned argno;
 	switch (expr->kind) {
 	case E_INT_LIT:
-		t = int_kind_to_llvm_type(mod, expr->type->kind);
+		t = to_llvm_type(mod, expr->type);
 		return LLVMConstInt(t, (unsigned long long)expr->num, 0);
 	case E_SHIFT:
 		if (expr->op == T_RSHIFT)
@@ -683,15 +707,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		}
 		// LCOV_EXCL_STOP
 	case E_CAST:
-		// TODO: cast down (truncate)
-		if (IS_UNSIGNED(expr))
-			return LLVMBuildZExt(builder, expr_codegen(mod,
-					builder, expr->left, store_ctxt),
-					int_kind_to_llvm_type(mod, expr->type->kind), "");
-		else
-			return LLVMBuildSExt(builder, expr_codegen(mod,
-					builder, expr->left, store_ctxt),
-					int_kind_to_llvm_type(mod, expr->type->kind), "");
+		return cast_codegen(mod, builder, expr, store_ctxt);
 	case E_PRE_UNARY:
 		ret = pre_unary_codegen(mod, builder, expr, store_ctxt);
 	}

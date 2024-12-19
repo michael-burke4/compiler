@@ -58,6 +58,9 @@ typedef enum {
 	Y_I64 = 0x2900,
 } type_t;
 
+// TODO: dynamically set usize according to provided target.
+#define Y_USIZE Y_U64
+
 typedef struct ast_type {
 	struct ast_type *subtype;
 	bool owns_subtype;
@@ -168,4 +171,5 @@ vect *arglist_copy(vect *arglist);
 
 void arglist_destroy(vect *arglist);
 ast_stmt *last(ast_stmt *block);
+bool is_integer(ast_type *t);
 #endif

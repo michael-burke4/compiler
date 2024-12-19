@@ -515,6 +515,14 @@ void derive_expr_type(ast_expr *expr)
 		}
 		expr->type = ts->type;
 		return;
+	case E_CAST:
+		if (expr->type->kind == Y_STRUCT) {
+			report_error_cur_line("Casting directly between struct types is not supported.");
+			return;
+		}
+		derive_expr_type(expr->left);
+		// expr->type is already set during parsing.
+		return;
 	case E_PRE_UNARY:
 		derive_pre_unary(expr);
 		return;

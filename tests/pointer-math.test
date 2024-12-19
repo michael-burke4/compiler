@@ -1,0 +1,10 @@
+// ret 2
+// END_HEADER
+
+let main: () -> i32 = {
+	let x: i32* = [1, 2, 4];
+	let y: usize = cast(x, usize);
+	x = cast(y + sizeof(*x), i32*);
+
+	return x[0];
+};

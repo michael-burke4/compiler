@@ -1,0 +1,9 @@
+// ret 100
+// END_HEADER
+
+let main: () -> i32 = {
+	let x: i64 = 100;
+	let y: i32 = cast(x, i32);
+
+	return y;
+};

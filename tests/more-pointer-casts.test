@@ -1,0 +1,11 @@
+// ret 1
+// END_HEADER
+
+let main: () -> i32 = {
+	let x: i64* = [(cast(1, u64) << 32) + 1, cast(2, u64), cast(4, u64)];
+	let y: i32* = cast(x, i32*);
+	if (y[0] == y[1]) {
+		return 1;
+	}
+	return 2;
+};
