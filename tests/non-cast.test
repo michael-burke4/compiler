@@ -1,0 +1,9 @@
+// ret 5
+// END_HEADER
+
+let main: () -> i32 = {
+	let x: i32 = 5;
+	let y: i32 = cast(x, i32);
+
+	return y;
+};
