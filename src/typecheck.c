@@ -191,22 +191,17 @@ void typecheck_decl(ast_decl *decl)
 		report_error_cur_line("Duplicate symbol declaration");
 		return;
 	}
-	if (decl->typesym->type->kind == Y_STRUCT) {
-		if (decl->typesym->type->name == NULL) {
-			scope_bind_ts(decl->typesym);
-		}
-		else {
-			ast_typed_symbol *found = scope_lookup(decl->typesym->type->name);
-			if (found == NULL) {
-				report_error_cur_line("Can't use undeclared struct type");
-			}
-			scope_bind_ts(decl->typesym);
-		}
+	if (decl->typesym->type->kind == Y_STRUCT && decl->typesym->type->name != NULL) {
+		ast_typed_symbol *found = scope_lookup(decl->typesym->type->name);
+		if (found == NULL)
+			report_error_cur_line("Can't use undeclared struct type");
 	}
 	if (decl->typesym->type->kind == Y_VOID) {
 		report_error_cur_line("Can't declare variable with type void");
-	} else if (decl->typesym->type->kind == Y_FUNCTION) {
-		scope_bind_ts(decl->typesym);
+		return;
+	}
+	scope_bind_ts(decl->typesym);
+	if (decl->typesym->type->kind == Y_FUNCTION) {
 		typecheck_fnbody(decl);
 	} else if (decl->expr) {
 		if (decl->typesym->type->kind == Y_POINTER && decl->typesym->type->subtype->kind == Y_CHAR
@@ -222,7 +217,6 @@ void typecheck_decl(ast_decl *decl)
 				e->owns_type = 1;
 				vect_append(decl->initializer, e);
 			}
-			scope_bind_ts(decl->typesym);
 			return;
 		}
 		derive_expr_type(decl->expr);
@@ -232,16 +226,13 @@ void typecheck_decl(ast_decl *decl)
 			report_error_cur_line("Assignment expression type mismatch");
 			return;
 		}
-		scope_bind_ts(decl->typesym);
 	} else if (decl->initializer) {
 		if (decl->typesym->type->kind != Y_POINTER && decl->typesym->type->kind != Y_CONSTPTR) {
 			report_error_cur_line("Only pointers can use array initializers");
 			return;
 		}
 		typecheck_array_initializer(decl);
-		scope_bind_ts(decl->typesym);
-	} else
-		scope_bind_ts(decl->typesym);
+	}
 }
 
 
