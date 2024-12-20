@@ -397,8 +397,8 @@ static void derive_post_unary(ast_expr *expr)
 		expr->type = expr->left->type->subtype;
 		return;
 	case T_PERIOD:
-		// TODO: does it matter if left is an lvalue?
-		if (expr->left->type == NULL || expr->left->type->kind != Y_STRUCT || !expr->left->is_lvalue) {
+		// TODO: think long and hard about if this if statement needs to check for lvalue-ness.
+		if (expr->left->type == NULL || expr->left->type->kind != Y_STRUCT) {
 			report_error_cur_line("Member operator left side must be a struct");
 			return;
 		}

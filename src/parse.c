@@ -896,7 +896,7 @@ ast_expr *parse_expr_post_unary(void)
 	token_t typ = cur_tok_type();
 	// something like x++++; should parse but fail at typechecking. Could fail it now but w/e.
 	// TODO: Make this look just like parse_expr_pre_unary
-	while (typ == T_DPLUS || typ == T_DMINUS || typ == T_LBRACKET || typ == T_PERIOD) {
+	while (typ == T_DPLUS || typ == T_DMINUS || typ == T_LBRACKET || typ == T_PERIOD || typ == T_ARROW) {
 		next();
 		if (typ == T_LBRACKET) {
 			e = parse_expr();
@@ -908,6 +908,11 @@ ast_expr *parse_expr_post_unary(void)
 			next();
 		} else if (typ == T_PERIOD) {
 			e = parse_expr_unit(); // This can only be an expr unit: we know it's an identifier.
+		} else if (typ == T_ARROW) {
+			inner = expr_init(E_PRE_UNARY, inner, NULL, T_STAR, NULL, 0, NULL);
+			inner = expr_init(E_PAREN, inner, NULL, 0, NULL, 0, NULL);
+			e = parse_expr_unit();
+			typ = T_PERIOD;
 		}
 		inner = expr_init(E_POST_UNARY, inner, NULL, typ, NULL, 0, NULL);
 		inner->right = e;

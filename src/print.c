@@ -61,6 +61,10 @@ void fexpr_print(FILE *f, ast_expr *expr)
 			fexpr_print(f, expr->left);
 			fprintf(f, ".");
 			fexpr_print(f, expr->right);
+		} else if (expr->op == T_ARROW) {
+			fexpr_print(f, expr->left);
+			fprintf(f, "->");
+			fexpr_print(f, expr->right);
 		} else {
 			fexpr_print(f, expr->left);
 			fprint_op(f, expr);

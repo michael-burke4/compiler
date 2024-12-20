@@ -1,0 +1,15 @@
+// ret 11
+// END_HEADER
+
+let pt: struct = {
+	x: i32;
+	y: i32;
+};
+
+let main: () -> i32 = {
+	let p: struct pt;
+	let p_ptr: struct pt* = &p;
+	p_ptr->x = 5;
+	p.y = p.x + 1;
+	return p_ptr->x + p_ptr->y;
+};
