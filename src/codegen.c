@@ -31,12 +31,7 @@ static LLVMTypeRef to_llvm_type(LLVMModuleRef mod, ast_type *tp)
 		return LLVMVoidTypeInContext(ctxt);
 	case Y_POINTER:
 	case Y_CONSTPTR:
-		// TODO: This is a simplified version of what older clang versions do for void
-		// pointers. Latest versions use opaque pointers for everything. I should follow suit!
-		// also TODO: add casting to make void ptrs usable.
-		if (tp->subtype->kind == Y_VOID)
-			return LLVMPointerType(LLVMInt8TypeInContext(ctxt), 0);
-		return LLVMPointerType(to_llvm_type(mod, tp->subtype), 0);
+		return LLVMPointerType(LLVMInt8TypeInContext(ctxt), 0);
 	case Y_CHAR:
 		return LLVMInt8TypeInContext(ctxt);
 	case Y_STRUCT:
