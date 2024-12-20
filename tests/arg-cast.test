@@ -1,0 +1,11 @@
+// ret 11
+// END_HEADER
+
+let x: (i: i64) -> i64 = {
+	return i + 1;
+};
+
+let main: () -> i32 = {
+	let a: i32 = 10;
+	return cast(x(a), i32);
+};

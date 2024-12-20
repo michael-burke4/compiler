@@ -1,0 +1,12 @@
+// ret 10
+// END_HEADER
+
+let x: (a: void*) -> i32* = {
+	return cast(a, i32*);
+};
+
+let main: () -> i32 = {
+	let i: i32 = 10;
+	let b: void* = cast(&i, void*);
+	return *(x(b));
+};

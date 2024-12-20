@@ -168,10 +168,14 @@ static int is_int_type(ast_type *t)
 }
 
 // Returns zero if lhs and rhs are the same bit width!
-static int assignment_rhs_promotable(ast_type *lhs, ast_type *rhs)
+// TODO: think of a better name.
+static int right_can_cast_implicitly(ast_type *left, ast_type *right)
 {
-	if (is_int_type(lhs) && is_int_type(rhs) &&
-			TYPE_WIDTH(lhs->kind) > TYPE_WIDTH(rhs->kind))
+	if (is_int_type(left) && is_int_type(right) &&
+			TYPE_WIDTH(left->kind) > TYPE_WIDTH(right->kind))
+		return 1;
+	if (left->kind == Y_POINTER && right->kind == Y_POINTER
+			&& right->subtype->kind == Y_VOID)
 		return 1;
 	return 0;
 }
@@ -222,7 +226,7 @@ void typecheck_decl(ast_decl *decl)
 			return;
 		}
 		derive_expr_type(decl->expr);
-		if (assignment_rhs_promotable(decl->typesym->type, decl->expr->type)) {
+		if (right_can_cast_implicitly(decl->typesym->type, decl->expr->type)) {
 			decl->expr = build_cast(decl->expr, decl->typesym->type->kind);
 		} else if (!(type_equals(decl->typesym->type, decl->expr->type))) {
 			report_error_cur_line("Assignment expression type mismatch");
@@ -272,8 +276,12 @@ static void typecheck_fncall(ast_expr *expr)
 		return;
 	}
 	for (i = 0 ; i < decl_arglist->size ; ++i) {
-		derive_expr_type(expr_arglist->elements[i]);
-		if (!type_equals(arglist_get(decl_arglist, i)->type, ((ast_expr *)expr_arglist->elements[i])->type)) {
+		ast_type *t = arglist_get(decl_arglist, i)->type;
+		ast_expr *e = expr_arglist->elements[i];
+		derive_expr_type(e);
+		if (right_can_cast_implicitly(t, e->type)) {
+			expr_arglist->elements[i] = build_cast(e, t->kind);
+		} else if (!type_equals(t, e->type)) {
 			report_error_cur_line("Positional argument type mismatch in function call");
 		}
 	}
