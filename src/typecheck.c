@@ -171,6 +171,8 @@ static int is_int_type(ast_type *t)
 // TODO: think of a better name.
 static int right_can_cast_implicitly(ast_type *left, ast_type *right)
 {
+	if (left == NULL || right == NULL)
+		return 0;
 	if (is_int_type(left) && is_int_type(right) &&
 			TYPE_WIDTH(left->kind) > TYPE_WIDTH(right->kind))
 		return 1;
@@ -294,8 +296,7 @@ static void derive_assign(ast_expr *expr) {
 		expr->type = expr->left->type;
 		return;
 	}
-	if (is_int_type(expr->left->type) && is_int_type(expr->right->type) &&
-			TYPE_WIDTH(expr->left->type->kind) > TYPE_WIDTH(expr->right->type->kind)) {
+	if (right_can_cast_implicitly(expr->left->type, expr->right->type)) {
 		expr->right = build_cast(expr->right, expr->left->type->kind);
 		expr->type = expr->left->type;
 		return;
