@@ -1,0 +1,7 @@
+// ret 0
+// END_HEADER
+
+let main: () -> i32 = {
+	let x: i32* = null;
+	return cast(x, i32);
+};

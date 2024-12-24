@@ -98,6 +98,7 @@ typedef enum {
 	E_FNCALL,
 	E_CAST,
 	E_SHIFT,
+	E_NULL,
 } expr_t;
 
 type_t smallest_fit(int64_t num);

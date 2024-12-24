@@ -33,6 +33,7 @@ typedef enum {
 	T_ASM,
 	T_SIZEOF,
 	T_CAST,
+	T_NULL,
 
 	T_DPLUS,
 	T_DMINUS,

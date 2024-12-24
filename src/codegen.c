@@ -557,6 +557,9 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	case E_INT_LIT:
 		t = to_llvm_type(mod, expr->type);
 		return LLVMConstInt(t, (unsigned long long)expr->num, 0);
+	case E_NULL:
+		t = to_llvm_type(mod, expr->type);
+		return LLVMConstNull(t);
 	case E_SHIFT:
 		if (expr->op == T_RSHIFT)
 			if (IS_UNSIGNED(expr->left))

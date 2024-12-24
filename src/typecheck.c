@@ -492,6 +492,11 @@ void derive_expr_type(ast_expr *expr)
 		expr->type = type_init(Y_BOOL, NULL);
 		expr->owns_type = true;
 		return;
+	case E_NULL:
+		expr->type = type_init(Y_POINTER, NULL);
+		expr->type->subtype = type_init(Y_VOID, NULL);
+		expr->owns_type = true;
+		return;
 	case E_INT_LIT:
 		// Deriving this type is performed in parsing.
 		return;

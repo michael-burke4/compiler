@@ -992,6 +992,9 @@ ast_expr *parse_expr_unit(void)
 		ret = expr_init(E_PAREN, ex, NULL, 0, NULL, 0, NULL);
 		ret->is_lvalue = ex->is_lvalue;
 		return ret;
+	case T_NULL:
+		next();
+		return expr_init(E_NULL, NULL, NULL, 0, NULL, 0, NULL);
 	case T_INT_LIT:
 		next();
 		int64_t n;
