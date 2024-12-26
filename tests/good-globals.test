@@ -1,0 +1,14 @@
+// ret 0
+// END_HEADER
+let c: char = 'a';
+let b: bool = true;
+let b2: bool = false;
+let p: i32* = null;
+let i: i32 = 10;
+
+let main: () -> i32 = {
+	if (c == 'a' && b && !b2 && cast(p, i32) == 0 && i == 10) {
+		return 0;
+	}
+	return 1;
+};

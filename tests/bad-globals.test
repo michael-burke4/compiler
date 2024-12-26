@@ -1,0 +1,19 @@
+// comp_err typecheck
+// END_HEADER
+
+let s: struct = {
+	x: i32;
+	y: i32;
+};
+
+let c: char = true;
+let p: void*;
+let v: void = 20;
+let b: bool = 10;
+let b2: bool = !b;
+let s1: struct s;
+
+
+let main: () -> i32 = {
+	return 1;
+};

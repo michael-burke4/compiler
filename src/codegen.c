@@ -778,6 +778,48 @@ static void define_struct(LLVMModuleRef mod, ast_decl *decl) {
 	// could be a problem, as the data stored here will be overwritten etc.
 }
 
+static void global_codegen(LLVMModuleRef mod, ast_decl *decl)
+{
+	char buf[BUFFER_MAX_LEN];
+	strvec_tostatic(decl->typesym->symbol, buf);
+	LLVMValueRef v = LLVMAddGlobal(mod, to_llvm_type(mod, decl->typesym->type), buf);
+	LLVMValueRef initial = NULL;
+	switch (decl->typesym->type->kind) {
+	case Y_CHAR:
+		initial = LLVMConstInt(LLVMInt8TypeInContext(CTXT(mod)), (int)decl->expr->string_literal->text[0], 0);
+		break;
+	case Y_BOOL:
+		if (decl->expr->kind == E_FALSE_LIT) {
+			initial = LLVMConstInt(LLVMInt1TypeInContext(CTXT(mod)), 0, 0);
+		}
+		else {
+			initial = LLVMConstInt(LLVMInt1TypeInContext(CTXT(mod)), 1, 0);
+		}
+		break;
+	case Y_POINTER:
+	case Y_CONSTPTR:
+		initial = LLVMConstNull(to_llvm_type(mod, decl->typesym->type));
+		break;
+	case Y_U32:
+	case Y_U64:
+	case Y_I32:
+	case Y_I64:
+		initial = LLVMConstInt(to_llvm_type(mod, decl->typesym->type), decl->expr->num, 0);
+		break;
+	// LCOV_EXCL_START
+	case Y_FUNCTION:
+	case Y_STRUCT:
+	case Y_VOID:
+		fprintf(stderr, "Could not declare a declaration of this type at the global level.");
+		exit(1);
+		break;
+	// LCOV_EXCL_STOP
+	}
+	LLVMSetInitializer(v, initial);
+	LLVMSetLinkage(v, LLVMPrivateLinkage);
+
+	scope_bind(v, decl->typesym->symbol);
+}
 
 void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 {
@@ -808,9 +850,6 @@ void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 	} else if (decl->typesym->type->kind == Y_STRUCT && decl->typesym->type->name == NULL) {
 		define_struct(*mod, decl);
 	} else {
-	// LCOV_EXCL_START
-		fprintf(stderr, "Can't codegen decls of this type yet :(\n");
-		exit(1);
-	// LCOV_EXCL_STOP
+		global_codegen(*mod, decl);
 	}
 }

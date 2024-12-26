@@ -1,0 +1,14 @@
+// ret 5
+// END_HEADER
+
+let x: i32 = 0;
+
+let fn: () -> void = {
+	x = 5;
+};
+
+let main: () -> i32 = {
+	let s: char@ = "hi!";
+	fn();
+	return x;
+};

@@ -25,7 +25,7 @@ void typecheck_program(ast_decl *program)
 {
 	ast_decl *cur = program;
 	while (cur != NULL) {
-		typecheck_decl(cur);
+		typecheck_decl(cur, 1);
 		cur = cur->next;
 	}
 }
@@ -182,7 +182,51 @@ static int right_can_cast_implicitly(ast_type *left, ast_type *right)
 	return 0;
 }
 
-void typecheck_decl(ast_decl *decl)
+static void typecheck_global_decl(ast_decl *decl)
+{
+	if (decl->typesym->type->arglist != NULL) {
+		return;
+	}
+	if (decl->expr == NULL) {
+		report_error_cur_line("Global declarations must initialize with some compile-time-constant expression");
+		return;
+	}
+
+	switch (decl->typesym->type->kind) {
+	case Y_CHAR:
+		if (decl->expr->kind != E_CHAR_LIT) {
+			report_error_cur_line("Global char declarations must initialize with char literals");
+		}
+		break;
+	case Y_BOOL:
+		if (decl->expr->kind != E_TRUE_LIT && decl->expr->kind != E_FALSE_LIT) {
+			report_error_cur_line("Global bool declarations must initialize with bool literals");
+		}
+		break;
+	case Y_POINTER:
+	case Y_CONSTPTR:
+		// TODO: allow array ininitializers at global level
+		if (decl->expr->kind != E_NULL) {
+			report_error_cur_line("Global pointer declarations must initialize with null literals");
+		}
+		break;
+	case Y_U32:
+	case Y_U64:
+	case Y_I32:
+	case Y_I64:
+		if (decl->expr->kind != E_INT_LIT) {
+			report_error_cur_line("Global integer declarations must initialize with integer literals");
+		}
+		break;
+	case Y_FUNCTION:
+	case Y_STRUCT:
+	case Y_VOID:
+		report_error_cur_line("Could not declare a declaration of this type at the global level.");
+		break;
+	}
+}
+
+void typecheck_decl(ast_decl *decl, int at_global_level)
 {
 	if (decl == NULL) {
 		report_error_cur_line("Typechecking empty decl!?!?!");
@@ -205,6 +249,18 @@ void typecheck_decl(ast_decl *decl)
 	scope_bind_ts(decl->typesym);
 	if (decl->typesym->type->kind == Y_FUNCTION) {
 		typecheck_fnbody(decl);
+	} else if (decl->initializer) {
+		if (at_global_level) {
+			report_error_cur_line("Can't use array initializers at global level.");
+		}
+		if (decl->typesym->type->kind != Y_POINTER && decl->typesym->type->kind != Y_CONSTPTR) {
+			report_error_cur_line("Only pointers can use array initializers");
+			return;
+		}
+		typecheck_array_initializer(decl);
+	} else if (at_global_level) {
+		typecheck_global_decl(decl);
+		return;
 	} else if (decl->expr) {
 		if (decl->typesym->type->kind == Y_POINTER && decl->typesym->type->subtype->kind == Y_CHAR
 				&& decl->expr->kind == E_STR_LIT) {
@@ -228,12 +284,6 @@ void typecheck_decl(ast_decl *decl)
 			report_error_cur_line("Assignment expression type mismatch");
 			return;
 		}
-	} else if (decl->initializer) {
-		if (decl->typesym->type->kind != Y_POINTER && decl->typesym->type->kind != Y_CONSTPTR) {
-			report_error_cur_line("Only pointers can use array initializers");
-			return;
-		}
-		typecheck_array_initializer(decl);
 	}
 }
 
@@ -652,7 +702,7 @@ void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 		scope_exit();
 		break;
 	case S_DECL:
-		typecheck_decl(stmt->decl);
+		typecheck_decl(stmt->decl, 0);
 		typecheck_stmt(stmt->next, at_fn_top_level);
 		break;
 	case S_EXPR:
