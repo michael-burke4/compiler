@@ -95,8 +95,8 @@ static void typecheck_return(ast_stmt *stmt) {
 //	}
 // }
 // PRECONDITIONS:
-// 	stmt must be non-null.
-// 	stmt->next must be null.
+//	stmt must be non-null.
+//	stmt->next must be null.
 static int is_return_worthy(ast_stmt *stmt) {
 	if (stmt->kind == S_RETURN) {
 		typecheck_return(stmt);
