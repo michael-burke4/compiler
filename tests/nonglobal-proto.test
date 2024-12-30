@@ -1,0 +1,11 @@
+// comp_err parse
+// END_HEADER
+
+let main: () -> i32 = {
+	proto x: () -> i32;
+	return x();
+};
+
+let x: () -> i32 = {
+	return 5;
+};

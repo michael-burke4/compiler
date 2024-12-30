@@ -821,32 +821,53 @@ static void global_codegen(LLVMModuleRef mod, ast_decl *decl)
 	scope_bind(v, decl->typesym->symbol);
 }
 
+static void function_codegen(LLVMModuleRef mod, ast_decl *decl)
+{
+	// LCOV_EXCL_START
+	if (decl->typesym->type->modif == VM_PROTO) {
+		fprintf(stderr, "Currently cannot codegen if there are \"dangling\" undefined function prototypes!");
+		exit(1);
+	}
+	// LCOV_EXCL_STOP
+	char buf[BUFFER_MAX_LEN];
+	strvec_tostatic(decl->typesym->symbol, buf);
+	if (decl->typesym->type->modif == VM_PROTO_DEFINED) {
+		LLVMTypeRef *param_types = build_param_types(mod, decl);
+		vect *arglist = decl->typesym->type->arglist;
+		size_t size = arglist == NULL ? 0 : arglist->size;
+		LLVMTypeRef ret_type = LLVMFunctionType(to_llvm_type(mod, decl->typesym->type->subtype), param_types, size, 0);
+		LLVMAddFunction(mod, buf, ret_type);
+		free(param_types);
+		return;
+	}
+	LLVMValueRef fn_value = NULL;
+	LLVMTypeRef *param_types = build_param_types(mod, decl);
+	if ((fn_value = LLVMGetNamedFunction(mod, buf)) == NULL) {
+		vect *arglist = decl->typesym->type->arglist;
+		size_t size = arglist == NULL ? 0 : arglist->size;
+		LLVMTypeRef ret_type = LLVMFunctionType(to_llvm_type(mod, decl->typesym->type->subtype), param_types, size, 0);
+		fn_value = LLVMAddFunction(mod, buf, ret_type);
+	}
+	scope_enter();
+	scope_bind_return_type(decl->typesym->type->subtype);
+
+	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(CTXT(mod), fn_value, "");
+	LLVMBuilderRef builder = LLVMCreateBuilderInContext(CTXT(mod));
+	LLVMPositionBuilderAtEnd(builder, entry);
+
+	alloca_params_as_local_vars(builder, fn_value, decl, param_types);
+
+	stmt_codegen(mod, builder, decl->body, NULL);
+	LLVMDisposeBuilder(builder);
+	free(param_types);
+}
+
 void decl_codegen(LLVMModuleRef *mod, ast_decl *decl)
 {
 	if (decl == NULL)
 		return;
 	if (decl->typesym->type->kind == Y_FUNCTION) {
-		scope_enter();
-		scope_bind_return_type(decl->typesym->type->subtype);
-		char buf[BUFFER_MAX_LEN];
-		vect *v = vect_init(4);
-		LLVMTypeRef *param_types = build_param_types(*mod, decl);
-		vect *arglist = decl->typesym->type->arglist;
-		size_t size = arglist == NULL ? 0 : arglist->size;
-		LLVMTypeRef ret_type = LLVMFunctionType(to_llvm_type(*mod, decl->typesym->type->subtype), param_types, size, 0);
-
-		strvec_tostatic(decl->typesym->symbol, buf);
-		LLVMValueRef fn_value = LLVMAddFunction(*mod, buf, ret_type);
-		LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(CTXT(*mod), fn_value, "");
-		LLVMBuilderRef builder = LLVMCreateBuilderInContext(CTXT(*mod));
-		LLVMPositionBuilderAtEnd(builder, entry);
-
-		alloca_params_as_local_vars(builder, fn_value, decl, param_types);
-
-		stmt_codegen(*mod, builder, decl->body, NULL);
-		LLVMDisposeBuilder(builder);
-		free(param_types);
-		vect_destroy(v);
+		function_codegen(*mod, decl);
 	} else if (decl->typesym->type->kind == Y_STRUCT && decl->typesym->type->name == NULL) {
 		define_struct(*mod, decl);
 	} else {

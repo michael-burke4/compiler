@@ -1,0 +1,22 @@
+// ret 2
+// END_HEADER
+
+proto x: (a: i32) -> i32;
+proto y: (a: i32) -> i32;
+
+let main: () -> i32 = {
+	return x(3);
+};
+let x: (a: i32) -> i32 = {
+	if (a < 10) {
+		return y(5);
+	}
+	return 1;
+};
+
+let y: (a: i32) -> i32 = {
+	if (a > 20) {
+		return x(30);
+	}
+	return 2;
+};
