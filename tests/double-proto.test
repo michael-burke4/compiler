@@ -1,0 +1,13 @@
+// comp_err typecheck
+// END_HEADER
+
+proto x: () -> i32;
+proto x: () -> i32;
+
+let main: () -> i32 = {
+	return x();
+};
+
+let x: () -> i32 = {
+	return 5;
+};

@@ -61,7 +61,7 @@ static void typecheck_return(ast_stmt *stmt) {
 		return;
 	}
 	derive_expr_type(stmt->expr);
-	if (!type_equals(stmt->expr->type, scope_get_return_type())) {
+	if (!type_equals(stmt->expr->type, scope_get_return_type(), 0)) {
 		report_error_cur_line("Return value does not match function signature");
 	}
 }
@@ -123,13 +123,6 @@ static void append_retvoid_if_needed(ast_decl *fn) {
 
 static void typecheck_fnbody(ast_decl *decl)
 {
-	value_modifier_t vm;
-	if ((vm = decl->typesym->type->modif) == VM_PROTO || vm == VM_PROTO_DEFINED) {
-		if (decl->body != NULL)
-			report_error_cur_line("Function prototypes must not have function bodies.");
-		return;
-
-	}
 	if (decl->body == NULL) {
 		report_error_cur_line("Must provide a function body to non-prototype function declarations.");
 		return;
@@ -149,7 +142,7 @@ static void typecheck_array_initializer(ast_decl *decl)
 		return;
 	for (size_t i = 0 ; i < decl->initializer->size ; ++i) {
 		derive_expr_type(decl->initializer->elements[i]);
-		if (!type_equals(((ast_expr *)(decl->initializer->elements[i]))->type, decl->typesym->type->subtype)) {
+		if (!type_equals(((ast_expr *)(decl->initializer->elements[i]))->type, decl->typesym->type->subtype, 0)) {
 			report_error_cur_line("Type mismatch in array initializer");
 			return;
 		}
@@ -234,13 +227,39 @@ static void typecheck_global_decl(ast_decl *decl)
 
 void typecheck_decl(ast_decl *decl, int at_global_level)
 {
+	ast_typed_symbol *ts = NULL;
+
 	if (decl == NULL) {
 		report_error_cur_line("Typechecking empty decl!?!?!");
 		return;
 	}
 	cur_line = decl->line;
-	if (scope_lookup_current(decl->typesym->symbol)) {
-		report_error_cur_line("Duplicate symbol declaration");
+	if ((ts = scope_lookup_current(decl->typesym->symbol))) {
+		if (ts->type->modif != VM_PROTO) {
+			report_error_cur_line("Duplicate symbol declaration");
+			return;
+		}
+		if (decl->typesym->type->modif != VM_DEFAULT) {
+			report_error_cur_line("Definitions of already-prototyped functions must use the 'let' keyword");
+			return;
+		}
+		if (!type_equals(ts->type, decl->typesym->type, 1)) {
+			report_error_cur_line("Function definition does not match type signature of function prototype.");
+			return;
+		}
+		// TODO: might want to put this somewhere else? This still works though.
+		ts->type->modif = VM_PROTO_DEFINED;
+	}
+	if (decl->typesym->type->modif == VM_PROTO) {
+		if (decl->typesym->type->kind != Y_FUNCTION) {
+			report_error_cur_line("Only functions can be prototypes.");
+			return;
+		}
+		if (decl->expr != NULL || decl->body != NULL) {
+			report_error_cur_line("Function prototypes must not be assigned a body/value.");
+			return;
+		}
+		scope_bind_ts(decl->typesym);
 		return;
 	}
 	if (decl->typesym->type->kind == Y_STRUCT && decl->typesym->type->name != NULL) {
@@ -252,7 +271,10 @@ void typecheck_decl(ast_decl *decl, int at_global_level)
 		report_error_cur_line("Can't declare variable with type void");
 		return;
 	}
-	scope_bind_ts(decl->typesym);
+
+	if (ts == NULL)
+		scope_bind_ts(decl->typesym);
+
 	if (decl->typesym->type->kind == Y_FUNCTION) {
 		typecheck_fnbody(decl);
 	} else if (decl->initializer) {
@@ -286,7 +308,7 @@ void typecheck_decl(ast_decl *decl, int at_global_level)
 		derive_expr_type(decl->expr);
 		if (right_can_cast_implicitly(decl->typesym->type, decl->expr->type)) {
 			decl->expr = build_cast(decl->expr, decl->typesym->type->kind);
-		} else if (!(type_equals(decl->typesym->type, decl->expr->type))) {
+		} else if (!(type_equals(decl->typesym->type, decl->expr->type, 0))) {
 			report_error_cur_line("Assignment expression type mismatch");
 			return;
 		}
@@ -330,7 +352,7 @@ static void typecheck_fncall(ast_expr *expr)
 		derive_expr_type(e);
 		if (right_can_cast_implicitly(t, e->type)) {
 			expr_arglist->elements[i] = build_cast(e, t->kind);
-		} else if (!type_equals(t, e->type)) {
+		} else if (!type_equals(t, e->type, 0)) {
 			report_error_cur_line("Positional argument type mismatch in function call");
 		}
 	}
@@ -347,7 +369,7 @@ static void derive_assign(ast_expr *expr) {
 		report_error_cur_line("Cannot assign to const/proto values");
 	}
 	derive_expr_type(expr->right);
-	if (type_equals(expr->left->type, expr->right->type)) {
+	if (type_equals(expr->left->type, expr->right->type, 0)) {
 		expr->type = expr->left->type;
 		return;
 	}
@@ -470,7 +492,7 @@ static void cast_up_if_necessary(ast_expr *expr)
 	ast_expr *l = expr->left;
 	ast_expr *r = expr->right;
 	if (is_int_type(l->type) && is_int_type(r->type) &&
-			!type_equals(expr->left->type, expr->right->type)) {
+			!type_equals(expr->left->type, expr->right->type, 0)) {
 		if (TYPE_WIDTH(l->type->kind) > TYPE_WIDTH(r->type->kind)) {
 			type_t new_kind = TYPE_WIDTH(l->type->kind) | TYPE_SIGNEDNESS(r->type->kind);
 			r = build_cast(r, new_kind);
@@ -510,7 +532,7 @@ void derive_expr_type(ast_expr *expr)
 		derive_expr_type(expr->left);
 		derive_expr_type(expr->right);
 		cast_up_if_necessary(expr);
-		if (type_equals(expr->left->type, expr->right->type) && is_int_type(expr->left->type)) {
+		if (type_equals(expr->left->type, expr->right->type, 0) && is_int_type(expr->left->type)) {
 			expr->type = expr->left->type;
 			return;
 		}
@@ -738,20 +760,20 @@ static int arglist_equals(vect *a, vect *b)
 	for (i = 0 ; i < a->size ; ++i) {
 		at = arglist_get(a, i);
 		bt = arglist_get(b, i);
-		if (!type_equals(at->type, bt->type))
+		if (!type_equals(at->type, bt->type, 1))
 			return 0;
 	}
 	return 1;
 }
 
-int type_equals(ast_type *a, ast_type *b)
+int type_equals(ast_type *a, ast_type *b, int int_type_strict)
 {
 	if (a == NULL && b == NULL)
 		return 1;
 	if (a == NULL || b == NULL)
 		return 0;
 	// TODO: clean this up
-	return type_equals(a->subtype, b->subtype) && arglist_equals(a->arglist, b->arglist) &&
+	return type_equals(a->subtype, b->subtype, int_type_strict) && arglist_equals(a->arglist, b->arglist) &&
 			(a->kind == b->kind ||
-			(is_int_type(a) && is_int_type(b) && TYPE_WIDTH(a->kind) == TYPE_WIDTH(b->kind)));
+			(!int_type_strict && (is_int_type(a) && is_int_type(b) && TYPE_WIDTH(a->kind) == TYPE_WIDTH(b->kind))));
 }
