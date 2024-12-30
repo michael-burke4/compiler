@@ -237,12 +237,20 @@ ast_decl *parse_decl(void)
 	ast_decl *ret = NULL;
 	int missed_assign = 0;
 	size_t line = cur_tok_line();
+	value_modifier_t vm;
 
-	if (!expect(T_LET) && !expect(T_CONST)) {
-		report_error_cur_tok("Missing `let`/`const` keyword in decalaration.");
+	if (expect(T_LET))
+		vm = VM_DEFAULT;
+	else if (expect(T_CONST))
+		vm = VM_CONST;
+	else if (expect(T_PROTO))
+		vm = VM_PROTO;
+	else {
+		report_error_cur_tok("Missing `let`/`const`/`proto` keyword in decalaration.");
 		sync_to(T_EOF, 1);
 		goto parse_decl_err;
 	}
+
 	next();
 	typed_symbol = parse_typed_symbol();
 	// TODO: things still get ugly here if we're parsing a a function/struct that has an incorrect type symbol.
@@ -251,6 +259,8 @@ ast_decl *parse_decl(void)
 		sync_to(T_EOF, 1);
 		goto parse_decl_err;
 	}
+
+	typed_symbol->type->modif = vm;
 
 	if (expect(T_SEMICO)) {
 		next();
@@ -477,7 +487,7 @@ ast_stmt *parse_stmt(void)
 		kind = S_DECL;
 		decl = parse_decl();
 		if (decl->typesym != NULL)
-			decl->typesym->type->isconst = 1;
+			decl->typesym->type->modif = VM_CONST;
 		break;
 	case T_IF:
 		kind = S_IFELSE;
@@ -665,11 +675,12 @@ ast_type *parse_type(void)
 		return NULL;
 	}
 	while (cur_tok_type() == T_STAR || cur_tok_type() == T_AT) {
-		int isconst = cur_tok_type() == T_AT;
+		// TODO: more generic value_modifier_t handling? Maybe more value modifiers in future?
+		value_modifier_t vm = cur_tok_type() == T_AT ? VM_CONST : VM_DEFAULT;
 		subtype = ret;
-		ret = type_init(isconst ? Y_CONSTPTR : Y_POINTER, NULL);
+		ret = type_init(vm == VM_CONST ? Y_CONSTPTR : Y_POINTER, NULL);
 		ret->subtype = subtype;
-		ret->subtype->isconst = isconst;
+		ret->subtype->modif = vm;
 		next();
 	}
 	return ret;

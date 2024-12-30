@@ -123,9 +123,15 @@ static void append_retvoid_if_needed(ast_decl *fn) {
 
 static void typecheck_fnbody(ast_decl *decl)
 {
-	if (decl == NULL || decl->body == NULL) {
-		//TODO: Look at this.
-		report_error_cur_line("Currently not allowing empty fn declarations. Provide an fn body.");
+	value_modifier_t vm;
+	if ((vm = decl->typesym->type->modif) == VM_PROTO || vm == VM_PROTO_DEFINED) {
+		if (decl->body != NULL)
+			report_error_cur_line("Function prototypes must not have function bodies.");
+		return;
+
+	}
+	if (decl->body == NULL) {
+		report_error_cur_line("Must provide a function body to non-prototype function declarations.");
 		return;
 	}
 	scope_enter();
@@ -337,9 +343,8 @@ static void derive_assign(ast_expr *expr) {
 		return;
 	}
 	derive_expr_type(expr->left);
-	if (expr->left->type != NULL && expr->left->type->isconst) {
-		report_error_cur_line("Cannot assign to const expression");
-		return;
+	if (expr->left->type != NULL && expr->left->type->modif != VM_DEFAULT) {
+		report_error_cur_line("Cannot assign to const/proto values");
 	}
 	derive_expr_type(expr->right);
 	if (type_equals(expr->left->type, expr->right->type)) {
@@ -363,7 +368,7 @@ static void derive_pre_unary(ast_expr *expr)
 			report_error_cur_line("Cannot find address of non-lvalue expr");
 			return;
 		}
-		expr->type = type_init(expr->left->type->isconst ? Y_CONSTPTR : Y_POINTER, NULL);
+		expr->type = type_init(expr->left->type->modif == VM_CONST ? Y_CONSTPTR : Y_POINTER, NULL);
 		expr->owns_type = true;
 		expr->type->subtype = expr->left->type;
 		expr->type->owns_subtype = false;

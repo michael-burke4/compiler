@@ -34,6 +34,7 @@ typedef enum {
 	T_SIZEOF,
 	T_CAST,
 	T_NULL,
+	T_PROTO,
 
 	T_DPLUS,
 	T_DMINUS,

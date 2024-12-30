@@ -54,6 +54,8 @@ static token_s *check_if_keyword(strvec *word, size_t line, size_t col)
 		ret = tok_init_nl(T_CAST, line, col, NULL);
 	else if (strvec_equals_str(word, "null"))
 		ret = tok_init_nl(T_NULL, line, col, NULL);
+	else if (strvec_equals_str(word, "proto"))
+		ret = tok_init_nl(T_PROTO, line, col, NULL);
 	if (ret != NULL)
 		strvec_destroy(word);
 	else

@@ -24,7 +24,7 @@ ast_type *type_init(type_t kind, strvec *name)
 	ret->arglist = NULL;
 	ret->kind = kind;
 	ret->name = name;
-	ret->isconst = 0;
+	ret->modif = VM_DEFAULT;
 	return ret;
 }
 
@@ -182,7 +182,7 @@ ast_type *type_copy(ast_type *t)
 	ret = type_init(t->kind, strvec_copy(t->name));
 	ret->subtype = type_copy(t->subtype);
 	ret->arglist = arglist_copy(t->arglist);
-	ret->isconst = t->isconst;
+	ret->modif = t->modif;
 	return ret;
 }
 

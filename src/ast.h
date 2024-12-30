@@ -61,13 +61,20 @@ typedef enum {
 // TODO: dynamically set usize according to provided target.
 #define Y_USIZE Y_U64
 
+typedef enum {
+	VM_DEFAULT,
+	VM_CONST,
+	VM_PROTO,
+	VM_PROTO_DEFINED, // is a prototype and has a definition in the current module
+} value_modifier_t;
+
 typedef struct ast_type {
 	struct ast_type *subtype;
 	bool owns_subtype;
 	vect *arglist;
 	type_t kind;
 	strvec *name;
-	int isconst;
+	value_modifier_t modif;
 } ast_type;
 
 typedef struct ast_typed_symbol {

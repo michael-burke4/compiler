@@ -209,10 +209,18 @@ void ftype_print(FILE *f, ast_type *type)
 
 void fdecl_print(FILE *f, ast_decl *decl)
 {
-	if (decl->typesym->type->isconst)
-		fprintf(f, "const ");
-	else
+	switch (decl->typesym->type->modif) {
+	case VM_DEFAULT:
 		fprintf(f, "let ");
+		break;
+	case VM_CONST:
+		fprintf(f, "const ");
+		break;
+	case VM_PROTO:
+	case VM_PROTO_DEFINED:
+		fprintf(f, "proto ");
+		break;
+	}
 	ftyped_sym_print(f, decl->typesym);
 	if (decl->expr != NULL) {
 		fprintf(f, " = ");
