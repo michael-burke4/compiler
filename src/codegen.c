@@ -823,15 +823,9 @@ static void global_codegen(LLVMModuleRef mod, ast_decl *decl)
 
 static void function_codegen(LLVMModuleRef mod, ast_decl *decl)
 {
-	// LCOV_EXCL_START
-	if (decl->typesym->type->modif == VM_PROTO) {
-		fprintf(stderr, "Currently cannot codegen if there are \"dangling\" undefined function prototypes!");
-		exit(1);
-	}
-	// LCOV_EXCL_STOP
 	char buf[BUFFER_MAX_LEN];
 	strvec_tostatic(decl->typesym->symbol, buf);
-	if (decl->typesym->type->modif == VM_PROTO_DEFINED) {
+	if (decl->typesym->type->modif == VM_PROTO_DEFINED || decl->typesym->type->modif == VM_PROTO) {
 		LLVMTypeRef *param_types = build_param_types(mod, decl);
 		vect *arglist = decl->typesym->type->arglist;
 		size_t size = arglist == NULL ? 0 : arglist->size;
