@@ -34,7 +34,10 @@ main: $(OBJDIR) $(BINDIR) $(BINDIR)/main
 $(BINDIR)/main: $(OBJ)
 	$(LD) -o $@ $^ $(LDFLAGS)
 
-$(OBJDIR)/%.o $(DBGDIR)/%.o: $(SRCDIR)/%.c $(DEPS)
+$(OBJDIR)/%.o: $(SRCDIR)/%.c $(DEPS)
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+$(DBGDIR)/%.o: $(SRCDIR)/%.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 debug: CFLAGS+=$(DBGFLAGS) $(COVCFLAGS)
