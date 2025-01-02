@@ -251,7 +251,7 @@ static void asm_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stm
 
 	for (size_t i = 0 ; in_ops != NULL && i < out_s ; ++i) {
 		ast_expr *e = vect_get(out_ops, i);
-		LLVMValueRef loc = scope_lookup(e->name);
+		LLVMValueRef loc = expr_codegen(mod, builder, e, 1);
 		LLVMValueRef to_store = LLVMBuildExtractValue(builder, res, i, "");
 		LLVMBuildStore(builder, to_store, loc);
 	}
@@ -468,14 +468,12 @@ LLVMValueRef pre_unary_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_ex
 	LLVMTypeRef t = NULL;
 	switch (expr->op) {
 	case T_STAR:
-		v = expr_codegen(mod, builder, expr->left, store_ctxt);
+		v = expr_codegen(mod, builder, expr->left, 0);
 		if (store_ctxt) {
 			return v;
 		}
 		return LLVMBuildLoad2(builder, to_llvm_type(mod, expr->type), v, "");
 	case T_AMPERSAND:
-		if (expr->left->name != NULL)
-			return scope_lookup(expr->left->name);
 		return expr_codegen(mod, builder, expr->left, 1);
 	case T_MINUS:
 		v = expr_codegen(mod, builder, expr->left, 0);
@@ -616,22 +614,11 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		return LLVMBuildCall2(builder, fn_t, v, args, argno, "");
 	case E_IDENTIFIER:
 		ret = scope_lookup(expr->name);
-		ret = LLVMBuildLoad2(builder, to_llvm_type(mod, expr->type), ret, "");
+		if (!store_ctxt)
+			ret = LLVMBuildLoad2(builder, to_llvm_type(mod, expr->type), ret, "");
 		return ret;
 	case E_ASSIGN:
-		if (expr->left->kind == E_IDENTIFIER) {
-			v = scope_lookup(expr->left->name);
-		} else if (expr->left->kind == E_PRE_UNARY && expr->left->op == T_STAR) {
-			v = expr_codegen(mod, builder, expr->left->left, 1);
-		} else if (expr->left->kind == E_POST_UNARY && (expr->left->op == T_LBRACKET || expr->left->op == T_PERIOD)) {
-			v = expr_codegen(mod, builder, expr->left, 1);
-		}
-		//LCOV_EXCL_START
-		else {
-			eputs("CRITICAL: Attempting assignment to unexpected expression type?");
-			exit(1);
-		}
-		//LCOV_EXCL_STOP
+		v = expr_codegen(mod, builder, expr->left, 1);
 		return assign_codegen(mod, builder, expr, v);
 	case E_FALSE_LIT:
 		return LLVMConstInt(LLVMInt1TypeInContext(CTXT(mod)), 0, 0);
@@ -673,11 +660,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 				v = LLVMBuildLoad2(builder, to_llvm_type(mod, expr->type), v, "");
 			return v;
 		} else if (expr->op == T_PERIOD) {
-			if (expr->left->kind == E_IDENTIFIER) {
-				v = scope_lookup(expr->left->name);
-			} else {
-				v = expr_codegen(mod, builder, expr->left, 1);
-			}
+			v = expr_codegen(mod, builder, expr->left, 1);
 			// TODO: clean up all this to static back to strvec nonsense.
 			strvec_tostatic(expr->left->type->name, buffer);
 			t = LLVMGetTypeByName2(CTXT(mod), buffer);

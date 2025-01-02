@@ -1,0 +1,25 @@
+// ret 24
+// END_HEADER
+let pt: struct = {
+	x: i32;	
+	y: i32;
+};
+
+let fn: (i: i32) -> i32 = {
+	i += 1;
+	return i;
+};
+
+let main: () -> i32 = {
+	let p: struct pt;
+	let a: i32* = [1, 2, 3];
+	let i: i32 = -1;
+
+	p.x = 10;
+	a[2] = 4;
+	*a = 5;
+	(i) = 1;
+
+
+	return fn(p.x) + fn(a[2]) + fn(*a) + fn(i);
+};
