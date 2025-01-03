@@ -1,0 +1,62 @@
+#include "print.head"
+#include "syscall.head"
+
+let put_cstr: (s: char*) -> void = {
+	let len: usize = 0;
+	let cur: char* = s;
+	while (*cur != '\0') {
+		len += 1;
+		cur = &(cur[1]);
+	}
+	write(1, s, len);
+	putc('\n');
+};
+
+let putc: (c: char) -> void = {
+	write(1, &c, 1);
+};
+
+let write: (fd: i32, str: char*, str_len: usize) -> i64 = {
+	return cast(syscall3(64, fd, cast(str, usize), str_len), i64);
+};
+
+let put_digit: (i: i32) -> void = {
+	if (i < 0 || i > 9) {
+		putc('0');
+	} else {
+		putc(cast(cast('0', i32) + i, char));
+	}
+};
+
+let _putint: (i: i32) -> void = {
+	if (i < 0) {
+		i *= -1;
+		putc('-');
+	}
+	if (i == 0) {
+		return;
+	}
+	_putint(i/10);
+	put_digit(i % 10);
+};
+
+let putint: (i: i32) -> void = {
+	if (i == 0) {
+		putc('0');
+		return;
+	}
+	_putint(i);
+};
+
+let positive_int_from_cstr: (cstr: char*) -> i32 = {
+	let ret: i32 = 0;
+	while (*cstr != '\0') {
+		if (*cstr < '0' || *cstr > '9') {
+			return -1;
+		}
+		ret = (ret * 10) + (cast(*cstr, i32) - cast('0', i32));
+		cstr = &cstr[1];
+	}
+	return ret;
+};
+

@@ -1,0 +1,4 @@
+proto open_at: (fd: i32, pathname: char@, flags: i32, mode: i32) -> i32;
+proto close: (fd: i32) -> void;
+proto read: (fd: i32, buf: char*, size: usize) -> i64;
+proto read_to_nl: () -> void;

@@ -1,0 +1,37 @@
+#include "gol.head"
+#include "print.head"
+#include "read.head"
+#include "syscall.head"
+
+let main: (argc: i32, argv: char**) -> i32 = {
+	let helpstr: char* = cast("Please supply exactly one integer argument between (and including) 1 and 100.\0", char*);
+	if (argc != 2) {
+		put_cstr(helpstr);
+		return 1;
+	}
+	let sz: i32 = positive_int_from_cstr(argv[1]);
+	if (sz < 1 || sz > 100) {
+		put_cstr(helpstr);
+		return 1;
+	}
+
+	let b: struct board* = init_board(sz);
+
+	let input: char;
+	while (true) {
+		print_board(b);
+		put_cstr(cast("q to quit or any input to continue...\0", char*));
+		read(0, &input, 1);
+		if (input == 'q') {
+			read_to_nl();
+			break;
+		}
+		if (input != '\n') {
+			read_to_nl();
+		}
+		step(b);
+	}
+
+	destroy_board(b);
+	return 0;
+};

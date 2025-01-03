@@ -1,0 +1,3 @@
+proto mmap: (addr: void*, size: usize, prot: i32, mapflags: i32, fd: i32, offset: i32) -> void*;
+proto simple_mmap: (sz: usize) -> void*;
+proto munmap: (addr: void*, size: usize) -> void;

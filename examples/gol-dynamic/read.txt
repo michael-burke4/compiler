@@ -1,0 +1,23 @@
+#include "syscall.head"
+
+let open_at: (fd: i32, pathname: char@, flags: i32, mode: i32) -> i32 = {
+	return cast(syscall4(56, fd, cast(pathname, usize), flags, mode), i32);
+};
+
+let close: (fd: i32) -> void = {
+	syscall1(57, fd);
+};
+
+let read: (fd: i32, buf: char*, size: usize) -> i64 = {
+	return syscall3(63, fd, cast(buf, usize), size);
+};
+
+let read_to_nl: () -> void = {
+	let input: char;
+	while (true) {
+		read(0, &input, 1);
+		if (input == '\n') {
+			break;
+		}
+	}
+};

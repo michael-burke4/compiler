@@ -1,0 +1,117 @@
+#include "gol.head"
+#include "read.head"
+#include "mmap.head"
+#include "print.head"
+
+let step: (b: struct board*) -> void = {
+	let i: i32 = 0;
+	let j: i32 = 0;
+	while (i < b->width) {
+		j = 0;
+		while (j < b->width) {
+			let ul: i32 = at(b, i - 1, j - 1);
+			let uc: i32 = at(b, i - 1, j + 0);
+			let ur: i32 = at(b, i - 1, j + 1);
+			let cl: i32 = at(b, i + 0, j - 1);
+			let cc: i32 = at(b, i + 0, j + 0);
+			let cr: i32 = at(b, i + 0, j + 1);
+			let dl: i32 = at(b, i + 1, j - 1);
+			let dc: i32 = at(b, i + 1, j + 0);
+			let dr: i32 = at(b, i + 1, j + 1);
+			let neighbors: i32 = ul + uc + ur + cl + cr + dl + dc + dr;
+			if (cc == 0) {
+				if (neighbors == 3) {
+					set_at(b, i, j, 1);
+				}
+				else {
+					set_at(b, i, j, 0);
+				}
+			}
+			if (cc == 1) {
+				if (neighbors == 2 || neighbors == 3) {
+					set_at(b, i, j, 1);
+				}
+				else {
+					set_at(b, i, j, 0);
+				}
+			}
+			j += 1;
+		}
+		i += 1;
+	}
+	let tmp: i32* = b->scratch;
+	b->scratch = b->board;
+	b->board = tmp;
+};
+
+let at: (b: struct board*, x: i32, y: i32) -> i32 = {
+	if (cast(b, usize) == 0) {
+		return 0;
+	}
+
+	if (x < 0 || x >= b->width || y < 0 || y >= b->width) {
+		return 0;
+	}
+
+	return b->board[cast(b->width * y + x, i32)];
+};
+
+let set_at: (b: struct board*, x: i32, y: i32, val: i32) -> void = {
+	if (cast(b, usize) == 0) {
+		return;
+	}
+
+	if (x < 0 || x >= b->width || y < 0 || y >= b->width) {
+		return;
+	}
+
+	b->scratch[cast(b->width * y + x, i32)] = val;
+};
+
+let init_board: (width: usize) -> struct board* = {
+	let ret: struct board* = simple_mmap(sizeof(*ret));
+	ret->width = width;
+	ret->board = simple_mmap(width * width * sizeof(*(ret->board)));
+	ret->scratch = simple_mmap(width * width * sizeof(*(ret->board)));
+	let i: i32 = 0;
+
+	let AT_FDCWD: i32 = -100;
+	let OCREATE_RW: i32 = 66;
+	let fd: i32 = open_at(AT_FDCWD, "/dev/urandom\0", OCREATE_RW, 0);
+	let c: char;
+	while (i < width * width) {
+		read(fd, &c, 1);
+		if (cast(c, i32) % 2 == 0) {
+			ret->board[i] = 1;
+			ret->scratch[i] = 1;
+		} else {
+			ret->board[i] = 0;
+			ret->scratch[i] = 0;
+		}
+		i += 1;
+	}
+
+	close(fd);
+	return ret;
+};
+
+let print_board: (b: struct board*) -> void = {
+	if (cast(b, usize) == 0) {
+		return;
+	}
+	let i: i32 = 0;
+	while (i < b->width * b->width) {
+		// printing would be nicer with chars, too! could puts a row at a time!
+		putint(b->board[i]);
+		if ((i+1) % b->width == 0) {
+			putc('\n');
+		}
+		i += 1;
+	}
+};
+
+let destroy_board: (b: struct board*) -> void = {
+	munmap(cast(b->board, void*), b->width * b->width * sizeof(*(b->board)));
+	munmap(cast(b->scratch, void*), b->width * b->width * sizeof(*(b->scratch)));
+	munmap(cast(b, void*), sizeof(*b));
+};

@@ -1,0 +1,6 @@
+proto syscall1: (num: i32, a: usize) -> usize;
+proto syscall2: (num: i32, a: usize, b: usize) -> usize;
+proto syscall3: (num: i32, a: usize, b: usize, c: usize) -> usize;
+proto syscall4: (num: i32, a: usize, b: usize, c: usize, d: usize) -> usize;
+proto syscall5: (num: i32, a: usize, b: usize, c: usize, d: usize, e: usize) -> usize;
+proto syscall6: (num: i32, a: usize, b: usize, c: usize, d: usize, e: usize, f: usize) -> usize;

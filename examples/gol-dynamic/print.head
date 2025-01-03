@@ -1,0 +1,6 @@
+proto putc: (c: char) -> void;
+proto put_cstr: (s: char*) -> void;
+proto put_cstr_literal: (s: char@) -> void;
+proto write: (fd: i32, str: char*, str_len: usize) -> i64;
+proto putint: (i: i32) -> void;
+proto positive_int_from_cstr: (cstr: char*) -> i32;

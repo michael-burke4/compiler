@@ -1,0 +1,56 @@
+#include "syscall.head"
+
+let syscall1: (num: i32, a: usize) -> usize = {
+	let ret: usize = 0;
+	asm("mov w8, ${1:w}\nmov x0, ${2:x}\nsvc #0\nmov ${0:x}, x0",
+	"=r,r,r~{x0},~{x8},~{memory}",
+	[ret],
+	[num, a]);
+	return ret;
+
+};
+
+let syscall2: (num: i32, a: usize, b: usize) -> usize = {
+	let ret: usize = 0;
+	asm("mov x8, ${1:x}\nmov x0, ${2:x}\nmov x1, ${3:x}\nsvc #0\n mov ${0:x}, x0",
+	"=r,r,r,r~{x0},~{x1},~{x8},~{memory}",
+	[ret],
+	[num, a, b]);
+	return ret;
+};
+
+let syscall3: (num: i32, a: usize, b: usize, c: usize) -> usize = {
+	let ret: usize = 0;
+	asm("mov x8, ${1:x}\nmov x0, ${2:x}\nmov x1, ${3:x}\nmov x2, ${4:x}\nsvc #0\n mov ${0:x}, x0",
+	"=r,r,r,r,r,~{x0},~{x1},~{x2},~{x8},~{memory}",
+	[ret],
+	[num, a, b, c]);
+	return ret;
+};
+
+let syscall4: (num: i32, a: usize, b: usize, c: usize, d: usize) -> usize = {
+	let ret: usize = 0;
+	asm("mov x8, ${1:x}\nmov x0, ${2:x}\nmov x1, ${3:x}\nmov x2, ${4:x}\nmov x3, ${5:x}\nsvc #0\n mov ${0:x}, x0",
+	"=r,r,r,r,r,r,~{x0},~{x1},~{x2},~{x3},~{x8},~{memory}",
+	[ret],
+	[num, a, b, c, d]);
+	return ret;
+};
+
+let syscall5: (num: i32, a: usize, b: usize, c: usize, d: usize, e: usize) -> usize = {
+	let ret: usize = 0;
+	asm("mov x8, ${1:x}\nmov x0, ${2:x}\nmov x1, ${3:x}\nmov x2, ${4:x}\nmov x3, ${5:x}\nmov x4, ${6:x}\nsvc #0\n mov ${0:x}, x0",
+	"=r,r,r,r,r,r,r,~{x0},~{x1},~{x2},~{x3},~{x4},~{x8},~{memory}",
+	[ret],
+	[num, a, b, c, d, e]);
+	return ret;
+};
+
+let syscall6: (num: i32, a: usize, b: usize, c: usize, d: usize, e: usize, f: usize) -> usize = {
+	let ret: usize = 0;
+	asm("mov x8, ${1:x}\nmov x0, ${2:x}\nmov x1, ${3:x}\nmov x2, ${4:x}\nmov x3, ${5:x}\nmov x4, ${6:x}\nmov x5, ${7:x}\nsvc #0\n mov ${0:x}, x0",
+	"=r,r,r,r,r,r,r,r,~{x0},~{x1},~{x2},~{x3},~{x4},~{x5},~{x8},~{memory}",
+	[ret],
+	[num, a, b, c, d, e,f]);
+	return ret;
+};

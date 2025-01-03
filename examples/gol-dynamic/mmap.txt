@@ -1,0 +1,18 @@
+#include "mmap.head"
+#include "syscall.head"
+
+let mmap: (addr: void*, size: usize, prot: i32, mapflags: i32, fd: i32, offset: i32) -> void* = {
+	return cast(syscall6(222, cast(addr, usize), size, prot, mapflags, fd, offset), void*);
+};
+
+let simple_mmap: (sz: usize) -> void* = {
+	const prot: i32 = 3;
+	const mapflag: i32 = 34;
+	const fd: i32 = -1;
+	const offset: i32 = 0;
+	return mmap(cast(0, void*), sz, prot, mapflag, fd, offset);
+};
+
+let munmap: (addr: void*, size: usize) -> void = {
+	syscall2(215, cast(addr, usize), size);
+};

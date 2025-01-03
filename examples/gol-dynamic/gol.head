@@ -1,0 +1,14 @@
+// `width` as in 'the board will be a square with side length `width`, so
+// total size is width squared.
+let board: struct = {
+	board: i32*; // These could be chars but I'm playin'
+	scratch: i32*;
+	width: usize;
+};
+
+proto init_board: (width: usize) -> struct board*;
+proto print_board: (b: struct board*) -> void;
+proto at: (b: struct board*, x: i32, y: i32) -> i32;
+proto set_at: (b: struct board*, x: i32, y: i32, val: i32) -> void;
+proto step: (b: struct board*) -> void;
+proto destroy_board: (b: struct board*) -> void;
