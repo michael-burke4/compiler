@@ -41,17 +41,17 @@ typedef struct ast_decl {
 // Explicitly assigning Y_CHAR..Y_STRUCT values to make it 100% clear that they don't collide with
 // the integer size/signedness shenanigans
 typedef enum {
-	Y_CHAR = 0x0000,
-	Y_BOOL = 0x0001,
-	Y_VOID = 0x0002,
-	Y_POINTER = 0x0003,
-	Y_CONSTPTR = 0x0004, // the values at the memory address being pointed to cannot be changed using this ptr
-	Y_FUNCTION = 0x0005,
-	Y_STRUCT = 0x0006,
+	Y_BOOL = 0x0000,
+	Y_VOID = 0x0001,
+	Y_POINTER = 0x0002,
+	Y_CONSTPTR = 0x0003, // the values at the memory address being pointed to cannot be changed using this ptr
+	Y_FUNCTION = 0x0004,
+	Y_STRUCT = 0x0005,
 	// kinda dumb but useful: integer types encode bit witdth in the 4 binary digits at 0x0F00,
 	// and the 0xF000 bits encode signedness: 1 is unsigned, 2 is signed.
 	// TYPE_SIGNEDNESS_MASK and TYPE_WIDTH_MASK help keep track of this!
 	// Should things change, don't forget to change those macros!
+	Y_CHAR = 0x1600,
 	Y_U32 = 0x1800,
 	Y_U64 = 0x1900,
 	Y_I32 = 0x2800,

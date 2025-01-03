@@ -503,8 +503,8 @@ static LLVMValueRef cast_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_
 {
 	ast_type *from_cast_t = expr->left->type;
 	ast_type *to_cast_t = expr->type;
-	if (is_integer(from_cast_t)) {
-		if (is_integer(to_cast_t)) {
+	if (is_integer(from_cast_t) || from_cast_t->kind == Y_CHAR) {
+		if (is_integer(to_cast_t) || to_cast_t->kind == Y_CHAR) {
 			if (TYPE_WIDTH(to_cast_t->kind) < TYPE_WIDTH(from_cast_t->kind)) {
 				return LLVMBuildTrunc(builder, expr_codegen(mod, builder, expr->left, store_ctxt),
 						to_llvm_type(mod, to_cast_t), "");
@@ -521,10 +521,8 @@ static LLVMValueRef cast_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_
 			return LLVMBuildIntToPtr(builder, expr_codegen(mod, builder, expr->left, store_ctxt),
 						to_llvm_type(mod, to_cast_t), "");
 		}
-	}
-
-	else if (from_cast_t->kind == Y_POINTER) {
-		if (to_cast_t->kind == Y_POINTER) {
+	} else if (from_cast_t->kind == Y_POINTER || from_cast_t->kind == Y_CONSTPTR) {
+		if (to_cast_t->kind == Y_POINTER || to_cast_t->kind == Y_CONSTPTR) {
 			return expr_codegen(mod, builder, expr->left, store_ctxt);
 		}
 		else if (is_integer(to_cast_t)) {
