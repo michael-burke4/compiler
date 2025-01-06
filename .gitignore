@@ -5,3 +5,6 @@ target
 dbg
 cov
 *.DS_Store
+*.bc
+*.ll
+*.o
