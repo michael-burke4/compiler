@@ -16,7 +16,6 @@ LLVMTargetDataRef td = NULL;
 
 static LLVMTypeRef to_llvm_type(LLVMModuleRef mod, ast_type *tp)
 {
-	char buffer[BUFFER_MAX_LEN];
 	LLVMContextRef ctxt = CTXT(mod);
 	switch (tp->kind) {
 	case Y_I32:
@@ -35,8 +34,7 @@ static LLVMTypeRef to_llvm_type(LLVMModuleRef mod, ast_type *tp)
 	case Y_CHAR:
 		return LLVMInt8TypeInContext(ctxt);
 	case Y_STRUCT:
-		strvec_tostatic(tp->name, buffer);
-		return LLVMGetTypeByName(mod, buffer);
+		return LLVMGetTypeByName(mod, tp->name->text);
 	// LCOV_EXCL_START
 	default:
 		fprintf(stderr, "couldn't convert type\n");
@@ -76,8 +74,6 @@ LLVMModuleRef module_codegen(LLVMContextRef ctxt, ast_decl *start, char *module_
 //	this casted pointer is what is used later.
 static void initializer_codegen(LLVMModuleRef mod, LLVMTypeRef typ, LLVMBuilderRef builder, ast_stmt *stmt)
 {
-	char buffer[BUFFER_MAX_LEN];
-	strvec_tostatic(stmt->decl->typesym->symbol, buffer);
 	LLVMValueRef idx;
 
 	LLVMTypeRef llvmified_inner = to_llvm_type(mod, stmt->decl->typesym->type->subtype);
@@ -90,7 +86,7 @@ static void initializer_codegen(LLVMModuleRef mod, LLVMTypeRef typ, LLVMBuilderR
 		LLVMValueRef value = expr_codegen(mod, builder, stmt->decl->initializer->elements[i], 0);
 		LLVMBuildStore(builder, value, gep);
 	}
-	LLVMValueRef alloca2 = LLVMBuildAlloca(builder, LLVMPointerType(llvmified_inner, 0), buffer);
+	LLVMValueRef alloca2 = LLVMBuildAlloca(builder, LLVMPointerType(llvmified_inner, 0), stmt->decl->typesym->symbol->text);
 	idx = LLVMConstInt(LLVMInt32Type(), 0, 0);
 	LLVMBuildStore(builder, LLVMBuildPointerCast(builder, init, LLVMPointerType(llvmified_inner, 0), ""), alloca2);
 	scope_bind(alloca2, stmt->decl->typesym->symbol);
@@ -241,9 +237,9 @@ static void asm_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stm
 				0);
 	LLVMValueRef asm_call = LLVMGetInlineAsm(fn_type,
 					a->code->string_literal->text,
-					a->code->string_literal->size,
+					a->code->string_literal->size - 1,
 					a->constraints == NULL ? NULL : a->constraints->string_literal->text,
-					a->constraints == NULL ? 0 : a->constraints->string_literal->size,
+					a->constraints == NULL ? 0 : a->constraints->string_literal->size - 1,
 					1, 1, 0, 0);
 	LLVMValueRef res = LLVMBuildCall2(builder, fn_type, asm_call,
 				val_vect == NULL ? NULL : (LLVMValueRef *)val_vect->elements,
@@ -265,7 +261,6 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, LLV
 {
 	LLVMValueRef v1;
 	ast_stmt *cur;
-	char buffer[BUFFER_MAX_LEN];
 
 	if (stmt == NULL)
 		return;
@@ -299,8 +294,7 @@ void stmt_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_stmt *stmt, LLV
 		if (stmt->decl->initializer != NULL) {
 			initializer_codegen(mod, to_llvm_type(mod, stmt->decl->typesym->type->subtype), builder, stmt);
 		} else {
-			strvec_tostatic(stmt->decl->typesym->symbol, buffer);
-			v1 = LLVMBuildAlloca(builder, to_llvm_type(mod, stmt->decl->typesym->type), buffer);
+			v1 = LLVMBuildAlloca(builder, to_llvm_type(mod, stmt->decl->typesym->type), stmt->decl->typesym->symbol->text);
 			scope_bind(v1, stmt->decl->typesym->symbol);
 			if (stmt->decl->expr != NULL)
 				LLVMBuildStore(builder, expr_codegen(mod, builder, stmt->decl->expr, 0), v1);
@@ -540,14 +534,12 @@ static LLVMValueRef cast_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_
 
 LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *expr, int store_ctxt)
 {
-	char buffer[BUFFER_MAX_LEN];
 	LLVMValueRef v;
 	LLVMValueRef v2;
 	LLVMValueRef args[MAX_ARGS];
 	LLVMTypeRef argtypes[MAX_ARGS];
 	LLVMValueRef ret = NULL;
 	LLVMTypeRef t;
-	buffer[0] = '\0';
 	unsigned argno;
 	switch (expr->kind) {
 	case E_INT_LIT:
@@ -604,8 +596,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		else
 			return LLVMBuildICmp(builder, LLVMIntNE, expr_codegen(mod, builder, expr->left, 0), expr_codegen(mod, builder, expr->right, 0), "");
 	case E_FNCALL:
-		strvec_tostatic(expr->name, buffer);
-		v = LLVMGetNamedFunction(mod, buffer);
+		v = LLVMGetNamedFunction(mod, expr->name->text);
 		argno = LLVMCountParams(v);
 		get_fncall_args(mod, builder, expr, argno, &args, &argtypes);
 		LLVMTypeRef fn_t = LLVMFunctionType(to_llvm_type(mod, expr->type), argtypes, argno, 0);
@@ -623,7 +614,7 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 	case E_TRUE_LIT:
 		return LLVMConstInt(LLVMInt1TypeInContext(CTXT(mod)), 1, 0);
 	case E_STR_LIT:
-		return define_const_string_literal(mod, builder, expr->string_literal->text, expr->string_literal->size);
+		return define_const_string_literal(mod, builder, expr->string_literal->text, expr->string_literal->size - 1);
 	case E_CHAR_LIT:
 		return LLVMConstInt(LLVMInt8TypeInContext(CTXT(mod)), (int)expr->string_literal->text[0], 0);
 	case E_INEQUALITY:
@@ -660,15 +651,12 @@ LLVMValueRef expr_codegen(LLVMModuleRef mod, LLVMBuilderRef builder, ast_expr *e
 		} else if (expr->op == T_PERIOD) {
 			v = expr_codegen(mod, builder, expr->left, 1);
 			// TODO: clean up all this to static back to strvec nonsense.
-			strvec_tostatic(expr->left->type->name, buffer);
-			t = LLVMGetTypeByName2(CTXT(mod), buffer);
+			t = LLVMGetTypeByName2(CTXT(mod), expr->left->type->name->text);
 
-			strvec *name_vec = strvec_init_str(buffer);
 
 			// Look up the decl in sym tab so we can get field names
 			ast_decl *struct_decl;
-			struct_decl = scope_lookup(name_vec);
-			strvec_destroy(name_vec);
+			struct_decl = scope_lookup(expr->left->type->name);
 
 			size_t ind = get_member_position(struct_decl, expr->right->name);
 
@@ -711,16 +699,14 @@ static LLVMTypeRef *build_param_types(LLVMModuleRef mod, ast_decl *decl)
 
 static void alloca_params_as_local_vars(LLVMBuilderRef builder, LLVMValueRef fn, ast_decl *decl, LLVMTypeRef *param_types)
 {
-	char buf[BUFFER_MAX_LEN];
 	LLVMValueRef arg;
 	LLVMValueRef v;
 	vect *arglist = decl->typesym->type->arglist;
 	if (arglist == NULL || arglist->size == 0)
 		return;
 	for (size_t i = 0 ; i < arglist->size ; ++i) {
-		strvec_tostatic(arglist_get(arglist, i)->symbol, buf);
 		arg = LLVMGetParam(fn, i);
-		v = LLVMBuildAlloca(builder, param_types[i], buf);
+		v = LLVMBuildAlloca(builder, param_types[i], arglist_get(arglist, i)->symbol->text);
 		LLVMBuildStore(builder, arg, v);
 		scope_bind(v, arglist_get(arglist,i)->symbol);
 	}
@@ -728,8 +714,6 @@ static void alloca_params_as_local_vars(LLVMBuilderRef builder, LLVMValueRef fn,
 
 
 static void define_struct(LLVMModuleRef mod, ast_decl *decl) {
-	char buf[BUFFER_MAX_LEN];
-	strvec_tostatic(decl->typesym->symbol, buf);
 	vect *al = decl->typesym->type->arglist;
 	size_t sz = al->size;
 	vect *members = vect_init(sz);
@@ -745,7 +729,7 @@ static void define_struct(LLVMModuleRef mod, ast_decl *decl) {
 	// Also don't free this decl! The symbol table does not own it!!
 	scope_bind(decl, decl->typesym->symbol);
 
-	LLVMTypeRef st_tp = LLVMStructCreateNamed(CTXT(mod), buf);
+	LLVMTypeRef st_tp = LLVMStructCreateNamed(CTXT(mod), decl->typesym->symbol->text);
 	for (size_t i = 0 ; i < al->size ; ++i) {
 		LLVMTypeRef cur_type = to_llvm_type(mod, ((ast_typed_symbol *)vect_get(al, i))->type);
 		vect_append(members, cur_type);
@@ -761,9 +745,7 @@ static void define_struct(LLVMModuleRef mod, ast_decl *decl) {
 
 static void global_codegen(LLVMModuleRef mod, ast_decl *decl)
 {
-	char buf[BUFFER_MAX_LEN];
-	strvec_tostatic(decl->typesym->symbol, buf);
-	LLVMValueRef v = LLVMAddGlobal(mod, to_llvm_type(mod, decl->typesym->type), buf);
+	LLVMValueRef v = LLVMAddGlobal(mod, to_llvm_type(mod, decl->typesym->type), decl->typesym->symbol->text);
 	LLVMValueRef initial = NULL;
 	switch (decl->typesym->type->kind) {
 	case Y_CHAR:
@@ -804,24 +786,23 @@ static void global_codegen(LLVMModuleRef mod, ast_decl *decl)
 
 static void function_codegen(LLVMModuleRef mod, ast_decl *decl)
 {
-	char buf[BUFFER_MAX_LEN];
-	strvec_tostatic(decl->typesym->symbol, buf);
+	char *sym_text = decl->typesym->symbol->text;
 	if (decl->typesym->type->modif == VM_PROTO_DEFINED || decl->typesym->type->modif == VM_PROTO) {
 		LLVMTypeRef *param_types = build_param_types(mod, decl);
 		vect *arglist = decl->typesym->type->arglist;
 		size_t size = arglist == NULL ? 0 : arglist->size;
 		LLVMTypeRef ret_type = LLVMFunctionType(to_llvm_type(mod, decl->typesym->type->subtype), param_types, size, 0);
-		LLVMAddFunction(mod, buf, ret_type);
+		LLVMAddFunction(mod, sym_text, ret_type);
 		free(param_types);
 		return;
 	}
 	LLVMValueRef fn_value = NULL;
 	LLVMTypeRef *param_types = build_param_types(mod, decl);
-	if ((fn_value = LLVMGetNamedFunction(mod, buf)) == NULL) {
+	if ((fn_value = LLVMGetNamedFunction(mod, sym_text)) == NULL) {
 		vect *arglist = decl->typesym->type->arglist;
 		size_t size = arglist == NULL ? 0 : arglist->size;
 		LLVMTypeRef ret_type = LLVMFunctionType(to_llvm_type(mod, decl->typesym->type->subtype), param_types, size, 0);
-		fn_value = LLVMAddFunction(mod, buf, ret_type);
+		fn_value = LLVMAddFunction(mod, sym_text, ret_type);
 	}
 	scope_enter();
 	scope_bind_return_type(decl->typesym->type->subtype);

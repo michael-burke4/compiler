@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define BUFFER_MAX_LEN 128
 
 typedef struct strvec {
 	size_t size;
@@ -20,8 +19,6 @@ typedef struct vect {
 	size_t capacity;
 	void **elements;
 } vect;
-
-// CURRENLTY: strvec and vec are two different things
 
 void *smalloc(size_t size);
 void *scalloc(size_t nmemb, size_t size);
@@ -37,7 +34,6 @@ void strvec_print(strvec *vec);
 void strvec_destroy(strvec *vec);
 int strvec_equals_str(strvec *vec, const char *string);
 long strvec_tol(strvec *vec);
-void strvec_tostatic(strvec *vec, char buff[BUFFER_MAX_LEN]);
 
 vect *vect_init(size_t capacity);
 void vect_append(vect *vect, void *e);

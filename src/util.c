@@ -14,7 +14,7 @@ static void *_reallocarray(void *ptr, size_t nmemb, size_t size)
 	size_t total_size = nmemb * size;
 	if (size != 0 && total_size / size != nmemb)
 		return NULL;
-	return realloc(ptr, total_size);
+	return srealloc(ptr, total_size);
 }
 
 vect *vect_init(size_t capacity)
@@ -33,7 +33,7 @@ void vect_append(vect *v, void *e)
 		v->capacity *= 2;
 	}
 	v->elements[v->size] = e;
-	v->size++;
+	(v->size)++;
 }
 
 // user must free/destroy each internal element themselves!
@@ -57,20 +57,22 @@ void *vect_get(vect *v, size_t i) {
 strvec *strvec_init(size_t capacity)
 {
 	strvec *ret = smalloc(sizeof(*ret));
-	ret->capacity = capacity;
-	ret->size = 0;
-	ret->text = calloc(capacity, sizeof(*(ret->text)));
+	ret->capacity = capacity + 1;
+	ret->size = 1;
+	ret->text = smalloc(ret->capacity);
+	ret->text[0] = '\0';
 	return ret;
 }
 
 strvec *strvec_init_str(const char *str)
 {
-	size_t len = strlen(str);
 	strvec *ret = smalloc(sizeof(*ret));
-	ret->capacity = len;
-	ret->size = len;
-	ret->text = smalloc(len);
+	size_t len = strlen(str);
+	ret->capacity = len + 1;
+	ret->size = ret->capacity;
+	ret->text = smalloc(ret->capacity);
 	memcpy(ret->text, str, len);
+	ret->text[len] = '\0';
 	return ret;
 }
 
@@ -80,18 +82,18 @@ void strvec_append(strvec *vec, char c)
 		vec->text = _reallocarray(vec->text, vec->size * 2, sizeof(*(vec->text)));
 		vec->capacity *= 2;
 	}
-	vec->text[vec->size] = c;
-	vec->size++;
+	vec->text[vec->size] = '\0';
+	vec->text[vec->size - 1] = c;
+	vec->size += 1;
 }
 
 void fstrvec_print(FILE *f, strvec *vec)
 {
-	fprintf(f, "%.*s", (int)vec->size, vec->text);
+	fprintf(f, "%s", vec->text);
 }
 
 void strvec_print(strvec *vec)
 {
-	// stupid int cast do something better (eventually)
 	fstrvec_print(stdout, vec);
 }
 
@@ -108,15 +110,15 @@ void strvec_destroy(strvec *vec)
 int strvec_equals(strvec *a, strvec *b)
 {
 	// checking size first so it can short circuit when sizes are not the same.
-	return a->size == b->size && !memcmp(a->text, b->text, a->size);
+	return a->size == b->size && !memcmp(a->text, b->text, a->size-1);
 }
 
 int strvec_equals_str(strvec *vec, const char *string)
 {
-	if (vec->size != strlen(string))
+	if (vec->size - 1 != strlen(string))
 		return 0;
 	// not to make it one or zero.
-	return !memcmp(vec->text, string, vec->size);
+	return !memcmp(vec->text, string, vec->size-1);
 }
 
 // Check errno at calling code!
@@ -167,18 +169,6 @@ void *srealloc(void *ptr, size_t size)
 	if (ret == NULL)
 		err(1, "realloc failed");
 	return ret;
-}
-
-void strvec_tostatic(strvec *vec, char buff[BUFFER_MAX_LEN])
-{
-	size_t i;
-	if (vec->size > BUFFER_MAX_LEN - 1) {
-		fprintf(stderr, "vector too big to put in static buffer!");
-		exit(1);
-	}
-	for (i = 0; i < vec->size ; ++i) //strvec char array is NON-NULL TERMINATED!
-		buff[i] = vec->text[i];
-	buff[i] = '\0';
 }
 
 void print_bits(uint64_t x)
