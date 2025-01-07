@@ -225,6 +225,46 @@ static void typecheck_global_decl(ast_decl *decl)
 	}
 }
 
+static int valid_type_for_decl(ast_type *tp, int pointing) {
+	if (tp == NULL)
+		return 0;
+
+	switch (tp->kind) {
+	case Y_CHAR:
+	case Y_BOOL:
+	case Y_U32:
+	case Y_U64:
+	case Y_I32:
+	case Y_I64:
+		return 1;
+
+	case Y_STRUCT:
+		if (tp->name == NULL) {
+			return !pointing;
+		}
+		ast_typed_symbol *found = scope_lookup(tp->name);
+		return found != NULL;
+
+	case Y_POINTER:
+	case Y_CONSTPTR:
+		return valid_type_for_decl(tp->subtype, 1);
+
+	case Y_VOID:
+		return pointing;
+	case Y_FUNCTION:
+		return !pointing;
+	// TODO: function pointers?
+	// one thing is that the way function types are written is
+	// (arg1: type1, arg2: type2, ..., argn : typen) -> return_type
+	//
+	// if we want function pointers, writing the following...
+	// (arg1: type1, arg2: type2, ..., argn : typen) -> return_type*
+	// just says to return a `return_type` pointer, not that we're specifying a
+	// function pointer.
+	}
+	return 0;
+}
+
 void typecheck_decl(ast_decl *decl, int at_global_level)
 {
 	ast_typed_symbol *ts = NULL;
@@ -262,13 +302,9 @@ void typecheck_decl(ast_decl *decl, int at_global_level)
 		scope_bind_ts(decl->typesym);
 		return;
 	}
-	if (decl->typesym->type->kind == Y_STRUCT && decl->typesym->type->name != NULL) {
-		ast_typed_symbol *found = scope_lookup(decl->typesym->type->name);
-		if (found == NULL)
-			report_error_cur_line("Can't use undeclared struct type");
-	}
-	if (decl->typesym->type->kind == Y_VOID) {
-		report_error_cur_line("Can't declare variable with type void");
+
+	if (!valid_type_for_decl(decl->typesym->type, 0)) {
+		report_error_cur_line("Could not create a decl of this type.");
 		return;
 	}
 

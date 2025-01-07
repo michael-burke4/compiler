@@ -1,0 +1,11 @@
+// comp_err typecheck
+// END_HEADER
+
+let main: () -> i32 = {
+	let x: struct fake*;
+	let y: struct fake@;
+	let z: struct fake;
+
+
+	return 0;
+};
