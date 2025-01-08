@@ -87,8 +87,5 @@ test: $(COVDIR)
 	genhtml -o $(COVDIR)/ $(DBGDIR)/cov.info > /dev/null
 
 clean:
-	-rm $(OBJDIR)/*
-	-rm $(BINDIR)/*
-	-rm $(TGTDIR)/*
-	-rm $(DBGDIR)/*
+	-rm $(OBJDIR)/* $(BINDIR)/* $(TGTDIR)/* $(DBGDIR)/*
 	-rm -rf $(COVDIR)/*

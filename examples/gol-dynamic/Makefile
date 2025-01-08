@@ -1,4 +1,5 @@
-CC=../../bin/main
+COMPILERDIR=../..
+CC=$(COMPILERDIR)/bin/main
 PP=./preprocess.py
 LC=llc
 LD=clang
@@ -15,11 +16,14 @@ gol: $(subst .txt,.o,$(SRC))
 %.o: %.bc
 	$(LC) --filetype=obj $< -o $@
 
-%.bc: %.ptxt
+%.bc: %.ptxt $(CC)
 	$(CC) $< -o $@
 
 %.ptxt: %.txt $(DEPS)
 	$(PP) $< -o $@
+
+$(CC):
+	make --directory=$(COMPILERDIR)
 
 clean:
 	-rm *.o *.ptxt gol
