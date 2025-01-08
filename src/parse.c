@@ -140,7 +140,7 @@ static vect *parse_arglist(int *had_arglist_error)
 	vect *ret = NULL;
 	int empty = 1;
 	token_t typ;
-	ast_typed_symbol *ts;
+	ast_typed_symbol *ts = NULL;
 	while (1) {
 		typ = cur_tok_type();
 		if (typ == T_RPAREN) {
@@ -148,26 +148,29 @@ static vect *parse_arglist(int *had_arglist_error)
 			return ret;
 		} else if (empty) {
 			ts = parse_typed_symbol();
-			if (ts == NULL) {
-				*had_arglist_error = 1;
-				return NULL;
-			}
+			if (ts == NULL)
+				goto parse_arglist_err;
 			empty = 0;
 			ret = vect_init(2);
 			vect_append(ret, (void *)ts);
 		} else if (typ == T_COMMA) {
 			next();
 			ts = parse_typed_symbol();
-			if (ts == NULL) {
-				*had_arglist_error = 1;
-				return NULL;
-			}
+			if (ts == NULL)
+				goto parse_arglist_err;
 			vect_append(ret, (void *)ts);
 		} else {
-			*had_arglist_error = 1;
-			return NULL;
+			goto parse_arglist_err;
 		}
 	}
+parse_arglist_err:
+	if (ret != NULL)
+		for (size_t i = 0 ; i < ret->size ; ++i) {
+			ast_typed_symbol_destroy(ret->elements[i]);
+		}
+	vect_destroy(ret);
+	*had_arglist_error = 1;
+	return NULL;
 }
 
 ast_typed_symbol *parse_typed_symbol(void)
