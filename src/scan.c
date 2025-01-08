@@ -97,10 +97,37 @@ static token_s *scan_number(int negative, FILE *f, size_t *line, size_t *col)
 	return tok_init_nl(T_INT_LIT, *line, old_col, num);
 }
 
+// Assumes you come into this function having just scanned a backslash
+// quote char for single or double quotes. this works for strings and chars.
+static char try_escape_sequence(FILE *f, size_t *line, size_t *col, char quote_char, int *failed) {
+	char c;
+	(*col)++;
+	c = fgetc(f);
+	*failed = 0;
+	if (c == 'n')
+		return '\n';
+	else if (c == '\\')
+		return '\\';
+	else if (c == '\'' && quote_char == '\'')
+		return '\'';
+	else if (c == '"' && quote_char == '"')
+		return '"';
+	else if (c == '0')
+		return '\0';
+
+	if (c == '\n')
+		ungetc(c, f);
+
+	report_error(*line, *col - 1, "Unrecognized escape character");
+	*failed = 1;
+	return 'E';
+}
+
 static token_s *scan_char_literal(FILE *f, size_t *line, size_t *col)
 {
 	int c;
 	int c2;
+	int fail_flag = 0;
 	strvec *character = NULL;
 	size_t old_col = *col;
 	(*col)++;
@@ -110,20 +137,7 @@ static token_s *scan_char_literal(FILE *f, size_t *line, size_t *col)
 		report_error(*line, old_col, "Bad char literal. Missing close quote?");
 		return tok_init_nl(T_ERROR, *line, old_col, NULL);
 	} else if (c == '\\') {
-		(*col)++;
-		c = fgetc(f);
-		if (c == 'n')
-			c = '\n';
-		else if (c == '\\')
-			c = '\\';
-		else if (c == '\'')
-			c = '\'';
-		else if (c == '0')
-			c = '\0';
-		else {
-			report_error(*line, old_col, "Unrecognized escape sequence.");
-			return tok_init_nl(T_ERROR, *line, old_col, NULL);
-		}
+		c = try_escape_sequence(f, line, col, '\'', &fail_flag);
 	} else if (c == '\'') {
 		(*col)++;
 		report_error(*line, old_col, "Empty char literal.");
@@ -136,15 +150,19 @@ static token_s *scan_char_literal(FILE *f, size_t *line, size_t *col)
 		report_error(*line, old_col, "Bad char literal. Missing close quote?");
 		return tok_init_nl(T_ERROR, *line, old_col, NULL);
 	}
+	(*col)++;
+	// Don't quit at fail flag first time around: also warn if missing close quote.
+	if (fail_flag)
+		return tok_init_nl(T_ERROR, *line, old_col, NULL);
 	character = strvec_init(1);
 	strvec_append(character, c);
-	(*col)++;
 	return tok_init_nl(T_CHAR_LIT, *line, old_col, character);
 }
 
 static token_s *scan_string_literal(FILE *f, size_t *line, size_t *col)
 {
 	int c;
+	int fail_flag = 0;
 	strvec *str = strvec_init(5);
 	size_t old_col = *col;
 	(*col)++;
@@ -157,27 +175,16 @@ static token_s *scan_string_literal(FILE *f, size_t *line, size_t *col)
 			report_error(*line, old_col, "Unterminated string literal.");
 			return tok_init_nl(T_ERROR, *line, old_col, NULL);
 		}
-		if (c == '\\') {
-			c = fgetc(f);
-			if (c == 'n')
-				strvec_append(str, '\n');
-			else if (c == '"')
-				strvec_append(str, '"');
-			else if (c == '0')
-				strvec_append(str, '\0');
-			else if (c == '\\')
-				strvec_append(str, '\\');
-			else {
-				ungetc(c, f);
-				(*col)--;
-				strvec_destroy(str);
-				report_error(*line, old_col, "Unsupported escape sequence.");
-				return tok_init_nl(T_ERROR, *line, old_col, NULL);
-			}
-		} else
+		if (c == '\\')
+			strvec_append(str, try_escape_sequence(f, line, col, '"', &fail_flag));
+		else
 			strvec_append(str, c);
 	}
 	(*col)++;
+	if (fail_flag) {
+		strvec_destroy(str);
+		return tok_init_nl(T_ERROR, *line, old_col, NULL);
+	}
 	return tok_init_nl(T_STR_LIT, *line, old_col, str);
 }
 
