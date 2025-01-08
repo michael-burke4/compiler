@@ -1,0 +1,13 @@
+// comp_err typecheck
+// END_HEADER
+
+proto f: () -> bool;
+proto f: (a: i32, b: i32) -> i32;
+
+let main: () -> i32 = {
+	return f(5, 10);
+};
+
+let f: (a: i32, b: i32) -> i32 = {
+	return 5 * a + b;
+};

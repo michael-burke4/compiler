@@ -1,0 +1,7 @@
+// ret 1
+// END_HEADER
+
+let main: () -> i32 = {
+	asm("");
+	return 1;
+};

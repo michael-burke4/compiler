@@ -1,0 +1,10 @@
+// ret 20
+// END_HEADER
+
+
+let main: () -> i32 = {
+	let a: i32 = 10;
+	(a) = 20;
+
+	return a;
+};
