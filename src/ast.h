@@ -149,6 +149,8 @@ typedef struct asm_struct {
 	vect *in_operands;
 } asm_struct;
 
+typedef enum {RETW_UNCHECKED, RETW_FALSE, RETW_TRUE} retw_t;
+
 typedef struct ast_stmt {
 	stmt_t kind;
 	struct ast_decl *decl;
@@ -159,6 +161,7 @@ typedef struct ast_stmt {
 	struct asm_struct *asm_obj;
 	void *extra; // THIS SUCKS: break/continues need to know where to go next, this is where I stuff the LLVMBasicBlockRef
 	size_t line;
+	retw_t return_worthy;
 } ast_stmt;
 
 ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt, ast_decl *next, size_t line);

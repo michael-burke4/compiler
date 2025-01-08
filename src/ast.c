@@ -66,6 +66,7 @@ ast_stmt *stmt_init(stmt_t kind, ast_decl *decl, ast_expr *expr, ast_stmt *body,
 	ret->next = NULL;
 	ret->asm_obj = NULL;
 	ret->line = line;
+	ret->return_worthy = RETW_UNCHECKED;
 
 	return ret;
 }

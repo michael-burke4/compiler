@@ -97,27 +97,32 @@ static void typecheck_return(ast_stmt *stmt) {
 // PRECONDITIONS:
 //	stmt must be non-null.
 //	stmt->next must be null.
-static int is_return_worthy(ast_stmt *stmt) {
+static retw_t is_return_worthy(ast_stmt *stmt) {
+	if (stmt->return_worthy != RETW_UNCHECKED)
+		return stmt->return_worthy;
 	if (stmt->kind == S_RETURN) {
 		typecheck_return(stmt);
 		// typecheck_return can still set had_error and print an error message:
 		// what matters to is_return_worthy is that this statement is return-worthy!
-		return 1;
+		return (stmt->return_worthy = RETW_TRUE);
 	}
 	if (stmt->kind == S_IFELSE) {
 		if (stmt->else_body == NULL) {
-			return 0;
+			return (stmt->return_worthy = RETW_FALSE);
 		}
-		return is_return_worthy(last(stmt->body->body)) && is_return_worthy(last(stmt->else_body->body));
+		if (is_return_worthy(last(stmt->body->body)) == RETW_TRUE
+				&& is_return_worthy(last(stmt->else_body->body)) == RETW_TRUE) {
+			return (stmt->return_worthy = RETW_TRUE);
+		}
 	}
-	return 0;
+	return (stmt->return_worthy = RETW_FALSE);
 }
 
 static void append_retvoid_if_needed(ast_decl *fn) {
 	if (fn == NULL || fn->typesym->type->subtype->kind != Y_VOID || fn->body == NULL || fn->body->body == NULL)
 		return;
 	ast_stmt *s = last(fn->body->body);
-	if (!is_return_worthy(s))
+	if (is_return_worthy(s) == RETW_FALSE)
 		s->next = stmt_init(S_RETURN, 0, 0, 0, 0, fn->line);
 }
 
@@ -701,7 +706,7 @@ void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 		return;
 	}
 	cur_line = stmt->line;
-	if (is_return_worthy(stmt)) {
+	if (is_return_worthy(stmt) == RETW_TRUE) {
 		if (stmt->next != NULL) {
 			report_error_cur_line("Return-worthy statements must appear at the end of fn blocks."); // TODO: this is a bad error messsage
 			return;
