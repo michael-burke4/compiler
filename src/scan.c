@@ -118,7 +118,7 @@ static char try_escape_sequence(FILE *f, size_t *line, size_t *col, char quote_c
 	if (c == '\n')
 		ungetc(c, f);
 
-	report_error(*line, *col - 1, "Unrecognized escape character");
+	report_error(*line, *col - 1, "Unrecognized escape character\n");
 	*failed = 1;
 	return 'E';
 }
@@ -134,20 +134,20 @@ static token_s *scan_char_literal(FILE *f, size_t *line, size_t *col)
 	c = fgetc(f);
 	if (c == '\n') {
 		ungetc(c, f);
-		report_error(*line, old_col, "Bad char literal. Missing close quote?");
+		report_error(*line, old_col, "Bad char literal. Missing close quote?\n");
 		return tok_init_nl(T_ERROR, *line, old_col, NULL);
 	} else if (c == '\\') {
 		c = try_escape_sequence(f, line, col, '\'', &fail_flag);
 	} else if (c == '\'') {
 		(*col)++;
-		report_error(*line, old_col, "Empty char literal.");
+		report_error(*line, old_col, "Empty char literal.\n");
 		return tok_init_nl(T_ERROR, *line, old_col, NULL);
 	}
 	(*col)++;
 	c2 = fgetc(f);
 	if (c2 != '\'') {
 		ungetc(c2, f);
-		report_error(*line, old_col, "Bad char literal. Missing close quote?");
+		report_error(*line, old_col, "Bad char literal. Missing close quote?\n");
 		return tok_init_nl(T_ERROR, *line, old_col, NULL);
 	}
 	(*col)++;
@@ -172,7 +172,7 @@ static token_s *scan_string_literal(FILE *f, size_t *line, size_t *col)
 			ungetc(c, f);
 			(*col)--;
 			strvec_destroy(str);
-			report_error(*line, old_col, "Unterminated string literal.");
+			report_error(*line, old_col, "Unterminated string literal.\n");
 			return tok_init_nl(T_ERROR, *line, old_col, NULL);
 		}
 		if (c == '\\')
@@ -359,7 +359,7 @@ token_s *scan_next_token(FILE *f, size_t *line, size_t *col)
 	case ']':
 		return tok_init_nl(T_RBRACKET, *line, (*col)++, NULL);
 	default:
-		report_error(*line, *col, "Unrecognized token.");
+		report_error(*line, *col, "Unrecognized token '%c'.\n", '#');
 		return tok_init_nl(T_ERROR, *line, (*col)++, NULL);
 	}
 }
