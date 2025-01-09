@@ -1,10 +1,10 @@
 #include "ast.h"
 #include "error.h"
 #include "parse.h"
+#include "print.h"
 #include "token.h"
 
 #include <errno.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -46,7 +46,7 @@ static void report_error_cur_tok(const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	report_error(cur_token->line, cur_token->col, fmt, args);
+	vreport_error(cur_token->line, cur_token->col, fmt, args);
 	va_end(args);
 }
 
@@ -54,15 +54,9 @@ static void report_error_prev_tok(const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	report_error(prev_token->line, prev_token->col, fmt, args);
+	vreport_error(prev_token->line, prev_token->col, fmt, args);
 	va_end(args);
 }
-
-//static inline void put_back(token_s *t)
-//{
-//	t->next = cur_token;
-//	cur_token = t;
-//}
 
 // Can search for a specific token to sync to. the or_newline enabled means the
 // parser will consider itself synced upon reaching the specified target token
@@ -105,7 +99,9 @@ static vect *parse_comma_separated_exprs(token_t closer) {
 		}
 	} while (expect(T_COMMA));
 	if (!expect(closer)) {
-		report_error_prev_tok("Expression list is missing closing token.");
+		report_error_prev_tok("Expression list is missing closing token '", closer);
+		fprint_tok_t(stderr, closer);
+		fprintf(stderr, "'.\n");
 		destroy_expr_vect(ret);
 		ret = NULL;
 	}
@@ -131,7 +127,7 @@ ast_decl *parse_program(token_s *head)
 	}
 	// Subject to change?
 	if (!ret)
-		report_error_cur_tok("Blank modules are not allowed.");
+		report_error_cur_tok("Blank modules are not allowed.\n");
 	return ret;
 }
 
@@ -203,13 +199,13 @@ static vect *parse_struct_def(void)
 {
 	ast_typed_symbol *cur;
 	if (!expect(T_LCURLY)) {
-		report_error_cur_tok("Missing opening brace in struct definition.");
+		report_error_cur_tok("Missing opening brace in struct definition.\n");
 		sync_to(T_RCURLY, 0);
 		return NULL;
 	}
 	next();
 	if (expect(T_RCURLY)) {
-		report_error_cur_tok("Struct definition can't be empty.");
+		report_error_cur_tok("Struct definition can't be empty.\n");
 		sync_to(T_SEMICO, 0);
 		next();
 		return NULL;
@@ -220,7 +216,7 @@ static vect *parse_struct_def(void)
 		if (cur != NULL && !expect(T_SEMICO)) {
 			sync_to(T_EOF, 1);
 		} else if (cur == NULL) {
-			report_error_cur_tok("Couldn't parse typed symbol.");
+			report_error_cur_tok("Couldn't parse typed symbol.\n");
 			sync_to(T_EOF, 1);
 		} else
 			next();
@@ -249,7 +245,7 @@ ast_decl *parse_decl(void)
 	else if (expect(T_PROTO))
 		vm = VM_PROTO;
 	else {
-		report_error_cur_tok("Missing `let`/`const`/`proto` keyword in decalaration.");
+		report_error_cur_tok("Expected variable decalaration starting with let/const/proto keyword.\n");
 		sync_to(T_EOF, 1);
 		goto parse_decl_err;
 	}
@@ -258,7 +254,7 @@ ast_decl *parse_decl(void)
 	typed_symbol = parse_typed_symbol();
 	// TODO: things still get ugly here if we're parsing a a function/struct that has an incorrect type symbol.
 	if (typed_symbol == NULL) {
-		report_error_cur_tok("Missing/invalid type specifier or name.");
+		report_error_cur_tok("Missing/invalid type specifier or name.\n");
 		sync_to(T_EOF, 1);
 		goto parse_decl_err;
 	}
@@ -272,7 +268,7 @@ ast_decl *parse_decl(void)
 
 	if (!expect(T_ASSIGN)) {
 		missed_assign = 1;
-		report_error_cur_tok("Missing `=`.");
+		report_error_cur_tok("Missing `=`.\n");
 	} else {
 		next();
 	}
@@ -304,7 +300,8 @@ ast_decl *parse_decl(void)
 	}
 
 	if (!expect(T_SEMICO)) {
-		report_error_prev_tok("Could not parse declaration. Missing terminating semicolon?");
+		report_error_prev_tok("Could not parse declaration of variable '%s'. Missing terminating semicolon?\n",
+				typed_symbol->symbol->text);
 		if (cur_token != NULL && prev_token != NULL && cur_token->line == prev_token->line)
 			sync_to(T_EOF, 1);
 		goto parse_decl_err;
@@ -347,7 +344,7 @@ ast_stmt *parse_stmt_block(void)
 		}
 	}
 	if (current == NULL) {
-		report_error_cur_tok("Empty statement block.");
+		report_error_cur_tok("Empty statement block.\n");
 	}
 	next();
 	return block;
@@ -467,7 +464,7 @@ asm_parse_error:
 	vect_destroy(in_operands);
 	expr_destroy(constraints);
 	expr_destroy(code);
-	report_error_cur_tok("Could not parse inline assembly statement.");
+	report_error_cur_tok("Could not parse inline assembly statement.\n");
 	sync_to(T_SEMICO, 0);
 	return NULL;
 }
@@ -496,13 +493,13 @@ ast_stmt *parse_stmt(void)
 		kind = S_IFELSE;
 		next();
 		if (!expect(T_LPAREN)) {
-			report_error_cur_tok("Missing left paren in `if` condition.");
+			report_error_cur_tok("Missing left paren in `if` condition.\n");
 		} else {
 			next();
 		}
 		expr = parse_expr();
 		if (!expect(T_RPAREN)) {
-			report_error_cur_tok("Missing right paren in `if` condition.");
+			report_error_cur_tok("Missing right paren in `if` condition.\n");
 		} else {
 			next();
 		}
@@ -516,13 +513,13 @@ ast_stmt *parse_stmt(void)
 		kind = S_WHILE;
 		next();
 		if (!expect(T_LPAREN)) {
-			report_error_cur_tok("Missing left paren in `while` condition.");
+			report_error_cur_tok("Missing left paren in `while` condition.\n");
 		} else {
 			next();
 		}
 		expr = parse_expr();
 		if (!expect(T_RPAREN)) {
-			report_error_cur_tok("Missing right paren in `while` condition.");
+			report_error_cur_tok("Missing right paren in `while` condition.\n");
 		} else {
 			next();
 		}
@@ -532,7 +529,7 @@ ast_stmt *parse_stmt(void)
 		kind = S_CONTINUE;
 		next();
 		if (!expect(T_SEMICO)) {
-			report_error_prev_tok("Continue statement missing terminating semicolon.");
+			report_error_prev_tok("Continue statement missing terminating semicolon.\n");
 		} else {
 			next();
 		}
@@ -541,7 +538,7 @@ ast_stmt *parse_stmt(void)
 		kind = S_BREAK;
 		next();
 		if (!expect(T_SEMICO)) {
-			report_error_prev_tok("Break statement missing terminating semicolon.");
+			report_error_prev_tok("Break statement missing terminating semicolon.\n");
 		} else {
 			next();
 		}
@@ -555,10 +552,10 @@ ast_stmt *parse_stmt(void)
 		}
 		expr = parse_expr();
 		if (expr == NULL) {
-			report_error_cur_tok("Could not parse expression in return statement.");
+			report_error_cur_tok("Could not parse expression in return statement.\n");
 		}
 		if (!expect(T_SEMICO)) {
-			report_error_prev_tok("Return statement missing terminating semicolon.");
+			report_error_prev_tok("Return statement missing terminating semicolon.\n");
 		} else {
 			next();
 		}
@@ -572,11 +569,11 @@ ast_stmt *parse_stmt(void)
 		kind = S_EXPR;
 		expr = parse_expr();
 		if (expr == NULL) {
-			report_error_cur_tok("could not parse statement");
+			report_error_cur_tok("Could not parse statement.\n");
 			goto stmt_err;
 		}
 		if (!expect(T_SEMICO)) {
-			report_error_prev_tok("Expression missing terminating semicolon.");
+			report_error_prev_tok("Expression missing terminating semicolon.\n");
 			goto stmt_err;
 		}
 		next();
@@ -646,7 +643,7 @@ ast_type *parse_type(void)
 			cur_token->text = NULL;
 			next();
 		} else {
-			report_error_cur_tok("Invalid token in struct type specifier");
+			report_error_cur_tok("Invalid token in struct type specifier\n");
 			next();
 		}
 		break;
@@ -654,18 +651,18 @@ ast_type *parse_type(void)
 		next();
 		arglist = parse_arglist(&had_arglist_err);
 		if (had_arglist_err) {
-			report_error_cur_tok("Failed parsing argument list in function declaration.");
+			report_error_cur_tok("Failed parsing argument list in function declaration.\n");
 			sync_to(T_ASSIGN, 1);
 		}
 		if (!expect(T_ARROW)) {
-			report_error_cur_tok("Missing arrow in function declaration.");
+			report_error_cur_tok("Missing arrow in function type specifier.\n");
 			sync_to(T_EOF, 1);
 			break;
 		}
 		next();
 		subtype = parse_type();
 		if (subtype == NULL) {
-			report_error_cur_tok("Missing/invalid return type in function declaration.");
+			report_error_cur_tok("Missing/invalid return type in function declaration.\n");
 			sync_to(T_ASSIGN, 0);
 		}
 		ret = type_init(Y_FUNCTION, NULL);
@@ -673,7 +670,7 @@ ast_type *parse_type(void)
 		ret->arglist = arglist;
 		break;
 	default:
-		report_error_cur_tok("Invalid type");
+		report_error_cur_tok("Invalid type.\n");
 		// Syncing from here is left as an exercise to the caller.
 		return NULL;
 	}
@@ -915,7 +912,7 @@ ast_expr *parse_expr_post_unary(void)
 		if (typ == T_LBRACKET) {
 			e = parse_expr();
 			if (!expect(T_RBRACKET)) {
-				report_error_cur_tok("Missing closing bracket.");
+				report_error_cur_tok("Missing closing bracket.\n");
 				expr_destroy(e);
 				return NULL;
 			}
@@ -944,18 +941,18 @@ static ast_expr *parse_cast(void)
 
 	next();
 	if (!expect(T_LPAREN)) {
-		report_error_cur_tok("Cast expression missing opening paren");
+		report_error_cur_tok("Cast expression missing opening paren\n");
 		return NULL;
 	}
 	next();
 
 	if ((e = parse_expr()) == NULL) {
-		report_error_cur_tok("Could not parse inner expression in cast expression");
+		report_error_cur_tok("Could not parse inner expression in cast expression\n");
 		return NULL;
 	}
 
 	if (!expect(T_COMMA)) {
-		report_error_cur_tok("Cast expression missing comma");
+		report_error_cur_tok("Cast expression missing comma\n");
 		expr_destroy(e);
 		return NULL;
 	}
@@ -964,14 +961,14 @@ static ast_expr *parse_cast(void)
 
 	if ((t = parse_type()) == NULL) {
 		expr_destroy(e);
-		report_error_cur_tok("Could not parse type in cast expression");
+		report_error_cur_tok("Could not parse type in cast expression\n");
 		return NULL;
 	}
 
 	if (!expect(T_RPAREN)) {
 		expr_destroy(e);
 		type_destroy(t);
-		report_error_cur_tok("Cast expression missing closing paren");
+		report_error_cur_tok("Cast expression missing closing paren\n");
 		return NULL;
 	}
 	next();
@@ -998,7 +995,7 @@ ast_expr *parse_expr_unit(void)
 		if (cur_tok_type() != T_RPAREN) {
 			// TODO leave error handling to fns like parse_stmt and parse_decl.
 			// Just bubble the error up by returning zero.
-			report_error_cur_tok("Expression is missing a closing paren.");
+			report_error_cur_tok("Expression is missing a closing paren.\n");
 			expr_destroy(ex);
 			return NULL;
 		}
@@ -1014,7 +1011,7 @@ ast_expr *parse_expr_unit(void)
 		int64_t n;
 		n = strvec_tol(cur->text);
 		if (errno != 0) {
-			report_error_prev_tok("Could not parse int literal");
+			report_error_prev_tok("Could not parse int literal\n");
 		}
 		ex = expr_init(E_INT_LIT, NULL, NULL, 0, NULL, n, NULL);
 		ex->type = type_init(smallest_fit(n), NULL);
@@ -1052,7 +1049,7 @@ ast_expr *parse_expr_unit(void)
 		next();
 		return expr_init(E_CHAR_LIT, NULL, NULL, 0, NULL, 0, txt);
 	default:
-		report_error_cur_tok("Could not parse expr unit.");
+		report_error_cur_tok("Could not parse expr unit.\n");
 		return NULL;
 	}
 }
