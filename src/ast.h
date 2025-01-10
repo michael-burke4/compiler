@@ -165,6 +165,7 @@ typedef struct ast_stmt {
 } ast_stmt;
 
 ast_decl *decl_init(ast_typed_symbol *typesym, ast_expr *expr, ast_stmt *stmt, ast_decl *next, size_t line);
+char *decl_name(ast_decl *d);
 ast_type *type_init(type_t kind, strvec *name);
 ast_typed_symbol *ast_typed_symbol_init(ast_type *type, strvec *symbol);
 ast_expr *expr_init(expr_t kind, ast_expr *left, ast_expr *right, token_t op, strvec *name,

@@ -241,3 +241,10 @@ bool is_integer(ast_type *t)
 		return false;
 	}
 }
+
+char *decl_name(ast_decl *d)
+{
+	if (d == NULL)
+		return NULL;
+	return d->typesym->symbol->text;
+}

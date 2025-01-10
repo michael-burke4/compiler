@@ -1,11 +1,13 @@
 #include "error.h"
 #include "parse.h"
+#include "print.h"
 #include "symbol_table.h"
 #include "typecheck.h"
 #include "util.h"
 
 #include <stdarg.h>
 #include <stdio.h>
+
 
 static int in_loop = 0;
 static int cur_line = 0;
@@ -14,8 +16,42 @@ static void report_error_cur_line(const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	report_error_line(cur_line, fmt, args);
+	vreport_error_line(cur_line, fmt, args);
 	va_end(args);
+}
+
+static void got_but_expected(ast_type *got, ast_type *expected) {
+	fprintf(stderr, " (got ");
+	e_type_print(got);
+	fprintf(stderr, ", expected ");
+	e_type_print(expected);
+	fprintf(stderr, ")\n");
+}
+
+static void cant_with_expr(const char *msg, ast_expr *e) {
+	report_error_cur_line(msg);
+	fprintf(stderr, " '");
+	e_expr_print(e);
+	fprintf(stderr, "'\n");
+}
+
+static void l_r_mismatch(const char *msg, ast_expr *l, ast_expr *r) {
+	report_error_cur_line(msg);
+	fprintf(stderr, " [operands: '");
+	e_expr_print(l);
+	fprintf(stderr, "' (");
+	if (l->type != NULL)
+		e_type_print(l->type);
+	else
+		fprintf(stderr, "couldn't be derived");
+	fprintf(stderr, ") and ");
+	e_expr_print(r);
+	fprintf(stderr, " (");
+	if (r->type != NULL)
+		e_type_print(r->type);
+	else
+		fprintf(stderr, "couldn't be derived");
+	fprintf(stderr, ")]\n");
 }
 
 void typecheck_program(ast_decl *program)
@@ -45,6 +81,7 @@ static void scope_bind_args(ast_decl *decl)
 static void typecheck_return(ast_stmt *stmt) {
 	ast_type *typ;
 	cur_line = stmt->line;
+
 	if (stmt->next != NULL) {
 		report_error_cur_line("Return statements must be at the end of statement blocks.\n");
 	}
@@ -58,8 +95,12 @@ static void typecheck_return(ast_stmt *stmt) {
 		return;
 	}
 	derive_expr_type(stmt->expr);
-	if (!type_equals(stmt->expr->type, scope_get_return_type(), 0)) {
-		report_error_cur_line("Return value does not match function signature\n");
+	if (!type_equals(stmt->expr->type, typ, 0)) {
+		report_error_cur_line("Type of return expression '");
+		e_expr_print(stmt->expr);
+		fprintf(stderr, "' does not match the expected return type (");
+		e_type_print(typ);
+		fprintf(stderr, ")\n");
 	}
 }
 
@@ -126,7 +167,7 @@ static void append_retvoid_if_needed(ast_decl *fn) {
 static void typecheck_fnbody(ast_decl *decl)
 {
 	if (decl->body == NULL) {
-		report_error_cur_line("Must provide a function body to non-prototype function declarations.\n");
+		report_error_cur_line("Must provide a function body to non-prototype declaration of '%s'\n", decl_name(decl));
 		return;
 	}
 	scope_enter();
@@ -145,7 +186,7 @@ static void typecheck_array_initializer(ast_decl *decl)
 	for (size_t i = 0 ; i < decl->initializer->size ; ++i) {
 		derive_expr_type(decl->initializer->elements[i]);
 		if (!type_equals(((ast_expr *)(decl->initializer->elements[i]))->type, decl->typesym->type->subtype, 0)) {
-			report_error_cur_line("Type mismatch in array initializer\n");
+			report_error_cur_line("Type mismatch at position %lu in array '%s' initializer\n", i, decl_name(decl));
 			return;
 		}
 	}
@@ -189,42 +230,46 @@ static void typecheck_global_decl(ast_decl *decl)
 		return;
 	}
 	if (decl->expr == NULL) {
-		report_error_cur_line("Global declarations must initialize with some compile-time-constant expression\n");
+		report_error_cur_line("Global declaration of '%s' missing initializer with compile-time-constant expression\n", decl_name(decl));
 		return;
 	}
 
+	derive_expr_type(decl->expr);
 	switch (decl->typesym->type->kind) {
 	case Y_CHAR:
 		if (decl->expr->kind != E_CHAR_LIT) {
-			report_error_cur_line("Global char declarations must initialize with char literals\n");
+			goto global_wrong_type;
 		}
-		break;
+		return;
 	case Y_BOOL:
-		if (decl->expr->kind != E_TRUE_LIT && decl->expr->kind != E_FALSE_LIT) {
-			report_error_cur_line("Global bool declarations must initialize with bool literals\n");
-		}
-		break;
+		if (decl->expr->kind != E_TRUE_LIT && decl->expr->kind != E_FALSE_LIT)
+			goto global_wrong_type;
+		return;
 	case Y_POINTER:
 	case Y_CONSTPTR:
 		// TODO: allow array ininitializers at global level
-		if (decl->expr->kind != E_NULL) {
-			report_error_cur_line("Global pointer declarations must initialize with null literals\n");
-		}
-		break;
+		if (decl->expr->kind != E_NULL)
+			goto global_wrong_type;
+		return;
 	case Y_U32:
 	case Y_U64:
 	case Y_I32:
 	case Y_I64:
-		if (decl->expr->kind != E_INT_LIT) {
-			report_error_cur_line("Global integer declarations must initialize with integer literals\n");
-		}
-		break;
+		if (decl->expr->kind != E_INT_LIT)
+			goto global_wrong_type;
+		return;
 	case Y_FUNCTION:
 	case Y_STRUCT:
 	case Y_VOID:
-		report_error_cur_line("Could not declare a declaration of this type at the global level.\n");
-		break;
+		report_error_cur_line("Could not declare a declaration of type ");
+		e_type_print(decl->typesym->type);
+		fprintf(stderr, " at the global level.\n");
+		return;
 	}
+
+global_wrong_type:
+	report_error_cur_line("Global declaration of '%s' initialized with mismatched value.", decl_name(decl));
+	got_but_expected(decl->expr->type, decl->typesym->type);
 }
 
 static int valid_type_for_decl(ast_type *tp, int pointing) {
@@ -278,15 +323,16 @@ void typecheck_decl(ast_decl *decl, int at_global_level)
 	cur_line = decl->line;
 	if ((ts = scope_lookup_current(decl->typesym->symbol))) {
 		if (ts->type->modif != VM_PROTO) {
-			report_error_cur_line("Duplicate symbol declaration\n");
+			report_error_cur_line("Duplicate declaration of symbol '%s'\n", decl_name(decl));
 			return;
 		}
 		if (decl->typesym->type->modif != VM_DEFAULT) {
-			report_error_cur_line("Definitions of already-prototyped functions must use the 'let' keyword\n");
+			report_error_cur_line("Definitions of already-prototyped function '%s' must use the 'let' keyword\n", decl_name(decl));
 			return;
 		}
 		if (!type_equals(ts->type, decl->typesym->type, 1)) {
-			report_error_cur_line("Function definition does not match type signature of function prototype.\n");
+			report_error_cur_line("Definition of function '%s' does not match type signature of function prototype", decl_name(decl));
+			got_but_expected(decl->typesym->type, ts->type);
 			return;
 		}
 		// TODO: might want to put this somewhere else? This still works though.
@@ -298,7 +344,7 @@ void typecheck_decl(ast_decl *decl, int at_global_level)
 			return;
 		}
 		if (decl->expr != NULL || decl->body != NULL) {
-			report_error_cur_line("Function prototypes must not be assigned a body/value.\n");
+			report_error_cur_line("Function prototype '%s' must not be assigned a body/value.\n", decl_name(decl));
 			return;
 		}
 		scope_bind_ts(decl->typesym);
@@ -306,7 +352,9 @@ void typecheck_decl(ast_decl *decl, int at_global_level)
 	}
 
 	if (!valid_type_for_decl(decl->typesym->type, 0)) {
-		report_error_cur_line("Could not create a decl of this type.\n");
+		report_error_cur_line("Can not create declare '%s' with type ", decl_name(decl));
+		e_type_print(decl->typesym->type);
+		fprintf(stderr, "\n");
 		return;
 	}
 
@@ -317,10 +365,12 @@ void typecheck_decl(ast_decl *decl, int at_global_level)
 		typecheck_fnbody(decl);
 	} else if (decl->initializer) {
 		if (at_global_level) {
-			report_error_cur_line("Can't use array initializers at global level.\n");
+			report_error_cur_line("Can't use array initializers at global level yet. Sorry :(\n");
 		}
 		if (decl->typesym->type->kind != Y_POINTER && decl->typesym->type->kind != Y_CONSTPTR) {
-			report_error_cur_line("Only pointers can use array initializers\n");
+			report_error_cur_line("%s is being declared with non-pointer type ", decl_name(decl));
+			e_type_print(decl->typesym->type);
+			fprintf(stderr, ". Only pointers can be assigned array initializers.\n");
 			return;
 		}
 		typecheck_array_initializer(decl);
@@ -347,7 +397,11 @@ void typecheck_decl(ast_decl *decl, int at_global_level)
 		if (right_can_cast_implicitly(decl->typesym->type, decl->expr->type)) {
 			decl->expr = build_cast(decl->expr, decl->typesym->type->kind);
 		} else if (!(type_equals(decl->typesym->type, decl->expr->type, 0))) {
-			report_error_cur_line("Assignment expression type mismatch\n");
+			report_error_cur_line("Tried to assign an expression type ");
+			e_type_print(decl->expr->type);
+			fprintf(stderr, " to a ");
+			e_type_print(decl->typesym->type);
+			fprintf(stderr, "\n");
 			return;
 		}
 	}
@@ -367,10 +421,10 @@ static void typecheck_fncall(ast_expr *expr)
 {
 	ast_typed_symbol *fn_ts = scope_lookup(expr->name);
 	if (fn_ts == NULL) {
-		report_error_cur_line("Call to undeclared function\n");
+		report_error_cur_line("Call to undeclared function '%s'\n", expr->name->text);
 		return;
 	} else if (fn_ts->type->kind != Y_FUNCTION) {
-		report_error_cur_line("Identifier does not refer to a function\n");
+		report_error_cur_line("Identifier '%s' does not refer to a function\n", expr->name->text);
 		return;
 	}
 	vect *decl_arglist = fn_ts->type->arglist;
@@ -381,7 +435,9 @@ static void typecheck_fncall(ast_expr *expr)
 		return;
 	} else if ((decl_arglist == NULL || expr_arglist == NULL) ||
 			(decl_arglist->size != expr_arglist->size)) {
-		report_error_cur_line("Argument count mismatch\n");
+		report_error_cur_line("Argument count mismatch in call to %s: expected %lu, %lu\n", expr->name->text,
+				decl_arglist == NULL ? 0 : decl_arglist->size,
+				expr_arglist == NULL ? 0 : expr_arglist->size);
 		return;
 	}
 	for (i = 0 ; i < decl_arglist->size ; ++i) {
@@ -391,7 +447,9 @@ static void typecheck_fncall(ast_expr *expr)
 		if (right_can_cast_implicitly(t, e->type)) {
 			expr_arglist->elements[i] = build_cast(e, t->kind);
 		} else if (!type_equals(t, e->type, 0)) {
-			report_error_cur_line("Positional argument type mismatch in function call\n");
+			report_error_cur_line("Positional argument type mismatch at position %lu in call to '%s'",
+					i, expr->name->text);
+			got_but_expected(e->type, t);
 		}
 	}
 	expr->type = fn_ts->type->subtype;
@@ -399,12 +457,12 @@ static void typecheck_fncall(ast_expr *expr)
 
 static void derive_assign(ast_expr *expr) {
 	if (!expr->left->is_lvalue) {
-		report_error_cur_line("Assignment expression's left side must be an lvalue!\n");
+		cant_with_expr("Cannot assign to non-lvalue expression", expr->left);
 		return;
 	}
 	derive_expr_type(expr->left);
 	if (expr->left->type != NULL && expr->left->type->modif != VM_DEFAULT) {
-		report_error_cur_line("Cannot assign to const/proto values\n");
+		cant_with_expr("Cannot assign to const/proto value", expr->left);
 	}
 	derive_expr_type(expr->right);
 	if (type_equals(expr->left->type, expr->right->type, 0)) {
@@ -416,7 +474,8 @@ static void derive_assign(ast_expr *expr) {
 		expr->type = expr->left->type;
 		return;
 	}
-	report_error_cur_line("Mismatched types in assigment statement\n");
+	report_error_cur_line("Mismatched types in assigment statement");
+	got_but_expected(expr->right->type, expr->left->type);
 }
 
 static void derive_pre_unary(ast_expr *expr)
@@ -425,7 +484,7 @@ static void derive_pre_unary(ast_expr *expr)
 	switch (expr->op) {
 	case T_AMPERSAND:
 		if (expr->left->type == NULL || !expr->left->is_lvalue) {
-			report_error_cur_line("Cannot find address of non-lvalue expr\n");
+			cant_with_expr("Cannot find address of non-lvalue expr", expr->left);
 			return;
 		}
 		expr->type = type_init(expr->left->type->modif == VM_CONST ? Y_CONSTPTR : Y_POINTER, NULL);
@@ -435,35 +494,35 @@ static void derive_pre_unary(ast_expr *expr)
 		break;
 	case T_STAR:
 		if (expr->left->type == NULL || (expr->left->type->kind != Y_POINTER && expr->left->type->kind != Y_CONSTPTR)) {
-			report_error_cur_line("Cannot dereference non-pointer expression\n");
+			cant_with_expr("Cannot dereference non-lvalue expr", expr->left);
 			return;
 		}
 		expr->type = expr->left->type->subtype;
 		break;
 	case T_MINUS:
 		if (!is_int_type(expr->left->type)) {
-			report_error_cur_line("Cannot use unary negative operator on non-integer type.\n");
+			cant_with_expr("Cannot use unary negative operator on non-integer expression", expr->left);
 			return;
 		}
 		expr->type = expr->left->type;
 		break;
 	case T_BW_NOT:
 		if (!is_int_type(expr->left->type)) {
-			report_error_cur_line("Cannot use unary bitwise not operator on non-integer type.\n");
+			cant_with_expr("Cannot use unary bitwise not operator on non-integer expression", expr->left);
 			return;
 		}
 		expr->type = expr->left->type;
 		break;
 	case T_NOT:
 		if (expr->left->type->kind != Y_BOOL) {
-			report_error_cur_line("Cannot use unary not operator on non-bolean type.\n");
+			cant_with_expr("Cannot use unary not operator on non-bolean expression", expr->left);
 			return;
 		}
 		expr->type = expr->left->type;
 		break;
 	case T_SIZEOF:
 		if (expr->left->type == NULL) {
-			report_error_cur_line("sizeof operand type is not defined\n");
+			cant_with_expr("Could not determine type of", expr->left);
 			return;
 		}
 		expr->type = type_init(Y_U64, NULL);
@@ -492,13 +551,13 @@ static void derive_post_unary(ast_expr *expr)
 	case T_LBRACKET:
 		if (expr->left->type == NULL || (expr->left->type->kind != Y_POINTER &&
 					expr->left->type->kind != Y_CONSTPTR)) {
-			report_error_cur_line("can only use index operator on pointers\n");
+			cant_with_expr("Cannot use index operator on non-pointer expression", expr->left);
 			return;
 		}
 		derive_expr_type(expr->right);
 		// TODO: make this unsigned. USIZE?
 		if (expr->right->type == NULL || expr->right->type->kind != Y_I32) {
-			report_error_cur_line("can only index pointers with integers\n");
+			cant_with_expr("Cannot index with non-integer expression", expr->right);
 			return;
 		}
 		expr->type = expr->left->type->subtype;
@@ -506,17 +565,17 @@ static void derive_post_unary(ast_expr *expr)
 	case T_PERIOD:
 		// TODO: think long and hard about if this if statement needs to check for lvalue-ness.
 		if (expr->left->type == NULL || expr->left->type->kind != Y_STRUCT) {
-			report_error_cur_line("Member operator left side must be a struct\n");
+			cant_with_expr("Cannot use member operator on non-struct expression", expr->left);
 			return;
 		}
 		if (expr->right->kind != E_IDENTIFIER) {
-			report_error_cur_line("Member operator right side must be an identifier\n");
+			cant_with_expr("Cannot use non-identifier as struct member", expr->left);
 			return;
 		}
 		ts = scope_lookup(expr->left->type->name);
 		expr->type = struct_field_type(ts, expr->right->name);
 		if (expr->type == NULL) {
-			report_error_cur_line("Attempted to access non-existent struct member.\n");
+			report_error_cur_line("No such member '%s' of struct '%s'", expr->right->name->text, expr->left->type->name->text);
 		}
 		return;
 	default:
@@ -559,7 +618,7 @@ void derive_expr_type(ast_expr *expr)
 			expr->type = expr->left->type;
 			return;
 		}
-		report_error_cur_line("Operands must both be booleans in logical and/or expressions.\n");
+		l_r_mismatch("Operands must both be booleans in logical and/or expressions", expr->left, expr->right);
 		return;
 	case E_ADDSUB:
 	case E_MULDIV:
@@ -574,7 +633,7 @@ void derive_expr_type(ast_expr *expr)
 			expr->type = expr->left->type;
 			return;
 		}
-		report_error_cur_line("Operands must both be integers in arithmetic expressions.\n");
+		l_r_mismatch("Operands must both be integers in arithmetic expressions", expr->left, expr->right);
 		return;
 	case E_EQUALITY:
 	case E_INEQUALITY:
@@ -589,7 +648,7 @@ void derive_expr_type(ast_expr *expr)
 			expr->owns_type = true;
 			return;
 		}
-		report_error_cur_line("Operands must both be integer types in (in)equality expressions.\n");
+		l_r_mismatch("Operands must both be integer types in (in)equality expressions", expr->left, expr->right);
 		return;
 	case E_ASSIGN:
 		derive_assign(expr);
@@ -626,11 +685,11 @@ void derive_expr_type(ast_expr *expr)
 	case E_IDENTIFIER:
 		ts = scope_lookup(expr->name);
 		if (ts == NULL) {
-			report_error_cur_line("Used undeclared identifier\n");
+			report_error_cur_line("Used undeclared identifier '%s'\n", expr->name->text);
 			return;
 		}
 		if (ts->type->kind == Y_STRUCT && ts->type->name != NULL && strvec_equals(ts->type->name, expr->name)) {
-			report_error_cur_line("Can't use struct type in this expression\n");
+			report_error_cur_line("Can't use struct type '%s' in this expression\n", ts->type->name);
 			return;
 		}
 		expr->type = ts->type;
@@ -720,9 +779,8 @@ void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 			report_error_cur_line("if statement condition must be non-empty\n");
 		}
 		derive_expr_type(stmt->expr);
-		if (stmt->expr->type == NULL || stmt->expr->type->kind != Y_BOOL) {
-			report_error_cur_line("if statement condition must be a boolean\n");
-		}
+		if (stmt->expr->type == NULL || stmt->expr->type->kind != Y_BOOL)
+			cant_with_expr("Could not use non-boolean if statement condition", stmt->expr);
 		scope_enter();
 		if (stmt->body != NULL)
 			typecheck_stmt(stmt->body, 0);
@@ -738,9 +796,8 @@ void typecheck_stmt(ast_stmt *stmt, int at_fn_top_level)
 			report_error_cur_line("while statement condition must be non-empty\n");
 		}
 		derive_expr_type(stmt->expr);
-		if (stmt->expr->type == NULL || stmt->expr->type->kind != Y_BOOL) {
-			report_error_cur_line("while statement condition must be a boolean\n");
-		}
+		if (stmt->expr->type == NULL || stmt->expr->type->kind != Y_BOOL)
+			cant_with_expr("Could not use non-boolean while statement condition", stmt->expr);
 		in_loop = 1;
 		if (stmt->body != NULL) {
 			typecheck_stmt(stmt->body->body, 0);
